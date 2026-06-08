@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
 
     const { data: enrollment, error: enrollError } = await supabase
       .from('enrollments')
-      .select('id, enrollment_type, status, child_id, coach_id, sessions_remaining, is_paused')
+      .select('id, enrollment_type, status, child_id, coach_id, sessions_remaining')
       .eq('id', enrollmentId)
       .single();
 
@@ -48,12 +48,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Only tuition enrollments can be scheduled here' }, { status: 400 });
     }
 
-    if (enrollment.status !== 'active' && enrollment.status !== 'pending_start') {
-      return NextResponse.json({ error: 'Enrollment is not active' }, { status: 400 });
+    // BREAK2.1c: canonical paused signal, checked FIRST for a specific message.
+    // Fixes the latent bug where the guard only read is_paused — a balance-paused
+    // tuition enrollment (status='paused', is_paused never set by the balance
+    // writer) was not reliably blocked from scheduling.
+    if (enrollment.status === 'paused') {
+      return NextResponse.json({ error: 'Enrollment is paused' }, { status: 400 });
     }
 
-    if (enrollment.is_paused) {
-      return NextResponse.json({ error: 'Enrollment is paused' }, { status: 400 });
+    if (enrollment.status !== 'active' && enrollment.status !== 'pending_start') {
+      return NextResponse.json({ error: 'Enrollment is not active' }, { status: 400 });
     }
 
     if ((enrollment.sessions_remaining ?? 0) <= 0) {

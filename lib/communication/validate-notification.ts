@@ -93,7 +93,7 @@ const RULE_NAMES: Record<RuleNumber, string> = {
 };
 
 // Pause-list defaults (per B2.2 spec, Rule 8).
-// Parent pause is now derived from enrollments.status + is_paused (see resolveRecipient).
+// Parent pause is now derived from enrollments.status (BREAK2.1c — see resolveRecipient).
 // TODO(b2.2-followup): replace with site_settings reader for coach pause-list.
 const ACTIVE_STATUS_COACH: ReadonlySet<string> = new Set(['active', 'onboarding']);
 
@@ -171,9 +171,9 @@ export async function resolveRecipient(recipientId: string): Promise<ResolvedRec
   if (UUID_RE.test(recipientId)) {
     // Parent path: confirm UUID is in parents, then derive status from enrollments.
     // parents.status column does not exist; Rule 8 source-of-truth is now
-    // enrollments.status='active' AND is_paused=false (any active+unpaused enrollment
-    // means the parent is reachable). Lead parents (no enrollments) are allowed
-    // through so the discovery flow keeps working.
+    // enrollments.status='active' (BREAK2.1c — canonical paused signal; any
+    // active enrollment means the parent is reachable). Lead parents (no
+    // enrollments) are allowed through so the discovery flow keeps working.
     const { data: parent } = await supabase
       .from('parents')
       .select('id')
@@ -183,7 +183,7 @@ export async function resolveRecipient(recipientId: string): Promise<ResolvedRec
     if (parent) {
       const { data: enrollments, error } = await supabase
         .from('enrollments')
-        .select('status, is_paused, child:children!inner(parent_id)')
+        .select('status, child:children!inner(parent_id)')
         .eq('child.parent_id', recipientId);
 
       let status: ParentEnrollmentStatus;
@@ -192,9 +192,8 @@ export async function resolveRecipient(recipientId: string): Promise<ResolvedRec
       } else if (!enrollments || enrollments.length === 0) {
         status = 'lead';
       } else {
-        const hasActive = enrollments.some(
-          (e) => e.status === 'active' && e.is_paused === false,
-        );
+        // BREAK2.1c: canonical paused signal — status='active' already excludes paused.
+        const hasActive = enrollments.some((e) => e.status === 'active');
         status = hasActive ? 'active' : 'paused';
       }
       return { type: 'parent', id: parent.id, status };
@@ -331,7 +330,7 @@ function evalRule8(recipient: ResolvedRecipient): ValidatorResult {
     case 'unknown':
       return { ok: true };
     case 'parent': {
-      // Rule 8 source-of-truth: enrollments.status='active' AND is_paused=false.
+      // Rule 8 source-of-truth: enrollments.status='active' (BREAK2.1c — canonical).
       // 'lead' (no enrollments) and 'unknown' (DB error) fall through to OK so
       // the discovery flow and infra hiccups don't block sends.
       if (recipient.status === 'paused') {
@@ -343,7 +342,7 @@ function evalRule8(recipient: ResolvedRecipient): ValidatorResult {
           detail: {
             recipientType: 'parent',
             status: recipient.status,
-            source: 'enrollments.status+is_paused',
+            source: 'enrollments.status',
           },
         };
       }

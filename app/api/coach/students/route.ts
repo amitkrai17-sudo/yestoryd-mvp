@@ -41,7 +41,6 @@ export async function GET(request: NextRequest) {
         total_sessions,
         age_band,
         lead_source,
-        is_paused,
         session_duration_minutes,
         child_id,
         children (
@@ -186,9 +185,9 @@ export async function GET(request: NextRequest) {
         const nextSession = nextSessionMap.get(enrollment.id);
         const onboarding = onboardingMap.get(enrollment.id);
 
-        // Derive status
+        // Derive status — BREAK2.1c: canonical paused signal
         let displayStatus: string;
-        if (enrollment.is_paused) {
+        if (enrollment.status === 'paused') {
           displayStatus = 'paused';
         } else if (enrollment.status === 'pending_start') {
           displayStatus = 'active';

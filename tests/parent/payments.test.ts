@@ -85,7 +85,7 @@ describe('/api/parent/payments — ownership + scoping', () => {
   it('returns ONLY the calling parent\'s enrollments (no client-supplied id path)', async () => {
     state.enrollments = [
       { id: 'enr-A', status: 'active', sessions_remaining: 6 },
-      { id: 'enr-B', status: 'tuition_paused', sessions_remaining: 1 },
+      { id: 'enr-B', status: 'paused', sessions_remaining: 1 },
     ];
     const res = await GET(req());
     const body = await res.json();
@@ -199,8 +199,8 @@ describe('/api/parent/payments — pay_state', () => {
     expect(ps.pay_url).toBe('/tuition/pay/enr-A?renewal=true');
   });
 
-  it('tuition_paused + low balance → pay_due "low"', async () => {
-    state.enrollments = [{ id: 'enr-A', status: 'tuition_paused', sessions_remaining: 0 }];
+  it('paused + low balance → pay_due "low"', async () => {
+    state.enrollments = [{ id: 'enr-A', status: 'paused', sessions_remaining: 0 }];
     const res = await GET(req());
     const ps = (await res.json()).enrollments[0];
     expect(ps.pay_due).toBe('low');

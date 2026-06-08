@@ -16,12 +16,12 @@ export const GET = withApiHandler(async (_req, { supabase }) => {
     .eq('enrollment_type', 'tuition')
     .in('status', ['active', 'payment_pending']);
 
-  // Paused students
+  // Paused students — BREAK2.1c: canonical 'paused' only.
   const { count: pausedCount } = await supabase
     .from('enrollments')
     .select('*', { count: 'exact', head: true })
     .eq('enrollment_type', 'tuition')
-    .eq('status', 'tuition_paused');
+    .eq('status', 'paused');
 
   // Low balance (sessions_remaining <= 2 and > 0)
   const { count: lowBalanceCount } = await supabase

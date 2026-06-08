@@ -391,7 +391,7 @@ export default function AdminTuitionPage() {
       parent_completed: 'scheduled',
       payment_pending: 'pending',
       active: 'active',
-      tuition_paused: 'paused',
+      paused: 'paused', // BREAK2.1c: canonical paused signal
     };
     return <StatusBadge status={labelMap[status] || status} />;
   }
@@ -403,7 +403,7 @@ export default function AdminTuitionPage() {
   const expiredOnboardings = onboardings.filter(o => !o.enrollment_id && o.status === 'expired');
   const activeStudents = onboardings.filter(o => o.enrollment_id);
   const pausedStudents = onboardings.filter(o =>
-    o.enrollment_id && (o.enrollment_status === 'paused' || o.enrollment_status === 'tuition_paused')
+    o.enrollment_id && o.enrollment_status === 'paused' // BREAK2.1c: canonical paused signal
   );
 
   if (loading) {

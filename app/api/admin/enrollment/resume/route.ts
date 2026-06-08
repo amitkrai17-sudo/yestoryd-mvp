@@ -8,6 +8,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/api-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { resume as resumeEnrollment } from '@/lib/enrollment/pause-service';
 
 const supabase = createAdminClient();
 
@@ -128,23 +129,23 @@ export async function POST(req: NextRequest) {
   // For coaching enrollments: less strict — just allow resume
 
   // --- Step 5: Resume the enrollment ---
-  const { error: updateError } = await supabase
-    .from('enrollments')
-    .update({
-      status: 'active',
-      paused_at: null,
-      pause_reason: null,
-      resume_eligible_until: null,
-      // NOTE: switched_from_enrollment_id and switch_reason are audit fields — NOT cleared
-    })
-    .eq('id', enrollmentId);
+  // Canonical resume via shared service (BREAK2.1b). Route guards above
+  // (status==='paused', resume_eligible_until, sessions_remaining) run first;
+  // skipSideEffects → route keeps its own activity_log below. Service also
+  // clears is_paused + pause dates (canonical). switched_from_enrollment_id /
+  // switch_reason are audit fields the service does NOT touch.
+  const resumeRes = await resumeEnrollment(enrollmentId, {
+    source: 'admin_manual',
+    skipSideEffects: true,
+    actor: { type: 'admin', email: auth.email ?? undefined },
+  });
 
-  if (updateError) {
+  if (!resumeRes.success) {
     console.error(JSON.stringify({
       requestId,
       event: 'enrollment_resume_update_error',
       enrollmentId,
-      error: updateError.message,
+      error: resumeRes.error,
     }));
     return NextResponse.json({ error: 'Failed to resume enrollment' }, { status: 500 });
   }

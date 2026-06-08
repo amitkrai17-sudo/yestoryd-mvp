@@ -21,7 +21,7 @@ export const dynamic = 'force-dynamic';
 // 'low' threshold mirrors the dashboard banner (dashboard:486).
 // 2I config follow-up: source from site_settings; do not change here.
 const LOW_BALANCE_THRESHOLD = 2;
-const LOW_PAYABLE_STATUSES = ['active', 'paused', 'tuition_paused'];
+const LOW_PAYABLE_STATUSES = ['active', 'paused']; // BREAK2.1c: canonical paused signal
 
 // History shows real purchases only — manual_adjustment / enrollment_created excluded.
 // (lifetime_credited still sums ALL positive ledger, matching the admin SSOT denominator.)

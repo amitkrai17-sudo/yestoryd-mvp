@@ -7,11 +7,11 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { conditionalUpdate } from '@/lib/db-utils';
 import { cancelEvent } from '@/lib/googleCalendar';
 import { cancelRecallBot } from '@/lib/recall-auto-bot';
 import { dispatch } from '@/lib/scheduling/orchestrator';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { pause as pauseEnrollment, resume as resumeEnrollment } from '@/lib/enrollment/pause-service';
 
 const supabase = createAdminClient();
 
@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
     const { data: enrollment, error } = await supabase
       .from('enrollments')
       .select(`
-        id, status, is_paused, pause_start_date, pause_end_date,
+        id, status, pause_start_date, pause_end_date,
         pause_reason, total_pause_days, pause_count, program_end,
         children (name)
       `)
@@ -79,8 +79,8 @@ export async function GET(request: NextRequest) {
         enrollmentId: enrollment.id,
         childName: (enrollment.children as any)?.[0]?.name || 'Child',
         status: enrollment.status,
-        isPaused: enrollment.is_paused || false,
-        currentPause: enrollment.is_paused ? {
+        isPaused: enrollment.status === 'paused',
+        currentPause: enrollment.status === 'paused' ? {
           startDate: enrollment.pause_start_date,
           endDate: enrollment.pause_end_date,
           reason: enrollment.pause_reason,
@@ -92,10 +92,9 @@ export async function GET(request: NextRequest) {
           pauseCount,
           maxPauseCount: MAX_PAUSE_COUNT,
         },
-        canPause: !enrollment.is_paused && 
-                  remainingPauseDays > 0 && 
+        canPause: remainingPauseDays > 0 &&
                   pauseCount < MAX_PAUSE_COUNT &&
-                  enrollment.status === 'active',
+                  enrollment.status === 'active', // BREAK2.1c: active excludes paused
         programEndDate: enrollment.program_end,
       },
     });
@@ -130,7 +129,7 @@ export async function POST(request: NextRequest) {
     const { data: enrollment, error: fetchError } = await supabase
       .from('enrollments')
       .select(`
-        id, status, is_paused, total_pause_days, pause_count,
+        id, status, total_pause_days, pause_count,
         program_end, original_end_date, coach_id,
         pause_start_date, pause_end_date,
         children (id, name),
@@ -147,7 +146,7 @@ export async function POST(request: NextRequest) {
     // ACTION: RESUME (Early Resume)
     // ============================================
     if (action === 'resume' || action === 'early_resume') {
-      if (!enrollment.is_paused) {
+      if (enrollment.status !== 'paused') {
         return NextResponse.json({ error: 'Enrollment is not paused' }, { status: 400 });
       }
 
@@ -171,37 +170,26 @@ export async function POST(request: NextRequest) {
         .eq('status', 'paused')
         .order('scheduled_date', { ascending: true });
 
-      // Update enrollment - NOTE: pause_count was already incremented when pause started
-      // Using conditionalUpdate to prevent ghost writes from double-clicks
-      const { updated, error: updateError } = await conditionalUpdate(
-        'enrollments',
-        enrollmentId,
-        {
-          is_paused: false,
-          status: 'active',
-          pause_start_date: null,
-          pause_end_date: null,
-          pause_reason: null,
-          total_pause_days: (enrollment.total_pause_days || 0) + actualPauseDays,
-          program_end: newEndDate.toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-        ['is_paused', 'status'] // Key fields to check for change
-      );
+      // Canonical resume write via shared service (BREAK2.1b). skipSideEffects:
+      // this route keeps its own event logging + (TODO) session rescheduling below.
+      const resumeResult = await resumeEnrollment(enrollmentId, {
+        source: 'parent_self_service',
+        skipSideEffects: true,
+        actor: { type: 'parent' },
+      });
 
-      if (updateError) {
-        console.error('Error resuming enrollment:', updateError);
-        return NextResponse.json({ error: 'Failed to resume' }, { status: 500 });
-      }
-
-      // Log event only if actual update occurred
-      if (!updated) {
-        console.log(`[ENROLLMENT_PAUSE] Resume skipped - no changes needed for ${enrollmentId}`);
-        return NextResponse.json({
-          success: true,
-          message: 'Program already resumed',
-          data: { alreadyResumed: true },
-        });
+      if (!resumeResult.success) {
+        // Idempotent double-click: service rejects an already-resumed enrollment.
+        if (resumeResult.rejected === 'not_paused') {
+          console.log(`[ENROLLMENT_PAUSE] Resume skipped - not paused for ${enrollmentId}`);
+          return NextResponse.json({
+            success: true,
+            message: 'Program already resumed',
+            data: { alreadyResumed: true },
+          });
+        }
+        console.error('Error resuming enrollment:', resumeResult.error);
+        return NextResponse.json({ error: resumeResult.error || 'Failed to resume' }, { status: 500 });
       }
 
       await logEnrollmentEvent(enrollmentId, 'pause_ended', {
@@ -240,9 +228,6 @@ export async function POST(request: NextRequest) {
       const endDate = new Date(pauseEndDate);
       const pauseDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
 
-      // Store original end date if not already stored
-      const originalEndDate = enrollment.original_end_date || enrollment.program_end;
-
       // Calculate new program end date
       const currentEndDate = new Date(enrollment.program_end || new Date().toISOString());
       const newEndDate = new Date(currentEndDate);
@@ -257,24 +242,22 @@ export async function POST(request: NextRequest) {
         .lte('scheduled_date', pauseEndDate)
         .in('status', ['scheduled', 'rescheduled']);
 
-      // Update enrollment - INCREMENT pause_count HERE when pause starts
-      const { error: updateError } = await supabase
-        .from('enrollments')
-        .update({
-          is_paused: true,
-          pause_start_date: pauseStartDate,
-          pause_end_date: pauseEndDate,
-          pause_reason: pauseReason,
-          pause_count: (enrollment.pause_count || 0) + 1,  // Increment on pause START
-          original_end_date: originalEndDate,
-          program_end: newEndDate.toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', enrollmentId);
+      // Canonical pause write via shared service (BREAK2.1b). skipSideEffects:
+      // this route keeps its own session teardown + event log + orchestrator
+      // dispatch below — the service only writes the canonical enrollment row
+      // (status='paused' + is_paused dual-write, pause_count, dates, program_end).
+      const pauseResult = await pauseEnrollment(enrollmentId, {
+        source: 'parent_self_service',
+        reason: pauseReason,
+        startDate: pauseStartDate,
+        endDate: pauseEndDate,
+        skipSideEffects: true,
+        actor: { type: 'parent' },
+      });
 
-      if (updateError) {
-        console.error('Error pausing enrollment:', updateError);
-        return NextResponse.json({ error: 'Failed to pause' }, { status: 500 });
+      if (!pauseResult.success) {
+        console.error('Error pausing enrollment:', pauseResult.error);
+        return NextResponse.json({ error: pauseResult.error || 'Failed to pause' }, { status: 500 });
       }
 
       // Mark sessions as paused
@@ -357,8 +340,8 @@ function validatePauseRequest(
   pauseEndDate: string,
   pauseReason: string
 ): { valid: boolean; error?: string } {
-  // Check if already paused
-  if (enrollment.is_paused) {
+  // Check if already paused — BREAK2.1c: canonical paused signal
+  if (enrollment.status === 'paused') {
     return { valid: false, error: 'Enrollment is already paused' };
   }
 

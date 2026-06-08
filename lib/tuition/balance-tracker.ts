@@ -8,6 +8,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendNotification } from '@/lib/communication/notify';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
+import { pause as pauseEnrollment } from '@/lib/enrollment/pause-service';
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://www.yestoryd.com';
 
@@ -47,7 +48,7 @@ export async function deductTuitionBalance(
     // 1. Fetch enrollment with child/parent info
     const { data: enrollment, error: fetchErr } = await supabase
       .from('enrollments')
-      .select('id, sessions_remaining, sessions_completed, child_id, parent_id, coach_id, session_rate, enrollment_type, status, is_paused, renewal_intent, renewal_intent_set_at, low_balance_nudges_sent, last_low_balance_nudge_at, parent_renewal_check_sent_at')
+      .select('id, sessions_remaining, sessions_completed, child_id, parent_id, coach_id, session_rate, enrollment_type, status, renewal_intent, renewal_intent_set_at, low_balance_nudges_sent, last_low_balance_nudge_at, parent_renewal_check_sent_at')
       .eq('id', enrollmentId)
       .single();
 
@@ -250,9 +251,8 @@ export async function deductTuitionBalance(
       }));
     } else if (newBalance <= 2) {
       // ── Spam prevention guards (added 2026-04-26 for parent_tuition_low_balance_v3) ──
-      // Defensive: pause is currently set via status='tuition_paused', is_paused flag
-      // is dormant in production. Check both to prevent latent bug.
-      if (enrollment.is_paused === true || enrollment.status === 'tuition_paused') {
+      // BREAK2.1c: canonical paused signal — don't nudge a paused enrollment.
+      if (enrollment.status === 'paused') {
         await supabase.from('activity_log').insert({
           action: 'low_balance_skipped',
           user_email: COMPANY_CONFIG.supportEmail,
@@ -397,16 +397,28 @@ async function checkAndPause(
     .eq('id', enrollmentId)
     .single();
 
-  if (enrollment?.status === 'tuition_paused') return;
+  // Idempotency — BREAK2.1d: status is the sole canonical paused signal.
+  if (enrollment?.status === 'paused') return;
 
-  // Pause
-  await supabase
-    .from('enrollments')
-    .update({
-      status: 'tuition_paused',
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', enrollmentId);
+  // Canonical pause write via shared service (BREAK2.1b). System source bypasses
+  // the parent quota; skipSideEffects → this fn keeps its own WA + activity_log below.
+  const pauseResult = await pauseEnrollment(enrollmentId, {
+    source: 'balance_auto',
+    reason: 'balance_zero',
+    skipSideEffects: true,
+    actor: { type: 'system' },
+  });
+
+  if (!pauseResult.success) {
+    console.error(JSON.stringify({
+      requestId,
+      event: 'tuition_pause_write_failed',
+      enrollmentId,
+      reason: pauseResult.rejected,
+      error: pauseResult.error,
+    }));
+    return;
+  }
 
   // Send paused WA
   if (parentPhone) {

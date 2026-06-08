@@ -23,6 +23,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { cancelEvent } from '@/lib/googleCalendar';
 import { cancelRecallBot } from '@/lib/recall-auto-bot';
 import { insertLearningEvent } from '@/lib/rai/learning-events';
+import { pause as pauseEnrollment } from '@/lib/enrollment/pause-service';
 
 const supabase = createAdminClient();
 
@@ -130,10 +131,11 @@ export async function POST(req: NextRequest) {
   }
 
   // Verify status is switchable
-  const switchableStatuses = ['active', 'tuition_paused'];
+  // BREAK2.1c: canonical signal — active or paused are switchable.
+  const switchableStatuses = ['active', 'paused'];
   if (!enrollment.status || !switchableStatuses.includes(enrollment.status)) {
     return NextResponse.json(
-      { error: `Enrollment status "${enrollment.status}" is not eligible for switching. Must be active or tuition_paused.` },
+      { error: `Enrollment status "${enrollment.status}" is not eligible for switching. Must be active or paused.` },
       { status: 400 }
     );
   }
@@ -273,26 +275,25 @@ export async function POST(req: NextRequest) {
   const pauseReason =
     targetType === 'coaching' ? 'switched_to_coaching' : 'switched_to_tuition';
 
-  const resumeEligibleUntil = new Date();
-  resumeEligibleUntil.setDate(resumeEligibleUntil.getDate() + 90);
+  // Canonical pause of the OLD enrollment via shared service (BREAK2.1b).
+  // System/admin source bypasses the parent quota; allowFromStatuses lets us
+  // (re)pause from active/paused; skipSideEffects → switch owns its own session
+  // cancellation (above) + activity_log/learning_event (below).
+  const pauseRes = await pauseEnrollment(enrollmentId, {
+    source: 'admin_switch',
+    reason: pauseReason,
+    resumeEligibleDays: 90,
+    allowFromStatuses: ['active', 'paused'],
+    skipSideEffects: true,
+    actor: { type: 'admin', email: auth.email ?? undefined },
+  });
 
-  const { error: pauseError } = await supabase
-    .from('enrollments')
-    .update({
-      status: 'paused',
-      paused_at: new Date().toISOString(),
-      pause_reason: pauseReason,
-      resume_eligible_until: resumeEligibleUntil.toISOString(),
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', enrollmentId);
-
-  if (pauseError) {
+  if (!pauseRes.success) {
     console.error(JSON.stringify({
       requestId,
       event: 'enrollment_switch_pause_error',
       enrollmentId,
-      error: pauseError.message,
+      error: pauseRes.error,
     }));
     return NextResponse.json({ error: 'Failed to pause current enrollment' }, { status: 500 });
   }

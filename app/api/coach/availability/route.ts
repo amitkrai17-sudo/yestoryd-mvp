@@ -52,8 +52,7 @@ export async function GET(request: NextRequest) {
         children (id, name)
       `)
       .eq('coach_id', coachId)
-      .eq('status', 'active')
-      .eq('is_paused', false);
+      .eq('status', 'active'); // BREAK2.1c: status='active' already excludes paused
 
     // Get upcoming sessions
     const { data: upcomingSessions } = await supabase

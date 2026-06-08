@@ -15,6 +15,7 @@ import { scheduleEnrollmentSessions } from './enrollment-scheduler';
 import { getSetting } from '@/lib/settings/getSettings';
 import { createLogger } from './logger';
 import { checkIdempotency, setIdempotency } from './redis-store';
+import { pause as pauseEnrollment } from '@/lib/enrollment/pause-service';
 
 const logger = createLogger('orchestrator');
 
@@ -505,10 +506,8 @@ async function dispatchInternal(
 
         let autoPaused = false;
         if (newTotal >= autoPauseThreshold) {
-          updateData.status = 'paused';
-          updateData.is_paused = true;
-          updateData.pause_reason = 'auto_noshow';
-          updateData.pause_start_date = new Date().toISOString().split('T')[0];
+          // Pause-signal fields are written by the shared service below; here we
+          // only set the at-risk annotation that the service does not own.
           updateData.at_risk = true;
           updateData.at_risk_reason = `Auto-paused: ${newTotal} total no-shows`;
           autoPaused = true;
@@ -520,6 +519,15 @@ async function dispatchInternal(
           .eq('id', enrollment.id);
 
         if (autoPaused) {
+          // Canonical pause via shared service (BREAK2.1b). System source bypasses
+          // the parent quota; skipSideEffects → orchestrator keeps its own logging.
+          await pauseEnrollment(enrollment.id, {
+            source: 'noshow_auto',
+            reason: 'auto_noshow',
+            startDate: new Date().toISOString().split('T')[0],
+            skipSideEffects: true,
+            actor: { type: 'system' },
+          });
           console.warn(`[Orchestrator] Enrollment auto-paused: ${enrollment.id}, total no-shows: ${newTotal}`);
         }
 
