@@ -35,6 +35,8 @@ export interface CreateTuitionResult {
   token: string;
   magicLink: string;
   status: string;
+  /** Actual WhatsApp send outcome: 'sent' | a NotifyReason | 'failed'. */
+  waStatus: string;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -124,14 +126,24 @@ export async function createTuitionOnboarding(
 
   // 5. Send WhatsApp to parent
   // v5 has a generic, no-variable body ("Hi Parent, ...") — no name resolution needed.
+  let waStatus = 'failed';
   try {
-    await sendNotification('parent_tuition_onboarding_v5', `91${params.parentPhone}`, {}, {
+    const waResult = await sendNotification('parent_tuition_onboarding_v5', `91${params.parentPhone}`, {}, {
       templateButtons: { category: 'utility_cta', url: token },
       // v5 has an empty body (no wa_variables), so STEP-6 firstParam degrades to ''.
       // Pin the onboarding token as contextId so the idempotency key stays unique
       // per onboarding for the same phone+day.
       contextId: token,
+      // Interactive admin/coach send — bypass quiet-hours deferral.
+      forceImmediate: true,
     });
+    waStatus = waResult.success ? 'sent' : (waResult.reason ?? 'failed');
+    console.log(JSON.stringify({
+      requestId,
+      event: waResult.success ? 'tuition_wa_sent' : 'tuition_wa_not_sent',
+      onboardingId: onboarding.id,
+      reason: waResult.reason ?? null,
+    }));
   } catch (waErr) {
     console.error(JSON.stringify({
       requestId,
@@ -160,5 +172,6 @@ export async function createTuitionOnboarding(
     token,
     magicLink,
     status: 'parent_pending',
+    waStatus,
   };
 }

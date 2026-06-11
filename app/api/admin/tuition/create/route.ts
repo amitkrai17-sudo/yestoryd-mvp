@@ -132,19 +132,24 @@ export const POST = withApiHandler(async (req: NextRequest, { auth, supabase, re
 
   // 6. Send WhatsApp to parent
   // v5 has a generic, no-variable body ("Hi Parent, ...") — no name resolution needed.
+  let waStatus = 'failed';
   try {
-    await sendNotification('parent_tuition_onboarding_v5', `91${input.parentPhone}`, {}, {
+    const waResult = await sendNotification('parent_tuition_onboarding_v5', `91${input.parentPhone}`, {}, {
       templateButtons: { category: 'utility_cta', url: token },
       // v5 empty body degrades STEP-6 firstParam to ''. Pin the onboarding token as
       // contextId so the idempotency key stays unique per onboarding for the same phone+day.
       contextId: token,
+      // Interactive admin send — bypass quiet-hours deferral.
+      forceImmediate: true,
     });
+    waStatus = waResult.success ? 'sent' : (waResult.reason ?? 'failed');
 
     console.log(JSON.stringify({
       requestId,
-      event: 'tuition_wa_sent',
+      event: waResult.success ? 'tuition_wa_sent' : 'tuition_wa_not_sent',
       onboardingId: onboarding.id,
       parentPhone: input.parentPhone,
+      reason: waResult.reason ?? null,
     }));
   } catch (waErr) {
     // Non-fatal — admin can resend later
@@ -174,5 +179,6 @@ export const POST = withApiHandler(async (req: NextRequest, { auth, supabase, re
     token,
     magicLink,
     status: 'parent_pending',
+    waStatus,
   });
 }, { auth: 'admin' });
