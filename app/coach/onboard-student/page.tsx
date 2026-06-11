@@ -43,7 +43,7 @@ export default function CoachOnboardStudentPage() {
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<{ magicLink: string; childName: string } | null>(null);
+  const [success, setSuccess] = useState<{ magicLink: string; childName: string; waStatus: string } | null>(null);
   const [copied, setCopied] = useState(false);
 
   const [batches, setBatches] = useState<Batch[]>([]);
@@ -129,7 +129,7 @@ export default function CoachOnboardStudentPage() {
       const res = await fetch('/api/coach/onboard-student', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ childName: childName || undefined, childApproximateAge: childAge || undefined, parentPhone, sessionRate: rp, sessionDurationMinutes: joinBatch ? batches.find(b => b.batch_id === selectedBatchId)?.duration || 60 : duration, sessionsPurchased: Number(sessionsPurchased) || 1, sessionsPerWeek, defaultSessionMode: sessionMode, sessionType: joinBatch ? 'batch' : sessionType, batchId: joinBatch ? selectedBatchId : undefined }) });
       const data = await res.json();
       if (!res.ok) { setError(data.error || 'Failed to create onboarding'); return; }
-      setSuccess({ magicLink: data.magicLink, childName: childName || parentPhone });
+      setSuccess({ magicLink: data.magicLink, childName: childName || parentPhone, waStatus: data.waStatus || 'sent' });
     } catch { setError('Network error. Please try again.'); } finally { setSubmitting(false); }
   };
 
@@ -227,7 +227,38 @@ export default function CoachOnboardStudentPage() {
             <CheckCircle className="w-7 h-7 text-emerald-400" />
           </div>
           <h1 className="text-xl font-semibold text-white">Student onboarded</h1>
-          <p className="text-sm text-gray-400">Payment link sent to parent via WhatsApp. Sessions will be scheduled once they complete the form.</p>
+          {/* WhatsApp send-outcome badge (Lucide icons only — no emoji) */}
+          {(() => {
+            const s = success.waStatus;
+            const ok = s === 'sent';
+            const queued = s === 'deferred_quiet_hours';
+            const info = queued || s === 'duplicate';
+            const tone = ok ? 'bg-emerald-500/10 text-emerald-300 border-emerald-400/30'
+              : info ? 'bg-cyan-500/10 text-cyan-300 border-cyan-400/30'
+              : 'bg-amber-500/10 text-amber-300 border-amber-400/30';
+            const label = ok ? 'Link sent to parent on WhatsApp'
+              : queued ? 'Queued — will send shortly'
+              : s === 'duplicate' ? 'Already sent today — copy the link below'
+              : s === 'daily_cap_hit' ? 'Daily WhatsApp limit reached — copy the link below'
+              : 'WhatsApp send failed — copy the link below';
+            const Icon = ok ? CheckCircle : queued ? Clock : AlertTriangle;
+            return (
+              <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl border text-sm ${tone}`}>
+                <Icon className="w-4 h-4 flex-shrink-0" />{label}
+              </div>
+            );
+          })()}
+          {/* Copy-link affordance — ALWAYS visible regardless of WhatsApp status */}
+          <div className="bg-white/5 rounded-xl border border-white/10 p-4 text-left">
+            <p className="text-gray-500 text-sm mb-2">Onboarding link</p>
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-cyan-300 text-xs truncate flex-1">{success.magicLink}</span>
+              <button onClick={() => copy(success.magicLink)} className="h-8 px-3 rounded-lg bg-cyan-500/10 text-cyan-400 text-xs hover:bg-cyan-500/20 transition-all duration-200 flex-shrink-0 flex items-center gap-1">
+                {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                {copied ? 'Copied' : 'Copy'}
+              </button>
+            </div>
+          </div>
           {referralCode && (
             <div className="bg-white/5 rounded-xl border border-white/10 p-4">
               <p className="text-gray-500 text-sm mb-2">Share your referral code:</p>
