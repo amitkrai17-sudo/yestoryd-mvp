@@ -107,6 +107,18 @@ export interface NotifyMeta {
    * from the legacy bypass at app/api/auth/send-otp/route.ts.
    */
   source?: string;
+  /**
+   * When true, bypass the STEP 5 quiet-hours deferral so the send goes out
+   * immediately regardless of IST hour. Daily-cap (STEP 4), idempotency
+   * (STEP 6), and the validator (STEP 5.5) are unaffected.
+   *
+   * Use case: interactive admin/coach actions (e.g. tuition onboarding
+   * link generation + resend) where the operator is waiting on the result
+   * and a silent overnight defer is the wrong behavior. The nudge cron does
+   * NOT set this — it relies on its 11:00 IST schedule to stay out of quiet
+   * hours naturally.
+   */
+  forceImmediate?: boolean;
 }
 
 interface TemplateRow {
@@ -409,7 +421,7 @@ export async function sendNotification(
   const inQuiet = hour >= settings.quietStart || hour < settings.quietEnd;
   const isAdmin = template.recipient_type === 'admin';
   const isAuthCategory = template.wa_template_category === 'authentication';
-  if (!isAdmin && !isAuthCategory && inQuiet) {
+  if (!isAdmin && !isAuthCategory && !meta?.forceImmediate && inQuiet) {
     const deferUntil = nextQuietEndUtc(settings.quietEnd);
     // Raw insert into communication_queue (different table from
     // communication_logs which logCommunication targets). Drain-2C cron

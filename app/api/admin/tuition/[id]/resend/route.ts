@@ -67,8 +67,9 @@ export const POST = withParamsHandler<{ id: string }>(async (_req: NextRequest, 
 
   // 4. Resend WhatsApp
   // v5 has a generic, no-variable body ("Hi Parent, ...") — no name resolution needed.
+  let waStatus = 'failed';
   try {
-    await sendNotification('parent_tuition_onboarding_v5', `91${onboarding.parent_phone}`, {}, {
+    const waResult = await sendNotification('parent_tuition_onboarding_v5', `91${onboarding.parent_phone}`, {}, {
       templateButtons: { category: 'utility_cta', url: newToken },
       // WA-FIX.1: a deliberate admin resend must NOT be deduped against the same-day
       // create send. The STEP-6 idempotency key is template:phone:todayIST:firstParam[:contextId];
@@ -77,12 +78,16 @@ export const POST = withParamsHandler<{ id: string }>(async (_req: NextRequest, 
       triggeredBy: 'admin',
       contextType: 'tuition_onboarding_resend',
       contextId: newToken,
+      // Interactive admin resend — bypass quiet-hours deferral.
+      forceImmediate: true,
     });
+    waStatus = waResult.success ? 'sent' : (waResult.reason ?? 'failed');
 
     console.log(JSON.stringify({
       requestId,
-      event: 'tuition_resend_wa_sent',
+      event: waResult.success ? 'tuition_wa_sent' : 'tuition_wa_not_sent',
       onboardingId: id,
+      reason: waResult.reason ?? null,
     }));
   } catch (waErr) {
     console.error(JSON.stringify({
@@ -111,5 +116,6 @@ export const POST = withParamsHandler<{ id: string }>(async (_req: NextRequest, 
     magicLink,
     expiresAt: newExpiry.toISOString(),
     status: 'parent_pending',
+    waStatus,
   });
 }, { auth: 'admin' });

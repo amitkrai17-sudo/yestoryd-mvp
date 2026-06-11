@@ -11,7 +11,7 @@ import {
   GraduationCap, Users, Clock, AlertTriangle, Plus,
   RefreshCw, Send, ChevronDown, ChevronUp, IndianRupee,
   BookOpen, UserCheck, Pause, ArrowUpDown, ArrowLeftRight, Play,
-  Trash2, CheckCircle2, XCircle, MessageCircle,
+  Trash2, CheckCircle2, XCircle, MessageCircle, Copy,
 } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { StatusBadge } from '@/components/shared/StatusBadge';
@@ -158,6 +158,9 @@ export default function AdminTuitionPage() {
   const [resending, setResending] = useState<string | null>(null);
   const [archiving, setArchiving] = useState<string | null>(null);
   const [waOpen, setWaOpen] = useState<string | null>(null);
+  // Transient per-onboarding WhatsApp send outcome from create/resend responses.
+  // Keyed by onboarding id; survives the post-action fetchData() refetch.
+  const [waResults, setWaResults] = useState<Record<string, { waStatus: string; magicLink: string }>>({});
 
   // New student form
   const [showNewForm, setShowNewForm] = useState(false);
@@ -235,10 +238,61 @@ export default function AdminTuitionPage() {
   async function handleResend(id: string) {
     setResending(id);
     try {
-      await fetch(`/api/admin/tuition/${id}/resend`, { method: 'POST' });
+      const res = await fetch(`/api/admin/tuition/${id}/resend`, { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        setWaResults(prev => ({ ...prev, [id]: { waStatus: data.waStatus ?? 'failed', magicLink: data.magicLink } }));
+      }
       fetchData();
     } catch { /* */ }
     setResending(null);
+  }
+
+  // WhatsApp send-outcome badge for a create/resend result. Lucide icons only (no emoji).
+  // Copy-link is ALWAYS shown; Retry (re-calls the resend endpoint) only on hard failure.
+  function WaStatusBadge({ id }: { id: string }) {
+    const r = waResults[id];
+    if (!r) return null;
+    const s = r.waStatus;
+    const ok = s === 'sent';
+    const queued = s === 'deferred_quiet_hours';
+    const info = queued || s === 'duplicate';
+    const isFailed = !ok && !info && s !== 'daily_cap_hit';
+    const tone = ok ? 'bg-emerald-500/10 text-emerald-300'
+      : info ? 'bg-blue-500/10 text-blue-300'
+      : 'bg-amber-500/10 text-amber-300';
+    const label = ok ? 'Sent'
+      : queued ? 'Queued'
+      : s === 'duplicate' ? 'Already sent today'
+      : s === 'daily_cap_hit' ? 'Daily limit reached — copy link'
+      : 'Failed';
+    const Icon = ok ? CheckCircle2 : queued ? Clock : AlertTriangle;
+    return (
+      <div className="mt-2 space-y-2">
+        <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium ${tone}`}>
+          <Icon className="w-3 h-3" />{label}
+        </div>
+        <div className="flex items-center gap-3">
+          {r.magicLink && (
+            <button
+              onClick={() => navigator.clipboard.writeText(r.magicLink).catch(() => {})}
+              className="flex items-center gap-1 text-xs text-text-tertiary hover:text-white min-h-[44px] sm:min-h-0"
+            >
+              <Copy className="w-3 h-3" />Copy link
+            </button>
+          )}
+          {isFailed && (
+            <button
+              onClick={() => handleResend(id)}
+              disabled={resending === id}
+              className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 disabled:opacity-50 min-h-[44px] sm:min-h-0"
+            >
+              {resending === id ? <Spinner size="sm" color="muted" /> : <Send className="w-3 h-3" />}Retry
+            </button>
+          )}
+        </div>
+      </div>
+    );
   }
 
   async function handleArchive(id: string, childName: string) {
@@ -281,6 +335,10 @@ export default function AdminTuitionPage() {
         }),
       });
       if (res.ok) {
+        const data = await res.json();
+        if (data.onboardingId) {
+          setWaResults(prev => ({ ...prev, [data.onboardingId]: { waStatus: data.waStatus ?? 'failed', magicLink: data.magicLink } }));
+        }
         setShowNewForm(false);
         setNewForm({
           sessionRate: 250,
@@ -615,6 +673,7 @@ export default function AdminTuitionPage() {
                       Resend Link
                     </button>
                   )}
+                  <WaStatusBadge id={o.id} />
                 </div>
               ))}
             </div>
@@ -659,6 +718,7 @@ export default function AdminTuitionPage() {
                       Remove from queue
                     </button>
                   </div>
+                  <WaStatusBadge id={o.id} />
                 </div>
               ))}
             </div>
