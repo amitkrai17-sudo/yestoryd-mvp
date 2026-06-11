@@ -108,6 +108,21 @@ export interface NotifyMeta {
    */
   source?: string;
   /**
+   * Optional dedup disambiguator folded into the STEP 6 idempotency hash ONLY.
+   * NEVER written to the uuid-typed communication_logs.context_id column.
+   *
+   * Use case: callers whose contextId is a stable entity uuid (so the same
+   * entity's repeated sends would otherwise collide on phone+day+firstParam+
+   * contextId), but where a deliberate re-send MUST NOT be deduped — e.g.
+   * tuition onboarding resend, where contextId is the onboarding row uuid and
+   * a per-click token is the uniqueness source. Pass that token here.
+   *
+   * Invariant: when absent/null, the idempotency hash is byte-identical to the
+   * pre-salt output (the salt segment is appended only when truthy), so every
+   * existing caller is unaffected.
+   */
+  idempotencySalt?: string;
+  /**
    * When true, bypass the STEP 5 quiet-hours deferral so the send goes out
    * immediately regardless of IST hour. Daily-cap (STEP 4), idempotency
    * (STEP 6), and the validator (STEP 5.5) are unaffected.
@@ -515,15 +530,16 @@ export async function sendNotification(
   // mixed in for per-incident dedupe (e.g. razorpay_payment_id).
   const firstParam = (finalPositionalParams[0] as string | undefined) ?? '';
   const ctx = meta?.contextId;
-  const idempotencyKey = ctx
-    ? crypto
-        .createHash('sha256')
-        .update(`${templateCode}:${phone}:${todayIST()}:${firstParam}:${ctx}`)
-        .digest('hex')
-    : crypto
-        .createHash('sha256')
-        .update(`${templateCode}:${phone}:${todayIST()}:${firstParam}`)
-        .digest('hex');
+  const salt = meta?.idempotencySalt;
+  // Base string is byte-identical to the pre-salt construction for BOTH the
+  // ctx-present and ctx-absent branches. The salt segment is appended ONLY
+  // when a salt is provided (truthy), so an absent/null salt yields the exact
+  // same input string — and therefore the same sha256 — as before this change.
+  const idempotencyBase = ctx
+    ? `${templateCode}:${phone}:${todayIST()}:${firstParam}:${ctx}`
+    : `${templateCode}:${phone}:${todayIST()}:${firstParam}`;
+  const idempotencyInput = salt ? `${idempotencyBase}:${salt}` : idempotencyBase;
+  const idempotencyKey = crypto.createHash('sha256').update(idempotencyInput).digest('hex');
 
   const { data: existingRows } = await supabase
     .from('communication_logs')

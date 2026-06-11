@@ -71,13 +71,15 @@ export const POST = withParamsHandler<{ id: string }>(async (_req: NextRequest, 
   try {
     const waResult = await sendNotification('parent_tuition_onboarding_v5', `91${onboarding.parent_phone}`, {}, {
       templateButtons: { category: 'utility_cta', url: newToken },
-      // WA-FIX.1: a deliberate admin resend must NOT be deduped against the same-day
-      // create send. The STEP-6 idempotency key is template:phone:todayIST:firstParam[:contextId];
-      // without a contextId the resend collides with create (identical other elements).
-      // newToken is regenerated per click → unique key every resend → always delivers.
       triggeredBy: 'admin',
       contextType: 'tuition_onboarding_resend',
-      contextId: newToken,
+      // context_id is uuid-typed — store the onboarding row id (valid uuid, queryable).
+      // WA-FIX.1 (revised): a deliberate admin resend must NOT be deduped against the
+      // same-day create send. contextId is now the stable onboarding uuid (identical
+      // across create + resend), so per-click uniqueness moves to idempotencySalt:
+      // newToken is regenerated per click → unique STEP-6 hash every resend → always delivers.
+      contextId: onboarding.id,
+      idempotencySalt: newToken,
       // Interactive admin resend — bypass quiet-hours deferral.
       forceImmediate: true,
     });

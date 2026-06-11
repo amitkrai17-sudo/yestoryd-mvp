@@ -130,10 +130,12 @@ export async function createTuitionOnboarding(
   try {
     const waResult = await sendNotification('parent_tuition_onboarding_v5', `91${params.parentPhone}`, {}, {
       templateButtons: { category: 'utility_cta', url: token },
-      // v5 has an empty body (no wa_variables), so STEP-6 firstParam degrades to ''.
-      // Pin the onboarding token as contextId so the idempotency key stays unique
-      // per onboarding for the same phone+day.
-      contextId: token,
+      // context_id is uuid-typed — store the onboarding row id (valid uuid, queryable).
+      // v5 has an empty body (no wa_variables), so STEP-6 firstParam degrades to '';
+      // the per-onboarding token moves to idempotencySalt so the idempotency key stays
+      // unique per onboarding for the same phone+day.
+      contextId: onboarding.id,
+      idempotencySalt: token,
       // Interactive admin/coach send — bypass quiet-hours deferral.
       forceImmediate: true,
     });
