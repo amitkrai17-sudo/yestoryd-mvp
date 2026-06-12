@@ -6,7 +6,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/lib/supabase/database.types';
 import { sendText } from '@/lib/whatsapp/cloud-api';
-import { normalizePhone, buildPhoneOrFilter } from '@/lib/utils/phone';
+import { normalizePhone, getPhoneLookupVariants } from '@/lib/utils/phone';
 import { parseSlotId, formatSlotLong, invalidateSlotCache } from '@/lib/whatsapp/agent/slots';
 import { handleSlotSelection } from './slot-selection';
 import type { ConversationState } from '@/lib/whatsapp/types';
@@ -73,13 +73,14 @@ export async function handleBookingConfirm(
   let childId: string | null = null;
 
   // Check if wa_lead has a linked child
-  const waLeadPhoneFilter = buildPhoneOrFilter('phone_number', phone);
+  const waLeadPhoneVariants = getPhoneLookupVariants(phone);
 
   const { data: waLead } = await supabase
     .from('wa_leads')
     .select('child_id')
-    .or(waLeadPhoneFilter)
-    .single();
+    .in('phone_number', waLeadPhoneVariants)
+    .limit(1)
+    .maybeSingle();
 
   if (waLead?.child_id) {
     childId = waLead.child_id;
@@ -90,7 +91,7 @@ export async function handleBookingConfirm(
     const { data: existingChild } = await supabase
       .from('children')
       .select('id')
-      .or(buildPhoneOrFilter('parent_phone', phone))
+      .in('parent_phone', getPhoneLookupVariants(phone))
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();

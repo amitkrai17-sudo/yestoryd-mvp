@@ -22,7 +22,7 @@
 import { sendText } from '../cloud-api';
 import { sendNotification } from '@/lib/communication/notify';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { buildPhoneOrFilter } from '@/lib/utils/phone';
+import { getPhoneLookupVariants } from '@/lib/utils/phone';
 import type { EnrolledChild } from '../enrolled-parent-lookup';
 
 type RenewalDecision = 'yes_renew' | 'pause_for_now' | 'talk_to_coach';
@@ -65,7 +65,7 @@ export async function handleRenewalIntent(
   const { data: parent } = await supabase
     .from('parents')
     .select('id, name, email')
-    .or(buildPhoneOrFilter('phone', phone))
+    .in('phone', getPhoneLookupVariants(phone))
     .limit(1)
     .maybeSingle() as { data: ParentRow | null };
 

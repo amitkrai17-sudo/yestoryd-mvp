@@ -156,20 +156,6 @@ export function getPhoneLookupVariants(phone: string): string[] {
   return Array.from(new Set([e164, noPlus, digits10]));
 }
 
-/**
- * Builds a Supabase .or() filter string matching `column` against every phone
- * variant from getPhoneLookupVariants. Returns '' if the phone is unparseable.
- *
- * @example
- *   buildPhoneOrFilter('parent_phone', '9687606177')
- *   // → 'parent_phone.eq.+919687606177,parent_phone.eq.919687606177,parent_phone.eq.9687606177'
- */
-export function buildPhoneOrFilter(column: string, phone: string): string {
-  return getPhoneLookupVariants(phone)
-    .map((v) => `${column}.eq.${v}`)
-    .join(',');
-}
-
 // ============================================================
 // VALIDATION
 // ============================================================

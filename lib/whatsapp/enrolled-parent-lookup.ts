@@ -8,7 +8,7 @@
 //     row when an enrolled parent confirms a slot.
 // ============================================================
 
-import { normalizePhone, buildPhoneOrFilter } from '@/lib/utils/phone';
+import { normalizePhone, getPhoneLookupVariants } from '@/lib/utils/phone';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 export interface EnrolledChild {
@@ -69,7 +69,7 @@ export function invalidateEnrolledParentCache(phone?: string): void {
 
 /**
  * Look up ALL active-enrollment children for a parent phone. Matches all
- * common stored formats (+91…, 91…, 10-digit) via buildPhoneOrFilter.
+ * common stored formats (+91…, 91…, 10-digit) via .in(getPhoneLookupVariants).
  * Cached per E.164 phone for 5 min.
  *
  * Returns an empty array if no match OR no active enrollment.
@@ -96,7 +96,7 @@ export async function findEnrolledChildrenByPhone(phone: string): Promise<Enroll
         coaches!enrollments_coach_id_fkey ( name )
       )
     `)
-    .or(buildPhoneOrFilter('parent_phone', normalizedPhone))
+    .in('parent_phone', getPhoneLookupVariants(normalizedPhone))
     .eq('enrollments.status', 'active');
 
   if (error || !data) return [];
