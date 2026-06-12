@@ -35,8 +35,9 @@ export async function handleReschedule(
   const { data: waLead } = await supabase
     .from('wa_leads')
     .select('id, discovery_call_id')
-    .or(`phone_number.eq.${noPlus},phone_number.eq.${e164},phone_number.eq.${digits10}`)
-    .single();
+    .in('phone_number', [noPlus, e164, digits10])
+    .limit(1)
+    .maybeSingle();
 
   let discoveryCallId = waLead?.discovery_call_id || null;
 
@@ -45,7 +46,7 @@ export async function handleReschedule(
     const { data: dcByPhone } = await supabase
       .from('discovery_calls')
       .select('id')
-      .or(`parent_phone.eq.${e164},parent_phone.eq.${noPlus},parent_phone.eq.${digits10}`)
+      .in('parent_phone', [e164, noPlus, digits10])
       .in('status', ['scheduled', 'pending', 'assigned'])
       .order('created_at', { ascending: false })
       .limit(1)
