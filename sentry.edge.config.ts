@@ -4,6 +4,7 @@
 // https://docs.sentry.io/platforms/javascript/guides/nextjs/
 
 import * as Sentry from "@sentry/nextjs";
+import { scrubEvent } from "@/lib/observability/sentry-scrub";
 
 Sentry.init({
   dsn: "https://ebed79ec3d990f32f23c201d7ac3da63@o4510618444824576.ingest.us.sentry.io/4510618449149952",
@@ -17,4 +18,7 @@ Sentry.init({
   // Enable sending user PII (Personally Identifiable Information)
   // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#sendDefaultPii
   sendDefaultPii: false,
+
+  // Strip contact-PII from every event before transmission (edge runtime).
+  beforeSend(event) { scrubEvent(event); return event; },
 });
