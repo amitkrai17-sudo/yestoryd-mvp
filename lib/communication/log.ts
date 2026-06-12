@@ -9,6 +9,7 @@
 // ============================================================
 
 import { createAdminClient } from '@/lib/supabase/admin';
+import * as Sentry from '@sentry/nextjs';
 
 const supabase = createAdminClient();
 
@@ -54,5 +55,17 @@ export async function logCommunication(params: LogCommunicationParams): Promise<
     });
   } catch (error) {
     console.error('[Comm Log] Insert failed:', error);
+    const pgErr = error as { code?: string; message?: string; details?: string };
+    Sentry.captureException(error, {
+      tags: { module: 'comm-log', event: 'comm_log_insert_failed' },
+      extra: {
+        templateCode: params.templateCode,
+        recipientType: params.recipientType,
+        contextType: params.contextType ?? null,
+        contextId: params.contextId ?? null,
+        pgCode: pgErr.code ?? null,
+        pgDetails: pgErr.details ?? null,
+      },
+    });
   }
 }
