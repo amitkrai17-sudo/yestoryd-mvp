@@ -413,9 +413,9 @@ export async function middleware(request: NextRequest) {
             const { data } = await supabase
               .from('parents')
               .select('id')
-              .or(`phone.eq.${e164},phone.eq.${e164.slice(1)},phone.eq.${e164.slice(3)}`)
-              .single();
-            parentByPhone = data;
+              .eq('phone', e164)
+              .limit(1);
+            parentByPhone = data?.[0] ?? null;
           }
 
           if (parentByPhone) {
