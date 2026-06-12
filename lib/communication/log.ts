@@ -55,16 +55,21 @@ export async function logCommunication(params: LogCommunicationParams): Promise<
     });
   } catch (error) {
     console.error('[Comm Log] Insert failed:', error);
-    const pgErr = error as { code?: string; message?: string; details?: string };
-    Sentry.captureException(error, {
-      tags: { module: 'comm-log', event: 'comm_log_insert_failed' },
+    // Report to Sentry for visibility WITHOUT forwarding PII. A PostgrestError's
+    // message/details/hint can echo the offending column value back to the
+    // tracker (e.g. "Key (recipient_phone)=(+9198...) already exists."), and
+    // sendDefaultPii is on globally. So we do NOT pass the raw error object and
+    // do NOT forward details/message — only the value-free SQLSTATE code rides
+    // along, plus the non-PII routing context.
+    const pgCode = (error as { code?: string } | null)?.code ?? 'unknown';
+    Sentry.captureMessage('comm_log_insert_failed', {
+      level: 'error',
+      tags: { module: 'comm-log', event: 'comm_log_insert_failed', pgCode },
       extra: {
         templateCode: params.templateCode,
         recipientType: params.recipientType,
         contextType: params.contextType ?? null,
         contextId: params.contextId ?? null,
-        pgCode: pgErr.code ?? null,
-        pgDetails: pgErr.details ?? null,
       },
     });
   }
