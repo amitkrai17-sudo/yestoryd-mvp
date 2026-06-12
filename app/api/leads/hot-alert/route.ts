@@ -18,6 +18,7 @@ import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 // Auth handled by api-auth.ts
 import { calculateLeadScore } from '@/lib/logic/lead-scoring';
 import { sendNotification } from '@/lib/communication/notify';
+import { getPhoneLookupVariants } from '@/lib/utils/phone';
 import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
@@ -508,8 +509,18 @@ export async function PUT(request: NextRequest) {
       const { data: discovery } = await supabase
         .from('discovery_calls')
         .select('id')
-        .or(`child_id.eq.${child.id},parent_phone.eq.${child.parent_phone}`)
+        .eq('child_id', child.id)
         .limit(1);
+
+      let discoveryRows = discovery;
+      if ((!discoveryRows || discoveryRows.length === 0) && child.parent_phone) {
+        const { data: byPhone } = await supabase
+          .from('discovery_calls')
+          .select('id')
+          .in('parent_phone', getPhoneLookupVariants(child.parent_phone))
+          .limit(1);
+        discoveryRows = byPhone;
+      }
 
       // Check for enrollment
       const { data: enrollment } = await supabase
@@ -519,7 +530,7 @@ export async function PUT(request: NextRequest) {
         .eq('status', 'active')
         .limit(1);
 
-      const hasDiscovery = !!(discovery && discovery.length > 0);
+      const hasDiscovery = !!(discoveryRows && discoveryRows.length > 0);
       const hasEnrollment = !!(enrollment && enrollment.length > 0);
 
       // Calculate days since assessment
