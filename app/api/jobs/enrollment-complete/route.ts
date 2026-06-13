@@ -28,6 +28,7 @@ import crypto from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import { getProgramContext, type ProgramContext } from '@/lib/utils/program-label';
+import { resolveSessionTime, dayKeyToNum, DAY_KEYS, type SchedulePreference, type DayKey } from '@/lib/scheduling/schedule-time';
 
 export const dynamic = 'force-dynamic';
 
@@ -521,8 +522,10 @@ async function scheduleCalendarForExistingSessions(
           };
 
           let rruleDays = 'MO,FR'; // default
-          let startHour = 16; // default 4 PM
-          let startMinute = 0;
+          // SSOT: the event start TIME comes from resolveSessionTime (./schedule-time),
+          // NOT an independent prose parse. Build a SchedulePreference here; derive the
+          // time once the anchor day is known (below). preferredTime is never parsed here.
+          let schedulePref: SchedulePreference = { days: [], times: {} };
 
           if (onboardingBatch.schedule_preference) {
             try {
@@ -530,16 +533,14 @@ async function scheduleCalendarForExistingSessions(
               if (Array.isArray(pref.days) && pref.days.length > 0) {
                 rruleDays = pref.days.map((d: string) => DAY_MAP[d] || d.slice(0, 2).toUpperCase()).join(',');
               }
-              // Parse preferredTime (e.g., "7 to 8 pm", "5:30 PM", "16:00")
-              if (pref.preferredTime) {
-                const match = pref.preferredTime.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i);
-                if (match) {
-                  startHour = parseInt(match[1]);
-                  startMinute = parseInt(match[2] || '0');
-                  if (match[3]?.toLowerCase() === 'pm' && startHour < 12) startHour += 12;
-                  if (match[3]?.toLowerCase() === 'am' && startHour === 12) startHour = 0;
-                }
-              }
+              schedulePref = {
+                days: (Array.isArray(pref.days) ? pref.days : [])
+                  .map((d: string) => `${d.slice(0, 1).toUpperCase()}${d.slice(1, 3).toLowerCase()}`)
+                  .filter((k: string): k is DayKey => (DAY_KEYS as string[]).includes(k)),
+                times: (pref.times && typeof pref.times === 'object') ? pref.times : {},
+                defaultTime: typeof pref.defaultTime === 'string' ? pref.defaultTime : undefined,
+                timeSlot: typeof pref.timeSlot === 'string' ? pref.timeSlot : undefined,
+              };
             } catch { /* use defaults */ }
           }
 
@@ -591,10 +592,29 @@ async function scheduleCalendarForExistingSessions(
           const eventTitle = `Yestoryd: ${subjectLabel} — ${data.coachName}`;
           const eventDescription = `${subjectLabel} session\nCoach: ${data.coachName}\nStudents: ${childNames.join(', ')}\nDuration: ${duration} minutes\n\nQuestions? WhatsApp: ${COMPANY_CONFIG.leadBotWhatsAppDisplay}`;
 
-          // Find the first session date as the recurring event start
+          // Find the first session date as the recurring event start (anchor day).
           const firstSession = existingSessions.find(s => s.scheduled_date);
           const eventStartDate = firstSession?.scheduled_date || new Date().toISOString().split('T')[0];
-          const eventStart = new Date(`${eventStartDate}T${String(startHour).padStart(2, '0')}:${String(startMinute).padStart(2, '0')}:00+05:30`);
+          const anchorDay = new Date(`${eventStartDate}T00:00:00+05:30`).getDay();
+          // RRULE has a SINGLE start time. If this batch has per-day differing times
+          // (post-2D-e structured rows), one event cannot express them — flag and use
+          // the anchor-day time. Legacy/uniform rows resolve to one time (no flag).
+          const recurringDays = schedulePref.days.length > 0
+            ? schedulePref.days.map(dayKeyToNum)
+            : [anchorDay];
+          const distinctTimes = new Set(recurringDays.map(d => resolveSessionTime(schedulePref, d)));
+          if (distinctTimes.size > 1) {
+            console.warn(JSON.stringify({
+              requestId,
+              event: 'batch_event_per_day_time_conflict',
+              batchId,
+              times: Array.from(distinctTimes),
+              note: 'RRULE single start cannot express per-day times; using anchor-day time',
+            }));
+          }
+          // Canonical "HH:MM:SS" via the SOLE reader, keyed on the anchor day.
+          const startTime = resolveSessionTime(schedulePref, anchorDay);
+          const eventStart = new Date(`${eventStartDate}T${startTime}+05:30`);
           const eventEnd = new Date(eventStart);
           eventEnd.setMinutes(eventEnd.getMinutes() + duration);
 
