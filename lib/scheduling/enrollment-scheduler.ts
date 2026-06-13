@@ -29,6 +29,7 @@ import {
   type CreateSessionParams,
 } from './session-engine';
 import { resolveOnlineLink } from './session-mode-service';
+import { resolveSessionTime, dayNumToKey, type SchedulePreference } from './schedule-time';
 
 // ============================================================================
 // TYPES
@@ -844,59 +845,9 @@ function dayNameToNumber(name: string): number | null {
   return map[name.toLowerCase()] ?? null;
 }
 
-/** Convert timeSlot bucket or preferredTime string to a time string.
- *  Handles formats: "4:00 PM", "16:00", "4 to 6 pm", "7 to 8 pm",
- *  "5:30 to 7:00", "5:30 PM", "11 am", "4 pm" */
-function timeSlotToTime(slot?: string, preferredTime?: string): string {
-  if (preferredTime) {
-    const cleaned = preferredTime.trim();
-
-    // Exact 24h: "16:00"
-    const match24 = cleaned.match(/^(\d{1,2}):(\d{2})$/);
-    if (match24) return `${match24[1].padStart(2, '0')}:${match24[2]}:00`;
-
-    // Exact 12h with minutes: "5:30 PM"
-    const match12 = cleaned.match(/^(\d{1,2}):(\d{2})\s*(am|pm)$/i);
-    if (match12) {
-      let h = parseInt(match12[1]);
-      if (match12[3].toLowerCase() === 'pm' && h < 12) h += 12;
-      if (match12[3].toLowerCase() === 'am' && h === 12) h = 0;
-      return `${h.toString().padStart(2, '0')}:${match12[2]}:00`;
-    }
-
-    // Range with minutes: "5:30 to 7:00" or "5:30 to 7:00 PM"
-    const matchRange = cleaned.match(/^(\d{1,2})(?::(\d{2}))?\s*(?:to|-)\s*\d{1,2}(?::\d{2})?\s*(am|pm)?$/i);
-    if (matchRange) {
-      let h = parseInt(matchRange[1]);
-      const mins = matchRange[2] || '00';
-      const ampm = matchRange[3]?.toLowerCase();
-      // Infer PM for afternoon/evening times: "4 to 6 pm" → 4 PM = 16
-      if (ampm === 'pm' && h < 12) h += 12;
-      if (ampm === 'am' && h === 12) h = 0;
-      // If no am/pm and hour <= 8, likely PM (tuition is afternoon/evening)
-      if (!ampm && h >= 1 && h <= 8) h += 12;
-      return `${h.toString().padStart(2, '0')}:${mins}:00`;
-    }
-
-    // Simple hour: "11 am", "4 pm"
-    const matchSimple = cleaned.match(/^(\d{1,2})\s*(am|pm)$/i);
-    if (matchSimple) {
-      let h = parseInt(matchSimple[1]);
-      if (matchSimple[2].toLowerCase() === 'pm' && h < 12) h += 12;
-      if (matchSimple[2].toLowerCase() === 'am' && h === 12) h = 0;
-      return `${h.toString().padStart(2, '0')}:00:00`;
-    }
-  }
-
-  // Fall back to bucket
-  switch (slot?.toLowerCase()) {
-    case 'morning': case 'morning (9-12)': return '10:00:00';
-    case 'afternoon': case 'afternoon (12-3)': return '14:00:00';
-    case 'evening': case 'evening (3-6)': return '17:00:00';
-    case 'late evening': case 'late evening (6-9)': return '19:00:00';
-    default: return '16:00:00';
-  }
-}
+// timeSlotToTime() REMOVED in 2D-b — the inline prose parser had zero callers
+// after wiring resolveSessionTime() from ./schedule-time (the SSOT reader).
+// No prose is parsed at schedule time; readers resolve canonical "HH:MM" only.
 
 /**
  * Auto-schedule all tuition sessions for an enrollment.
@@ -960,7 +911,11 @@ export async function scheduleTuitionSessions(
 
     // 3. Parse schedule_preference
     let preferredDays: number[] = [];
-    let sessionTime = '16:00:00';
+    // SSOT: resolveSessionTime() (./schedule-time) is the sole time reader. Build a
+    // SchedulePreference here; never parse prose at read. Legacy rows that carry only
+    // preferredTime (no times/defaultTime) fall to the timeSlot bucket inside
+    // resolveSessionTime until 2D-e migrates them to structured per-day times.
+    let schedulePref: SchedulePreference = { days: [], times: {} };
 
     if (onboarding?.schedule_preference) {
       try {
@@ -976,8 +931,13 @@ export async function scheduleTuitionSessions(
           }
         }
 
-        // Extract time
-        sessionTime = timeSlotToTime(pref.timeSlot, pref.preferredTime);
+        // Build the SchedulePreference for resolveSessionTime (no prose parsing).
+        schedulePref = {
+          days: preferredDays.map(dayNumToKey),
+          times: (pref.times && typeof pref.times === 'object') ? pref.times : {},
+          defaultTime: typeof pref.defaultTime === 'string' ? pref.defaultTime : undefined,
+          timeSlot: typeof pref.timeSlot === 'string' ? pref.timeSlot : undefined,
+        };
       } catch {
         console.warn(`[TuitionScheduler] Failed to parse schedule_preference for enrollment ${enrollmentId}`);
       }
@@ -1026,6 +986,8 @@ export async function scheduleTuitionSessions(
 
         if (preferredDays.includes(candidateDay)) {
           const dateStr = candidate.toISOString().split('T')[0];
+          // Per-day time via the SSOT reader (times[day] → defaultTime → bucket → 16:00).
+          const scheduledTime = resolveSessionTime(schedulePref, candidateDay);
 
           const sessionData: ScheduledSession & Record<string, unknown> = {
             enrollment_id: enrollmentId,
@@ -1036,7 +998,7 @@ export async function scheduleTuitionSessions(
             session_title: `English Classes Session #${sessionNumber}`,
             week_number: weekNumber,
             scheduled_date: dateStr,
-            scheduled_time: sessionTime,
+            scheduled_time: scheduledTime,
             status: 'scheduled',
             duration_minutes: durationMinutes,
             session_mode: defaultMode,
@@ -1056,7 +1018,7 @@ export async function scheduleTuitionSessions(
                 google_meet_link: null,
                 google_event_id: null,
                 scheduled_date: dateStr,
-                scheduled_time: sessionTime,
+                scheduled_time: scheduledTime,
                 duration_minutes: durationMinutes,
               },
               { roomLink: batchMeetLink, noGenerate: true },
@@ -1101,7 +1063,7 @@ export async function scheduleTuitionSessions(
       durationMinutes,
       defaultMode,
       preferredDays,
-      sessionTime,
+      schedulePref: { times: schedulePref.times, defaultTime: schedulePref.defaultTime, timeSlot: schedulePref.timeSlot },
       firstDate: sessionsToCreate[0].scheduled_date,
       lastDate: sessionsToCreate[sessionsToCreate.length - 1].scheduled_date,
     });
