@@ -16,6 +16,7 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import SkillCategorySelect from '@/components/shared/SkillCategorySelect';
+import { NUDGE_STATUS_META, NUDGE_TONE_CLASS, type NudgeStatus } from '@/lib/tuition/nudge-status';
 
 // ============================================================
 // TYPES
@@ -52,6 +53,10 @@ interface Onboarding {
     error_message: string | null;
     channel: string | null;
   } | null;
+  // UI-2A.5 nudge visibility (derived from communication_logs, server-computed status):
+  nudge_count: number;
+  last_nudge_at: string | null;
+  nudge_status: NudgeStatus;
 }
 
 interface LedgerEntry {
@@ -147,6 +152,18 @@ function WaChip({ wa }: { wa: Onboarding['last_wa'] }) {
   );
 }
 
+/** Nudge-ladder chip (UI-2A.5) — server-computed status, shared label/tone map. */
+function NudgeChip({ status }: { status: NudgeStatus | null | undefined }) {
+  if (!status) return null;
+  const meta = NUDGE_STATUS_META[status];
+  if (!meta) return null;
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-[11px] font-medium ${NUDGE_TONE_CLASS[meta.tone]}`}>
+      {meta.label}
+    </span>
+  );
+}
+
 // ============================================================
 // COMPONENT
 // ============================================================
@@ -154,6 +171,7 @@ function WaChip({ wa }: { wa: Onboarding['last_wa'] }) {
 export default function AdminTuitionPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [onboardings, setOnboardings] = useState<Onboarding[]>([]);
+  const [lastNudgeRun, setLastNudgeRun] = useState<{ ran_at: string; nudged?: number; skipped?: number; expired?: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [resending, setResending] = useState<string | null>(null);
   const [archiving, setArchiving] = useState<string | null>(null);
@@ -220,6 +238,7 @@ export default function AdminTuitionPage() {
       if (listRes.ok) {
         const data = await listRes.json();
         setOnboardings(data.onboardings || []);
+        setLastNudgeRun(data.last_nudge_run || null);
       }
       if (coachRes.ok) {
         const data = await coachRes.json();
@@ -646,10 +665,15 @@ export default function AdminTuitionPage() {
         {/* Awaiting parent (draft / parent_pending) */}
         {awaitingOnboardings.length > 0 && (
           <div>
-            <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+            <h2 className="text-sm font-semibold text-white mb-1 flex items-center gap-2">
               <Clock className="w-4 h-4 text-amber-400" />
               Awaiting parent ({awaitingOnboardings.length})
             </h2>
+            <p className="text-[11px] text-text-tertiary mb-3">
+              {lastNudgeRun
+                ? `Last nudge run ${relativeTime(lastNudgeRun.ran_at)} · ${lastNudgeRun.nudged ?? 0} nudged, ${lastNudgeRun.skipped ?? 0} skipped`
+                : 'Nudge cron has not run yet'}
+            </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {awaitingOnboardings.map(o => (
                 <div key={o.id} className="bg-surface-1 rounded-2xl p-4 border border-border">
@@ -662,6 +686,14 @@ export default function AdminTuitionPage() {
                     <p>{o.sessions_purchased} sessions at &#8377;{o.session_rate / 100}</p>
                     {o.coach_name && <p>Coach: {o.coach_name}</p>}
                     <p>{new Date(o.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</p>
+                  </div>
+                  <div className="mt-2 flex items-center gap-2 flex-wrap">
+                    <NudgeChip status={o.nudge_status} />
+                    <span className="text-[11px] text-text-tertiary">
+                      {o.nudge_count > 0
+                        ? `${o.nudge_count} nudge${o.nudge_count === 1 ? '' : 's'}${o.last_nudge_at ? ` · ${relativeTime(o.last_nudge_at)}` : ''}`
+                        : 'No nudges yet'}
+                    </span>
                   </div>
                   {o.status === 'parent_pending' && (
                     <button

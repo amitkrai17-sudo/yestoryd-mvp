@@ -7,6 +7,8 @@
 import { NextResponse } from 'next/server';
 import { withApiHandler } from '@/lib/api/with-api-handler';
 import { last10Digits, type LastWa } from '@/lib/tuition/admin-list-enrichment';
+import { getPolicy } from '@/lib/backops';
+import { computeNudgeStatus, type NudgeLadderPolicy } from '@/lib/tuition/nudge-status';
 
 export const dynamic = 'force-dynamic';
 
@@ -107,7 +109,56 @@ export const GET = withApiHandler(async (_req, { supabase, requestId }) => {
     }
   }
 
-  // 5. Merge results (existing fields unchanged; lifetime_credited + last_wa additive)
+  // 4b. Nudge visibility (UI-2A.5): count parent_tuition_onboarding_v5 sends per
+  //     onboarding, keyed on context_id = onboarding.id — the SAME key the cron's
+  //     cap uses. ONE query (no N+1). Status computed server-side from the shared
+  //     ladder so the chip never drifts from the cron.
+  const onboardingIds = (onboardings || []).map(o => o.id);
+  const nudgeCountMap: Record<string, number> = {};
+  const lastNudgeAtMap: Record<string, string> = {};
+
+  if (onboardingIds.length > 0) {
+    const { data: nudgeRows } = await supabase
+      .from('communication_logs')
+      .select('context_id, created_at')
+      .eq('template_code', 'parent_tuition_onboarding_v5')
+      .in('context_id', onboardingIds);
+
+    for (const row of nudgeRows || []) {
+      const cid = row.context_id;
+      if (!cid) continue;
+      nudgeCountMap[cid] = (nudgeCountMap[cid] || 0) + 1;
+      if (!lastNudgeAtMap[cid] || (row.created_at || '') > lastNudgeAtMap[cid]) {
+        lastNudgeAtMap[cid] = row.created_at || lastNudgeAtMap[cid];
+      }
+    }
+  }
+
+  // Ladder policy (same source + defaults as the cron, plus expiring window).
+  const nudgePolicyRaw = await getPolicy('tuition_onboarding_nudge', {
+    first_nudge_hours: 48, second_nudge_hours: 120, expire_hours: 168,
+    max_nudges: 2, dedup_hours: 48, expiring_window_hours: 24,
+  });
+  const np = nudgePolicyRaw as Record<string, number>;
+  const ladderPolicy: NudgeLadderPolicy = {
+    first_nudge_hours: np.first_nudge_hours ?? 48,
+    second_nudge_hours: np.second_nudge_hours ?? 120,
+    max_nudges: np.max_nudges ?? 2,
+    expire_hours: np.expire_hours ?? 168,
+    expiring_window_hours: np.expiring_window_hours ?? 24,
+  };
+  const nowMs = Date.now();
+
+  // 4c. Single "last cron run" indicator — newest run-log row.
+  const { data: lastRun } = await supabase
+    .from('activity_log')
+    .select('created_at, metadata')
+    .eq('action', 'cron_tuition_onboarding_nudge')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  // 5. Merge results (existing fields unchanged; lifetime_credited + last_wa + nudge_* additive)
   const results = (onboardings || []).map(o => ({
     ...o,
     coach_name: coachMap[o.coach_id] || null,
@@ -115,7 +166,21 @@ export const GET = withApiHandler(async (_req, { supabase, requestId }) => {
     enrollment_sessions_remaining: o.enrollment_id ? enrollmentMap[o.enrollment_id]?.sessions_remaining ?? null : null,
     lifetime_credited: o.enrollment_id ? (lifetimeMap[o.enrollment_id] ?? 0) : null,
     last_wa: lastWaByKey[last10Digits(o.parent_phone)] ?? null,
+    nudge_count: nudgeCountMap[o.id] ?? 0,
+    last_nudge_at: lastNudgeAtMap[o.id] ?? null,
+    nudge_status: computeNudgeStatus({
+      createdAtMs: o.created_at ? Date.parse(o.created_at) : nowMs,
+      nudgeCount: nudgeCountMap[o.id] ?? 0,
+      nowMs,
+      policy: ladderPolicy,
+    }),
   }));
 
-  return NextResponse.json({ onboardings: results, total: results.length });
+  return NextResponse.json({
+    onboardings: results,
+    total: results.length,
+    last_nudge_run: lastRun
+      ? { ran_at: lastRun.created_at, ...((lastRun.metadata ?? {}) as Record<string, unknown>) }
+      : null,
+  });
 }, { auth: 'admin' });

@@ -13,6 +13,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { ProductBadge } from '@/components/shared/RevenueCalculator';
 import { getAvatarColor } from '@/lib/utils/avatar-colors';
 import { formatTime12 } from '@/lib/utils/date-format';
+import { NUDGE_STATUS_META, NUDGE_TONE_CLASS, type NudgeStatus } from '@/lib/tuition/nudge-status';
 
 // ============================================================
 // TYPES
@@ -86,6 +87,91 @@ function formatRupees(amount: number): string {
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
+function relativeTimeShort(iso: string | null): string {
+  if (!iso) return '';
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return '';
+  const m = Math.floor((Date.now() - then) / 60000);
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
+interface CoachOnboardingRow {
+  id: string;
+  child_name: string;
+  parent_name_hint: string | null;
+  parent_phone: string;
+  sessions_purchased: number;
+  session_rate: number;
+  status: string;
+  created_at: string;
+  nudge_count: number;
+  last_nudge_at: string | null;
+  nudge_status: NudgeStatus;
+}
+
+/**
+ * Read-only "Pending student onboardings" card (UI-2A.5). Self-contained:
+ * fetches the coach-scoped endpoint, renders nothing when the coach has none.
+ * No actions — visibility only. Nudge chip reuses the shared status helper.
+ */
+function PendingOnboardingsCard() {
+  const [rows, setRows] = useState<CoachOnboardingRow[] | null>(null);
+  const [lastRun, setLastRun] = useState<{ ran_at: string } | null>(null);
+
+  useEffect(() => {
+    fetch('/api/coach/tuition-onboardings')
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { if (d) { setRows(d.onboardings || []); setLastRun(d.last_nudge_run || null); } })
+      .catch(() => {});
+  }, []);
+
+  if (!rows || rows.length === 0) return null; // hidden when empty
+
+  return (
+    <div>
+      <h2 className="text-[13px] uppercase tracking-wide text-text-tertiary font-medium mb-3 flex items-center gap-2">
+        <UserPlus className="w-4 h-4" />
+        Pending Student Onboardings ({rows.length})
+      </h2>
+      <div className="space-y-2">
+        {rows.map(o => {
+          const meta = NUDGE_STATUS_META[o.nudge_status];
+          return (
+            <div key={o.id} className="bg-surface-1/50 rounded-xl border border-border p-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm font-medium text-white truncate">
+                  {o.parent_name_hint || o.parent_phone}
+                </span>
+                {meta && (
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-[11px] font-medium flex-shrink-0 ${NUDGE_TONE_CLASS[meta.tone]}`}>
+                    {meta.label}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 text-xs text-text-tertiary mt-0.5">
+                <span>{o.sessions_purchased} sessions</span>
+                <span>&middot;</span>
+                <span>
+                  {o.nudge_count > 0
+                    ? `${o.nudge_count} nudge${o.nudge_count === 1 ? '' : 's'}${o.last_nudge_at ? ` · ${relativeTimeShort(o.last_nudge_at)}` : ''}`
+                    : 'No nudges yet'}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <p className="text-[11px] text-text-tertiary mt-2">
+        {lastRun ? `Last nudge run ${relativeTimeShort(lastRun.ran_at)}` : 'Nudge cron has not run yet'}
+      </p>
+    </div>
+  );
+}
+
 // ============================================================
 // COMPONENT
 // ============================================================
@@ -151,6 +237,9 @@ export default function CoachDashboardClient({ coachName }: { coachName: string 
           </div>
         ))}
       </div>
+
+      {/* SECTION 2.5 — Pending student onboardings (read-only, hidden when empty) */}
+      <PendingOnboardingsCard />
 
       {/* SECTION 3 — Today's sessions */}
       <div>
