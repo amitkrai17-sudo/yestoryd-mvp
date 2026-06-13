@@ -3,6 +3,7 @@
 
 import { NextResponse } from 'next/server';
 import { withApiHandler } from '@/lib/api/with-api-handler';
+import { formatSchedulePreference } from '@/lib/scheduling/schedule-time';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,15 +55,7 @@ export const GET = withApiHandler(async (_req, { supabase }) => {
     const coachName = coachMap.get(r.coach_id) || 'Unknown';
     const subject = r.category_id ? (catMap.get(r.category_id) || '') : '';
 
-    let schedule = '';
-    try {
-      const pref = r.schedule_preference ? JSON.parse(r.schedule_preference) : null;
-      if (pref) {
-        const days = Array.isArray(pref.days) ? pref.days.join('/') : '';
-        const time = pref.preferredTime || pref.timeSlot || '';
-        schedule = [days, time].filter(Boolean).join(' ');
-      }
-    } catch { /* ignore */ }
+    const schedule = formatSchedulePreference(r.schedule_preference);
 
     const existing = batchMap.get(batchId);
     if (existing) {

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
+import { formatSchedulePreference } from '@/lib/scheduling/schedule-time';
 import {
   ParentDetailsForm,
   ChildDetailsForm,
@@ -299,21 +300,8 @@ export default function TuitionOnboardPage() {
               <span>Frequency</span>
               <span className="font-medium text-gray-900">{data.sessionsPerWeek}x per week</span>
             </div>
-            {data.schedulePreference && (() => {
-              const DAY_MAP: Record<string, string> = {
-                Mon: 'Monday', Tue: 'Tuesday', Wed: 'Wednesday',
-                Thu: 'Thursday', Fri: 'Friday', Sat: 'Saturday', Sun: 'Sunday',
-              };
-              let display = data.schedulePreference;
-              try {
-                const schedule = JSON.parse(data.schedulePreference);
-                const days = (schedule.days as string[])?.map(d => DAY_MAP[d] || d).join(', ') || '';
-                const timeSlot = schedule.timeSlot || '';
-                const preferredTime = schedule.preferredTime || '';
-                display = [days, timeSlot, preferredTime].filter(Boolean).join(' \u00b7 ');
-              } catch {
-                // plain string — use as-is
-              }
+            {(() => {
+              const display = formatSchedulePreference(data.schedulePreference);
               return display ? (
                 <div className="flex justify-between text-gray-600">
                   <span>Schedule</span>

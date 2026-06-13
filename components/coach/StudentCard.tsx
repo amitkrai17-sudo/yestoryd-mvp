@@ -27,6 +27,7 @@ import {
 import { ActionDropdown } from './ActionDropdown';
 import { CommunicationTrigger } from '@/components/shared/CommunicationTrigger';
 import { formatDateShort, formatTime12 } from '@/lib/utils/date-format';
+import { formatSchedulePreference } from '@/lib/scheduling/schedule-time';
 import { getAvatarColor } from '@/lib/utils/avatar-colors';
 import { computePayLinkState, PAY_LINK_STATE_META } from '@/lib/tuition/pay-link-status';
 
@@ -72,22 +73,6 @@ interface StudentCardProps {
   onRecordPayment?: (student: StudentData) => void;
   onVoidPayLink?: (student: StudentData) => void;
   onReissuePayLink?: (student: StudentData) => void;
-}
-
-function formatSchedulePref(raw: string): string {
-  try {
-    const parsed = JSON.parse(raw);
-    if (typeof parsed === 'object' && parsed !== null) {
-      const days = Array.isArray(parsed.days) ? parsed.days.join(', ') : '';
-      const slot = parsed.timeSlot || '';
-      const preferred = parsed.preferredTime || '';
-      const parts = [days, slot].filter(Boolean).join(' \u2014 ');
-      return preferred ? `${parts} (${preferred})` : parts;
-    }
-  } catch {
-    // Not JSON
-  }
-  return raw;
 }
 
 // Smart name shortening for tight spaces
@@ -325,7 +310,7 @@ export default function StudentCard({ student, isExpanded, onToggleExpand, onSch
           {student.schedule_preference && (
             <div className="flex items-center gap-1.5 text-xs text-gray-500">
               <Clock className="w-3 h-3 flex-shrink-0" />
-              <span>{formatSchedulePref(student.schedule_preference)}</span>
+              <span>{formatSchedulePreference(student.schedule_preference)}</span>
             </div>
           )}
 

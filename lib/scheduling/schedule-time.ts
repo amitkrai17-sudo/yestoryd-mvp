@@ -234,6 +234,83 @@ export function resolveSessionTime(pref: SchedulePreference, dayNum: number): st
 }
 
 // ----------------------------------------------------------------------------
+// formatSchedulePreference — SOLE schedule→display formatter
+// ----------------------------------------------------------------------------
+
+/** Long weekday names for display (matches the readers' prior DAY_MAP output). */
+const DAY_LONG: Record<DayKey, string> = {
+  Sun: 'Sunday', Mon: 'Monday', Tue: 'Tuesday', Wed: 'Wednesday',
+  Thu: 'Thursday', Fri: 'Friday', Sat: 'Saturday',
+};
+
+/** Mon-first order for per-day time display. */
+const DAY_DISPLAY_ORDER: DayKey[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+/**
+ * The ONLY canonical "HH:MM"(:SS) → 12h display converter. Do not scatter this.
+ * "18:45" → "6:45 PM". Returns the input unchanged if it isn't HH:MM-shaped.
+ */
+export function format12(hm: string): string {
+  const m = /^(\d{1,2}):(\d{2})/.exec(hm);
+  if (!m) return hm;
+  let h = parseInt(m[1], 10);
+  const min = m[2];
+  const ap = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  return `${h}:${min} ${ap}`;
+}
+
+/**
+ * SOLE schedule→display formatter. Accepts the parsed SchedulePreference, the raw
+ * JSON string, or null (readers hold different forms). Pure — no React.
+ *   - null/empty → ''
+ *   - unparseable string → returned as-is (legacy plain text)
+ * Time precedence: per-day times → defaultTime → timeSlot bucket → legacy raw
+ * preferredTime → ''. Output: "Monday, Saturday · Mon 6:00 PM, Sat 12:45 PM".
+ */
+export function formatSchedulePreference(pref: SchedulePreference | string | null): string {
+  if (pref === null || pref === undefined) return '';
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let obj: any;
+  if (typeof pref === 'string') {
+    const s = pref.trim();
+    if (s === '') return '';
+    try {
+      obj = JSON.parse(s);
+    } catch {
+      return s; // legacy plain text — show as-is
+    }
+  } else {
+    obj = pref;
+  }
+  if (!obj || typeof obj !== 'object') return '';
+
+  // Days → long names
+  const days: string = Array.isArray(obj.days)
+    ? obj.days.map((d: string) => DAY_LONG[d as DayKey] || d).join(', ')
+    : '';
+
+  // Time (precedence)
+  let time = '';
+  const times = obj.times && typeof obj.times === 'object' ? obj.times : null;
+  if (times && Object.keys(times).length > 0) {
+    time = DAY_DISPLAY_ORDER
+      .filter((d) => times[d])
+      .map((d) => `${d} ${format12(String(times[d]))}`)
+      .join(', ');
+  } else if (typeof obj.defaultTime === 'string' && obj.defaultTime) {
+    time = format12(obj.defaultTime);
+  } else if (typeof obj.timeSlot === 'string' && obj.timeSlot) {
+    time = obj.timeSlot;
+  } else if (typeof obj.preferredTime === 'string' && obj.preferredTime) {
+    time = obj.preferredTime; // un-migrated legacy raw
+  }
+
+  return [days, time].filter(Boolean).join(' · ');
+}
+
+// ----------------------------------------------------------------------------
 // DB CHECK constraint text (applied by the 2D-e migration, NOT here)
 // ----------------------------------------------------------------------------
 
