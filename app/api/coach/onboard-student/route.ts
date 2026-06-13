@@ -29,6 +29,14 @@ const CoachOnboardSchema = z.object({
   sessionType: z.enum(['individual', 'batch']).default('individual'),
   batchId: z.string().uuid().optional(),
   adminNotes: z.string().max(1000).optional(),
+  // Structured schedule — SAME shape/contract as the admin create route. Inlined to
+  // match (admin's is not yet a shared schema). DEBT: dedup both into one exported zod.
+  schedulePreference: z.object({
+    days: z.array(z.enum(['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'])),
+    times: z.record(z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/)).optional().default({}),
+    defaultTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional(),
+    timeSlot: z.string().max(50).optional(),
+  }).optional(),
 });
 
 export const POST = withApiHandler(async (req: NextRequest, { auth, supabase, requestId }) => {
@@ -121,6 +129,7 @@ export const POST = withApiHandler(async (req: NextRequest, { auth, supabase, re
     sessionsPurchased: input.sessionsPurchased,
     sessionDurationMinutes: input.sessionDurationMinutes,
     sessionsPerWeek: input.sessionsPerWeek,
+    schedulePreference: input.schedulePreference ? JSON.stringify(input.schedulePreference) : null,
     defaultSessionMode: input.defaultSessionMode,
     parentPhone: input.parentPhone,
     coachId: coach.id,

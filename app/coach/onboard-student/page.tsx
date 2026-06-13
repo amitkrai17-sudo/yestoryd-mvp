@@ -11,6 +11,8 @@ import {
 } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { supabase } from '@/lib/supabase/client';
+import ScheduleCapture from '@/components/shared/ScheduleCapture';
+import type { SchedulePreference } from '@/lib/scheduling/schedule-time';
 
 // ============================================================
 // TYPES
@@ -60,6 +62,7 @@ export default function CoachOnboardStudentPage() {
   const [sessionType, setSessionType] = useState<'individual' | 'batch'>('individual');
   const [duration, setDuration] = useState(60);
   const [sessionsPerWeek, setSessionsPerWeek] = useState(2);
+  const [schedulePref, setSchedulePref] = useState<SchedulePreference>({ days: [], times: {} });
   const [sessionsPurchased, setSessionsPurchased] = useState<number | ''>(8);
   const [sessionMode, setSessionMode] = useState<'online' | 'offline'>('online');
   const [rateRupees, setRateRupees] = useState<number | ''>('');
@@ -126,7 +129,7 @@ export default function CoachOnboardStudentPage() {
     setSubmitting(true); setError(null);
     try {
       const rp = joinBatch ? batches.find(b => b.batch_id === selectedBatchId)?.rate || 0 : Number(rateRupees) * 100;
-      const res = await fetch('/api/coach/onboard-student', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ childName: childName || undefined, childApproximateAge: childAge || undefined, parentPhone, sessionRate: rp, sessionDurationMinutes: joinBatch ? batches.find(b => b.batch_id === selectedBatchId)?.duration || 60 : duration, sessionsPurchased: Number(sessionsPurchased) || 1, sessionsPerWeek, defaultSessionMode: sessionMode, sessionType: joinBatch ? 'batch' : sessionType, batchId: joinBatch ? selectedBatchId : undefined }) });
+      const res = await fetch('/api/coach/onboard-student', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ childName: childName || undefined, childApproximateAge: childAge || undefined, parentPhone, sessionRate: rp, sessionDurationMinutes: joinBatch ? batches.find(b => b.batch_id === selectedBatchId)?.duration || 60 : duration, sessionsPurchased: Number(sessionsPurchased) || 1, sessionsPerWeek, defaultSessionMode: sessionMode, sessionType: joinBatch ? 'batch' : sessionType, batchId: joinBatch ? selectedBatchId : undefined, schedulePreference: { ...schedulePref, raw: undefined } }) });
       const data = await res.json();
       if (!res.ok) { setError(data.error || 'Failed to create onboarding'); return; }
       setSuccess({ magicLink: data.magicLink, childName: childName || parentPhone, waStatus: data.waStatus || 'sent' });
@@ -411,6 +414,12 @@ export default function CoachOnboardStudentPage() {
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Schedule: days + per-day/same-time pickers + optional bucket (SSOT) */}
+        <div>
+          <label className="text-sm font-medium text-gray-400 mb-1.5 block">Schedule</label>
+          <ScheduleCapture value={schedulePref} onChange={setSchedulePref} tone="dark" />
         </div>
 
         {/* Total sessions */}
