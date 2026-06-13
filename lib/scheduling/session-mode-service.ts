@@ -204,10 +204,36 @@ export async function setSessionMode(
     if (uErr) {
       return { ok: false, mode, link: session.google_meet_link ?? null, notified: { parent: 'skipped', coach: 'skipped' }, error: 'update_failed' };
     }
-    // No offline mode-changed WA template exists. Do NOT send the ONLINE templates
-    // with a blank link (the change-mode bug we are fixing). Flagged for 2E.
-    console.warn(JSON.stringify({ requestId, event: 'session_set_offline_no_wa_template', sessionId, note: 'offline mode-changed template TBD (2E)' }));
-    return { ok: true, mode: 'offline', link: session.google_meet_link ?? null, notified: { parent: 'no_offline_template', coach: 'no_offline_template' } };
+
+    // Notify the parent of the flip via parent_offline_notification_v3. Legacy
+    // Pattern-A (no DB derivations) — pass already-first-worded values directly.
+    // Required vars (DB-verified): parent_first, child_first, session_date.
+    // Comms failure must NOT break the committed mode write. No coach offline
+    // template exists, so the coach is not notified on offline flips.
+    let parentNotified = 'skipped';
+    try {
+      const { data: child } = session.child_id
+        ? await supabase.from('children').select('child_name, parent_name, parent_phone').eq('id', session.child_id).single()
+        : { data: null };
+      if (child?.parent_phone) {
+        const firstWord = (s?: string | null) => (s ?? '').trim().split(/\s+/)[0] || '';
+        const offlineRes = await sendNotification('parent_offline_notification_v3', child.parent_phone, {
+          parent_first: firstWord(child.parent_name) || 'Parent',
+          child_first: firstWord(child.child_name) || 'your child',
+          session_date: session.scheduled_date ? formatDateShort(session.scheduled_date) : '',
+        }, {
+          triggeredBy: opts.actor,
+          contextType: 'session_mode_change',
+          contextId: sessionId,
+        });
+        parentNotified = offlineRes.success ? 'sent' : (offlineRes.reason ?? 'failed');
+      }
+    } catch (e) {
+      console.warn(JSON.stringify({ requestId, event: 'session_offline_notify_error', sessionId, error: e instanceof Error ? e.message : String(e) }));
+      parentNotified = 'failed';
+    }
+
+    return { ok: true, mode: 'offline', link: session.google_meet_link ?? null, notified: { parent: parentNotified, coach: 'no_offline_template' } };
   }
 
   // ── ONLINE ──
