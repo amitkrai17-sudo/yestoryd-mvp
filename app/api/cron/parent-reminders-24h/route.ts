@@ -16,6 +16,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { sendNotification } from '@/lib/communication/notify';
 import { groupSessionsForReminder } from '@/lib/scheduling/group-sessions-for-reminder';
 import { formatTime12 } from '@/lib/utils/date-format';
+import { ONLINE_24H_TEMPLATE_LIVE } from './_config';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -26,12 +27,13 @@ interface ReminderResult {
   sent: number;
   failed: number;
   skipped: number;
+  skippedOnline: number;
   errors: string[];
 }
 
 async function processReminders(requestId: string): Promise<{ results: ReminderResult; error?: string }> {
   const startTime = Date.now();
-  const results: ReminderResult = { sent: 0, failed: 0, skipped: 0, errors: [] };
+  const results: ReminderResult = { sent: 0, failed: 0, skipped: 0, skippedOnline: 0, errors: [] };
 
   const supabase = createAdminClient();
 
@@ -107,12 +109,31 @@ async function processReminders(requestId: string): Promise<{ results: ReminderR
         continue;
       }
 
+      const isOnline = sib.session_mode === 'online';
+
+      // Gate online sessions until _online_v1 is APPROVED on Meta + DB row flipped.
+      if (isOnline && !ONLINE_24H_TEMPLATE_LIVE) {
+        results.skippedOnline++;
+        console.log(JSON.stringify({
+          requestId,
+          event: 'parent_reminder_24h_online_gated',
+          sessionId: sib.id,
+          reason: 'ONLINE_24H_TEMPLATE_LIVE=false',
+        }));
+        continue;
+      }
+
       const childName = child.child_name || child.name || 'your child';
       const coachName = coach?.name || 'your coach';
 
+      // 24h online has NO button (the join link arrives in the 1h reminder).
+      const templateCode = isOnline
+        ? 'parent_session_reminder_24h_online_v1'
+        : 'parent_session_reminder_24h_v3';
+
       try {
         const waResult = await sendNotification(
-          'parent_session_reminder_24h_v3',
+          templateCode,
           child.parent_phone,
           {
             child_name: childName,
@@ -126,6 +147,7 @@ async function processReminders(requestId: string): Promise<{ results: ReminderR
             contextData: {
               batch_id: sib.batch_id ?? null,
               group_key: group.key,
+              session_mode: sib.session_mode,
             },
           },
         );
@@ -160,6 +182,7 @@ async function processReminders(requestId: string): Promise<{ results: ReminderR
     sent: results.sent,
     failed: results.failed,
     skipped: results.skipped,
+    skippedOnline: results.skippedOnline,
     errorCount: results.errors.length,
   }));
 
