@@ -10,7 +10,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import {
-  BookOpen, IndianRupee, CheckCircle, AlertCircle, ShieldCheck, RefreshCw,
+  BookOpen, IndianRupee, CheckCircle, AlertCircle, ShieldCheck, RefreshCw, MessageSquare,
 } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
@@ -46,12 +46,14 @@ export default function TuitionPayPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const isRenewal = searchParams.get('renewal') === 'true';
+  const successParam = searchParams.get('success') === 'true';
 
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
   const [data, setData] = useState<EnrollmentData | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [linkState, setLinkState] = useState<'voided' | 'expired' | null>(null);
   const [razorpayLoaded, setRazorpayLoaded] = useState(false);
 
   // Load Razorpay script
@@ -68,24 +70,31 @@ export default function TuitionPayPage() {
 
   // Fetch enrollment data
   useEffect(() => {
+    if (successParam) setSuccess(true);
     async function fetchEnrollment() {
       try {
         const renewalParam = isRenewal ? '?renewal=true' : '';
         const res = await fetch(`/api/tuition/pay/${enrollmentId}${renewalParam}`);
         if (!res.ok) {
-          const json = await res.json();
+          const json = await res.json().catch(() => ({}));
+          // Pay-link lifecycle states get dedicated, parent-friendly screens.
+          if (json.error === 'link_voided') { setLinkState('voided'); return; }
+          if (json.error === 'link_expired') { setLinkState('expired'); return; }
+          // On the post-payment ?success= landing the enrollment is already paid;
+          // show the success state instead of the alreadyPaid error (Q7-#3).
+          if (successParam) return;
           setError(json.error || 'Failed to load enrollment');
           return;
         }
         setData(await res.json());
       } catch {
-        setError('Network error. Please try again.');
+        if (!successParam) setError('Network error. Please try again.');
       } finally {
         setLoading(false);
       }
     }
     fetchEnrollment();
-  }, [enrollmentId, isRenewal]);
+  }, [enrollmentId, isRenewal, successParam]);
 
   async function handlePay() {
     if (!data || !razorpayLoaded) return;
@@ -209,6 +218,37 @@ export default function TuitionPayPage() {
     );
   }
 
+  // ---- LINK VOIDED / EXPIRED ----
+  if (linkState) {
+    const voided = linkState === 'voided';
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-sm p-8 max-w-md w-full text-center">
+          <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-8 h-8 text-amber-600" />
+          </div>
+          <h1 className="font-display text-xl font-bold text-gray-900 mb-2">
+            {voided ? 'This payment link was cancelled' : 'This payment link has expired'}
+          </h1>
+          <p className="text-gray-600 mb-6">
+            {voided
+              ? 'Your coach cancelled this payment link. Please message us and we’ll send a fresh one.'
+              : 'This payment link is no longer valid. Please message us and we’ll send you a new one.'}
+          </p>
+          <a
+            href={`https://wa.me/${COMPANY_CONFIG.leadBotWhatsApp}?text=${encodeURIComponent('Hi, my tuition payment link is no longer working. Can you resend it?')}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center gap-2 bg-[#FF0099] text-white font-semibold px-6 py-3 rounded-xl hover:bg-[#FF0099]/90 transition-colors"
+          >
+            <MessageSquare className="w-4 h-4" />
+            Message Us on WhatsApp
+          </a>
+        </div>
+      </div>
+    );
+  }
+
   // ---- ERROR ----
   if (error && !data) {
     return (
@@ -231,7 +271,12 @@ export default function TuitionPayPage() {
   }
 
   // ---- SUCCESS ----
-  if (success && data) {
+  // Data-tolerant: client-side success has `data` in memory; a fresh ?success=true
+  // landing (Q7-#3) may not, so all data reads fall back gracefully.
+  if (success) {
+    const isRenewalView = data?.isRenewal ?? isRenewal;
+    const childName = data?.childName ?? 'your child';
+    const coachName = data?.coachName ?? 'your coach';
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-sm p-8 max-w-md w-full text-center">
@@ -239,26 +284,28 @@ export default function TuitionPayPage() {
             <CheckCircle className="w-8 h-8 text-green-600" />
           </div>
           <h1 className="font-display text-xl font-bold text-gray-900 mb-2">
-            {data.isRenewal ? 'Sessions Renewed!' : 'Payment Successful!'}
+            {isRenewalView ? 'Sessions Renewed!' : 'Payment Successful!'}
           </h1>
           <p className="text-gray-600 mb-4">
-            {data.isRenewal
-              ? `${data.sessionsPurchased} sessions have been added for ${data.childName}. Coaching continues with ${data.coachName}.`
-              : `${data.childName}'s ${data.sessionsPurchased} sessions with ${data.coachName} are confirmed. Your coach will reach out to schedule the first session.`
+            {isRenewalView
+              ? `${data ? `${data.sessionsPurchased} sessions have` : 'Your sessions have'} been added for ${childName}. Coaching continues with ${coachName}.`
+              : `${childName}${data ? `'s ${data.sessionsPurchased} sessions` : "'s sessions"} with ${coachName} are confirmed. Your coach will reach out to schedule the first session.`
             }
           </p>
-          <div className="bg-gray-50 rounded-2xl p-4 text-sm text-gray-600 mb-4">
-            <div className="flex justify-between mb-1">
-              <span>Sessions {data.isRenewal ? 'added' : ''}</span>
-              <span className="font-medium text-gray-900">{data.sessionsPurchased}</span>
+          {data && (
+            <div className="bg-gray-50 rounded-2xl p-4 text-sm text-gray-600 mb-4">
+              <div className="flex justify-between mb-1">
+                <span>Sessions {data.isRenewal ? 'added' : ''}</span>
+                <span className="font-medium text-gray-900">{data.sessionsPurchased}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Amount paid</span>
+                <span className="font-bold text-[#FF0099]">
+                  &#8377;{data.totalAmountRupees.toLocaleString('en-IN')}
+                </span>
+              </div>
             </div>
-            <div className="flex justify-between">
-              <span>Amount paid</span>
-              <span className="font-bold text-[#FF0099]">
-                &#8377;{data.totalAmountRupees.toLocaleString('en-IN')}
-              </span>
-            </div>
-          </div>
+          )}
           <button
             onClick={goToDashboard}
             className="w-full bg-[#FF0099] text-white font-semibold py-3 rounded-xl hover:bg-[#FF0099]/90 transition-colors h-12 text-base"

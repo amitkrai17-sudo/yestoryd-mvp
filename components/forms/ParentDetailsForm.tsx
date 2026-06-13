@@ -16,12 +16,15 @@ interface Props {
   onChange: (values: ParentDetailsValues) => void;
   errors?: Record<string, string[]>;
   disabled?: boolean;
+  /** Lock the phone field (read-only) — used when it was prefilled by an
+   *  admin/coach-issued onboarding so the parent can't swap the identity number. */
+  lockPhone?: boolean;
 }
 
 const INPUT_CLASS =
   'w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl bg-white text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-[#FF0099]/30 focus:border-[#FF0099] text-sm';
 
-export function ParentDetailsForm({ values, onChange, errors, disabled }: Props) {
+export function ParentDetailsForm({ values, onChange, errors, disabled, lockPhone }: Props) {
   function update(field: keyof ParentDetailsValues, value: string) {
     onChange({ ...values, [field]: value });
   }
@@ -81,11 +84,13 @@ export function ParentDetailsForm({ values, onChange, errors, disabled }: Props)
             onChange={e => update('parentPhone', e.target.value.replace(/\D/g, '').slice(0, 10))}
             placeholder="10-digit mobile number"
             required
-            disabled={disabled}
+            disabled={disabled || lockPhone}
+            readOnly={lockPhone}
             inputMode="numeric"
-            className={INPUT_CLASS}
+            className={`${INPUT_CLASS}${lockPhone ? ' bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
           />
         </div>
+        {lockPhone && <p className="text-gray-400 text-xs mt-1">This is the number your coach registered. Contact us if it needs to change.</p>}
         {errors?.parentPhone && <p className="text-red-500 text-xs mt-1">{errors.parentPhone[0]}</p>}
       </div>
     </div>

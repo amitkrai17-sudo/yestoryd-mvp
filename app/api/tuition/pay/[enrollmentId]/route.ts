@@ -23,7 +23,8 @@ export async function GET(
     .from('enrollments')
     .select(`
       id, child_id, parent_id, coach_id, session_rate, sessions_purchased,
-      session_duration_minutes, enrollment_type, status, amount, sessions_remaining
+      session_duration_minutes, enrollment_type, status, amount, sessions_remaining,
+      pay_link_expires_at, pay_link_voided_at
     `)
     .eq('id', enrollmentId)
     .eq('enrollment_type', 'tuition')
@@ -41,6 +42,18 @@ export async function GET(
   // For renewals, enrollment must be active or paused (not payment_pending)
   if (isRenewal && enrollment.status === 'payment_pending') {
     return NextResponse.json({ error: 'Please complete the initial payment first' }, { status: 400 });
+  }
+
+  // Pay-link lifecycle gate — ONLY the initial (pre-payment) link. Renewals run
+  // against active/paused enrollments and never enter this block, so the renewal
+  // path is byte-untouched.
+  if (!isRenewal && enrollment.status === 'payment_pending') {
+    if (enrollment.pay_link_voided_at != null) {
+      return NextResponse.json({ error: 'link_voided' }, { status: 410 });
+    }
+    if (enrollment.pay_link_expires_at != null && new Date(enrollment.pay_link_expires_at) < new Date()) {
+      return NextResponse.json({ error: 'link_expired' }, { status: 410 });
+    }
   }
 
   // Fetch child name

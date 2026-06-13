@@ -17,6 +17,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import SkillCategorySelect from '@/components/shared/SkillCategorySelect';
 import { NUDGE_STATUS_META, NUDGE_TONE_CLASS, type NudgeStatus } from '@/lib/tuition/nudge-status';
+import { computePayLinkState, PAY_LINK_STATE_META } from '@/lib/tuition/pay-link-status';
 
 // ============================================================
 // TYPES
@@ -57,6 +58,9 @@ interface Onboarding {
   nudge_count: number;
   last_nudge_at: string | null;
   nudge_status: NudgeStatus;
+  // UI-2E pay-link lifecycle (payment_pending enrollments):
+  pay_link_expires_at: string | null;
+  pay_link_voided_at: string | null;
 }
 
 interface LedgerEntry {
@@ -227,6 +231,54 @@ export default function AdminTuitionPage() {
   // Paused enrollments
   const [pausedEnrollments, setPausedEnrollments] = useState<PausedEnrollment[]>([]);
   const [resuming, setResuming] = useState<string | null>(null);
+
+  // UI-2E pay-link void / reissue
+  const [voiding, setVoiding] = useState<string | null>(null);
+  const [reissueTarget, setReissueTarget] = useState<Onboarding | null>(null);
+  const [reissueSessions, setReissueSessions] = useState(0);
+  const [reissueRate, setReissueRate] = useState(0); // rupees in the input
+  const [reissueAlt, setReissueAlt] = useState('');
+  const [reissueSubmitting, setReissueSubmitting] = useState(false);
+
+  async function handleVoidPayLink(enrollmentId: string, childName: string) {
+    if (!window.confirm(`Cancel the payment link for ${childName}? They won't be able to pay until you reissue it.`)) return;
+    setVoiding(enrollmentId);
+    try {
+      const res = await fetch(`/api/admin/tuition/${enrollmentId}/pay-link`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'void' }),
+      });
+      if (res.ok) fetchData();
+    } catch { /* */ }
+    setVoiding(null);
+  }
+
+  function openReissue(o: Onboarding) {
+    setReissueTarget(o);
+    setReissueSessions(o.sessions_purchased || 0);
+    setReissueRate(Math.round((o.session_rate || 0) / 100));
+    setReissueAlt('');
+  }
+
+  async function handleReissue() {
+    if (!reissueTarget?.enrollment_id) return;
+    setReissueSubmitting(true);
+    try {
+      const res = await fetch(`/api/admin/tuition/${reissueTarget.enrollment_id}/pay-link`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'reissue',
+          sessionsPurchased: reissueSessions,
+          sessionRate: reissueRate * 100, // rupees → paise
+          alt_phone: reissueAlt.trim() || undefined,
+        }),
+      });
+      if (res.ok) { setReissueTarget(null); fetchData(); }
+    } catch { /* */ }
+    setReissueSubmitting(false);
+  }
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -877,11 +929,43 @@ export default function AdminTuitionPage() {
                           <span className="text-sm font-bold text-text-tertiary">--</span>
                         )}
                       </div>
-                      <div>{getStatusBadge(status)}</div>
+                      <div className="space-y-1">
+                        {getStatusBadge(status)}
+                        {status === 'payment_pending' && (() => {
+                          const pl = computePayLinkState({ expiresAt: o.pay_link_expires_at, voidedAt: o.pay_link_voided_at, nowMs: Date.now() });
+                          const meta = PAY_LINK_STATE_META[pl.state];
+                          return (
+                            <span className={`block w-fit px-2 py-0.5 rounded-lg text-[10px] font-medium ${meta.cls}`}>
+                              {meta.label(pl.daysLeft)}
+                            </span>
+                          );
+                        })()}
+                      </div>
                       <div className="text-xs text-text-secondary">{o.coach_name || '--'}</div>
                       <div className="flex items-center gap-1">
                         {o.enrollment_id && (
                           <>
+                            {status === 'payment_pending' && (
+                              <>
+                                <button
+                                  onClick={() => openReissue(o)}
+                                  className="text-xs text-blue-400 hover:text-blue-300 px-2 py-1 rounded-lg hover:bg-surface-2 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center"
+                                  title="Reissue payment link"
+                                  aria-label="Reissue payment link"
+                                >
+                                  <RefreshCw className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => handleVoidPayLink(o.enrollment_id!, o.child_name)}
+                                  disabled={voiding === o.enrollment_id}
+                                  className="text-xs text-red-400 hover:text-red-300 disabled:opacity-50 px-2 py-1 rounded-lg hover:bg-surface-2 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center"
+                                  title="Cancel payment link"
+                                  aria-label="Cancel payment link"
+                                >
+                                  {voiding === o.enrollment_id ? <Spinner size="sm" color="muted" /> : <XCircle className="w-3.5 h-3.5" />}
+                                </button>
+                              </>
+                            )}
                             <button
                               onClick={() => setAdjusting(adjusting === o.enrollment_id ? null : o.enrollment_id)}
                               className="text-xs text-blue-400 hover:text-blue-300 px-2 py-1 rounded-lg hover:bg-surface-2 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center"
@@ -1094,6 +1178,53 @@ export default function AdminTuitionPage() {
           </div>
         )}
       </div>
+
+      {/* Reissue Pay Link Modal */}
+      {reissueTarget && (() => {
+        const rateInvalid = !(reissueRate >= 50 && reissueRate <= 1000);
+        const sessionsInvalid = !(reissueSessions >= 1 && reissueSessions <= 50);
+        const altRaw = reissueAlt.trim();
+        const altInvalid = altRaw !== '' && !/^[6-9]\d{9}$/.test(altRaw);
+        const total = reissueRate * reissueSessions;
+        return (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+            <div className="bg-gray-800 rounded-2xl max-w-md w-full p-6 space-y-4">
+              <h2 className="text-lg font-bold text-white">Reissue payment link — {reissueTarget.child_name}</h2>
+              <p className="text-xs text-text-tertiary">Re-price if needed, then send a fresh 7-day link. This clears any expiry or cancellation.</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-text-tertiary block mb-1">Sessions</label>
+                  <input type="number" min={1} max={50} value={reissueSessions || ''} onChange={e => setReissueSessions(+e.target.value)}
+                    className={`w-full bg-gray-700 border rounded-xl px-3 py-2 text-sm text-white ${sessionsInvalid ? 'border-red-500/50' : 'border-gray-600'}`} />
+                </div>
+                <div>
+                  <label className="text-xs text-text-tertiary block mb-1">Rate (&#8377;/session)</label>
+                  <input type="number" min={50} max={1000} value={reissueRate || ''} onChange={e => setReissueRate(+e.target.value)}
+                    className={`w-full bg-gray-700 border rounded-xl px-3 py-2 text-sm text-white ${rateInvalid ? 'border-red-500/50' : 'border-gray-600'}`} />
+                </div>
+              </div>
+              <div className="flex justify-between text-sm bg-gray-700/50 rounded-xl px-3 py-2">
+                <span className="text-text-tertiary">Total</span>
+                <span className="font-bold text-white">&#8377;{total.toLocaleString('en-IN')}</span>
+              </div>
+              <div>
+                <label className="text-xs text-text-tertiary block mb-1">Send to a different number (optional)</label>
+                <input value={reissueAlt} onChange={e => setReissueAlt(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                  placeholder={reissueTarget.parent_phone || 'Alternate 10-digit number'} inputMode="numeric"
+                  className={`w-full bg-gray-700 border rounded-xl px-3 py-2 text-sm text-white placeholder:text-text-tertiary ${altInvalid ? 'border-red-500/50' : 'border-gray-600'}`} />
+              </div>
+              <div className="flex justify-end gap-2">
+                <button onClick={() => setReissueTarget(null)} className="px-4 py-2 text-sm text-text-tertiary hover:text-white rounded-xl">Cancel</button>
+                <button onClick={handleReissue} disabled={reissueSubmitting || rateInvalid || sessionsInvalid || altInvalid}
+                  className="flex items-center gap-1.5 bg-white text-[#0a0a0f] font-semibold px-4 py-2 rounded-xl hover:bg-gray-100 disabled:opacity-50 text-sm h-10">
+                  {reissueSubmitting ? <Spinner size="sm" color="muted" /> : <Send className="w-4 h-4" />}
+                  Reissue &amp; Send
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Switch Modal */}
       {switchTarget && (

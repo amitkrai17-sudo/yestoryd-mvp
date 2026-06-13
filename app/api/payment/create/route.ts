@@ -157,13 +157,25 @@ export async function POST(request: NextRequest) {
 
       const { data: tuitionEnrollment, error: tuitionErr } = await supabase
         .from('enrollments')
-        .select('id, session_rate, sessions_purchased, child_id, parent_id, coach_id, enrollment_type')
+        .select('id, session_rate, sessions_purchased, child_id, parent_id, coach_id, enrollment_type, status, pay_link_expires_at, pay_link_voided_at')
         .eq('id', body.enrollmentId)
         .eq('enrollment_type', 'tuition')
         .single();
 
       if (tuitionErr || !tuitionEnrollment) {
         return NextResponse.json({ success: false, error: 'Tuition enrollment not found', code: 'ENROLLMENT_NOT_FOUND' }, { status: 404 });
+      }
+
+      // Pay-link lifecycle: ONLY gate the initial (payment_pending) link. Active
+      // enrollments (renewals/top-ups) are never inspected here — they fall straight
+      // through to order creation, so the renewal path is unaffected.
+      if (tuitionEnrollment.status === 'payment_pending') {
+        if (tuitionEnrollment.pay_link_voided_at != null) {
+          return NextResponse.json({ success: false, error: 'This payment link was cancelled', code: 'LINK_VOIDED' }, { status: 403 });
+        }
+        if (tuitionEnrollment.pay_link_expires_at != null && new Date(tuitionEnrollment.pay_link_expires_at) < new Date()) {
+          return NextResponse.json({ success: false, error: 'This payment link has expired', code: 'LINK_EXPIRED' }, { status: 403 });
+        }
       }
 
       const tuitionAmountRupees = ((tuitionEnrollment.session_rate || 0) * (tuitionEnrollment.sessions_purchased || 0)) / 100;

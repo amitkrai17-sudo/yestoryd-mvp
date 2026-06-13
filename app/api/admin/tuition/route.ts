@@ -39,12 +39,12 @@ export const GET = withApiHandler(async (_req, { supabase, requestId }) => {
     .map(o => o.enrollment_id)
     .filter((id): id is string => !!id);
 
-  let enrollmentMap: Record<string, { sessions_remaining: number | null; status: string | null }> = {};
+  let enrollmentMap: Record<string, { sessions_remaining: number | null; status: string | null; pay_link_expires_at: string | null; pay_link_voided_at: string | null }> = {};
 
   if (enrollmentIds.length > 0) {
     const { data: enrollments } = await supabase
       .from('enrollments')
-      .select('id, sessions_remaining, status')
+      .select('id, sessions_remaining, status, pay_link_expires_at, pay_link_voided_at')
       .in('id', enrollmentIds);
 
     if (enrollments) {
@@ -52,6 +52,8 @@ export const GET = withApiHandler(async (_req, { supabase, requestId }) => {
         enrollmentMap[e.id] = {
           sessions_remaining: e.sessions_remaining,
           status: e.status,
+          pay_link_expires_at: e.pay_link_expires_at,
+          pay_link_voided_at: e.pay_link_voided_at,
         };
       }
     }
@@ -164,6 +166,8 @@ export const GET = withApiHandler(async (_req, { supabase, requestId }) => {
     coach_name: coachMap[o.coach_id] || null,
     enrollment_status: o.enrollment_id ? enrollmentMap[o.enrollment_id]?.status ?? null : null,
     enrollment_sessions_remaining: o.enrollment_id ? enrollmentMap[o.enrollment_id]?.sessions_remaining ?? null : null,
+    pay_link_expires_at: o.enrollment_id ? enrollmentMap[o.enrollment_id]?.pay_link_expires_at ?? null : null,
+    pay_link_voided_at: o.enrollment_id ? enrollmentMap[o.enrollment_id]?.pay_link_voided_at ?? null : null,
     lifetime_credited: o.enrollment_id ? (lifetimeMap[o.enrollment_id] ?? 0) : null,
     last_wa: lastWaByKey[last10Digits(o.parent_phone)] ?? null,
     nudge_count: nudgeCountMap[o.id] ?? 0,

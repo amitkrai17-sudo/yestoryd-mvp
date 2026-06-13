@@ -106,6 +106,13 @@ export default function CoachStudentsPage() {
   // Record Payment
   const [paymentTarget, setPaymentTarget] = useState<StudentData | null>(null);
 
+  // UI-2E pay-link void / reissue
+  const [reissuePayTarget, setReissuePayTarget] = useState<StudentData | null>(null);
+  const [reissuePaySessions, setReissuePaySessions] = useState(0);
+  const [reissuePayRate, setReissuePayRate] = useState(0); // rupees in the input
+  const [reissuePayAlt, setReissuePayAlt] = useState('');
+  const [reissuePaySubmitting, setReissuePaySubmitting] = useState(false);
+
   // Schedule bottom sheet
   const [scheduleTarget, setScheduleTarget] = useState<StudentData | null>(null);
   const [scheduleDate, setScheduleDate] = useState('');
@@ -266,6 +273,44 @@ export default function CoachStudentsPage() {
     }
   };
 
+  async function handleVoidPayLink(student: StudentData) {
+    if (!window.confirm(`Cancel the payment link for ${student.child_name}? They won't be able to pay until you reissue it.`)) return;
+    try {
+      const res = await fetch(`/api/coach/students/${student.enrollment_id}/pay-link`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'void' }),
+      });
+      if (res.ok) loadStudents();
+    } catch { /* */ }
+  }
+
+  function openReissuePay(student: StudentData) {
+    setReissuePayTarget(student);
+    setReissuePaySessions(student.sessions_purchased || 0);
+    setReissuePayRate(Math.round((student.session_rate || 0) / 100));
+    setReissuePayAlt('');
+  }
+
+  async function handleReissuePay() {
+    if (!reissuePayTarget) return;
+    setReissuePaySubmitting(true);
+    try {
+      const res = await fetch(`/api/coach/students/${reissuePayTarget.enrollment_id}/pay-link`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'reissue',
+          sessionsPurchased: reissuePaySessions,
+          sessionRate: reissuePayRate * 100, // rupees → paise
+          alt_phone: reissuePayAlt.trim() || undefined,
+        }),
+      });
+      if (res.ok) { setReissuePayTarget(null); loadStudents(); }
+    } catch { /* */ }
+    setReissuePaySubmitting(false);
+  }
+
   // ============================================================
   // RENDER
   // ============================================================
@@ -419,6 +464,8 @@ export default function CoachStudentsPage() {
                 onToggleExpand={() => setExpandedId(expandedId === student.enrollment_id ? null : student.enrollment_id)}
                 onSchedule={openSchedule}
                 onRecordPayment={setPaymentTarget}
+                onVoidPayLink={handleVoidPayLink}
+                onReissuePayLink={openReissuePay}
               />
             ))}
           </div>
@@ -591,6 +638,53 @@ export default function CoachStudentsPage() {
           <div className="h-6" />
         </div>
       )}
+
+      {/* Reissue Pay Link Modal */}
+      {reissuePayTarget && (() => {
+        const rateInvalid = !(reissuePayRate >= 50 && reissuePayRate <= 1000);
+        const sessionsInvalid = !(reissuePaySessions >= 1 && reissuePaySessions <= 50);
+        const altRaw = reissuePayAlt.trim();
+        const altInvalid = altRaw !== '' && !/^[6-9]\d{9}$/.test(altRaw);
+        const total = reissuePayRate * reissuePaySessions;
+        return (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+            <div className="bg-gray-900 border border-gray-700 rounded-2xl max-w-md w-full p-5 space-y-4">
+              <h3 className="text-sm font-semibold text-white">Reissue payment link &mdash; {reissuePayTarget.child_name}</h3>
+              <p className="text-xs text-gray-400">Re-price if needed, then send a fresh 7-day link. This clears any expiry or cancellation.</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">Sessions</label>
+                  <input type="number" min={1} max={50} value={reissuePaySessions || ''} onChange={e => setReissuePaySessions(+e.target.value)}
+                    className={`w-full bg-gray-800 border rounded-xl px-3 py-2 text-sm text-white ${sessionsInvalid ? 'border-red-500/50' : 'border-gray-700'}`} />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">Rate (Rs/session)</label>
+                  <input type="number" min={50} max={1000} value={reissuePayRate || ''} onChange={e => setReissuePayRate(+e.target.value)}
+                    className={`w-full bg-gray-800 border rounded-xl px-3 py-2 text-sm text-white ${rateInvalid ? 'border-red-500/50' : 'border-gray-700'}`} />
+                </div>
+              </div>
+              <div className="flex justify-between text-sm bg-gray-800/50 rounded-xl px-3 py-2">
+                <span className="text-gray-400">Total</span>
+                <span className="font-bold text-white">Rs.{total.toLocaleString('en-IN')}</span>
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Send to a different number (optional)</label>
+                <input value={reissuePayAlt} onChange={e => setReissuePayAlt(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                  placeholder={reissuePayTarget.parent_phone || 'Alternate 10-digit number'} inputMode="numeric"
+                  className={`w-full bg-gray-800 border rounded-xl px-3 py-2 text-sm text-white placeholder:text-gray-500 ${altInvalid ? 'border-red-500/50' : 'border-gray-700'}`} />
+              </div>
+              <div className="flex justify-end gap-2">
+                <button onClick={() => setReissuePayTarget(null)} className="px-4 py-2 text-sm text-gray-400 hover:text-white rounded-xl">Cancel</button>
+                <button onClick={handleReissuePay} disabled={reissuePaySubmitting || rateInvalid || sessionsInvalid || altInvalid}
+                  className="flex items-center gap-1.5 bg-[#00ABFF] text-white font-semibold px-4 py-2 rounded-xl hover:bg-[#00ABFF]/90 disabled:opacity-50 text-sm h-10">
+                  {reissuePaySubmitting ? <Spinner size="sm" /> : null}
+                  Reissue &amp; Send
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       <style jsx>{`
         @keyframes slide-up {

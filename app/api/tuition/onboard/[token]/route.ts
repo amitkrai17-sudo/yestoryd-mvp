@@ -165,7 +165,9 @@ export async function POST(
         {
           email: input.parentEmail,
           name: input.parentName,
-          phone: input.parentPhone,
+          // D5: identity number is pinned to the admin/coach-issued onboarding —
+          // ignore any phone the submitter typed (the form locks it anyway).
+          phone: onboarding.parent_phone,
           updated_at: new Date().toISOString(),
         },
         { onConflict: 'email' },
@@ -219,7 +221,7 @@ export async function POST(
           school_name: input.childSchool,
           parent_id: parent.id,
           parent_email: input.parentEmail,
-          parent_phone: input.parentPhone,
+          parent_phone: onboarding.parent_phone,
           learning_profile: learningProfile,
           lead_status: 'tuition_onboarding',
         })
@@ -255,6 +257,8 @@ export async function POST(
         total_sessions: onboarding.sessions_purchased,
         status: 'payment_pending',
         program_description: programDescription,
+        // Initial pay-link lifecycle: link is valid for 7 days from issuance.
+        pay_link_expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       })
       .select('id')
       .single();
@@ -308,7 +312,7 @@ export async function POST(
     const checkoutUrl = `${APP_URL}/tuition/pay/${enrollment.id}`;
 
     try {
-      await sendNotification('parent_tuition_payment_v3', `91${input.parentPhone}`, {
+      await sendNotification('parent_tuition_payment_v4', `91${onboarding.parent_phone}`, {
         parent_name: input.parentName,
         child_name: input.childFullName,
       }, {

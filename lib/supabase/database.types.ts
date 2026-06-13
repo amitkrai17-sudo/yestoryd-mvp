@@ -6753,6 +6753,8 @@ export type Database = {
           product_id: string | null
           program_description: string | null
           program_end: string | null
+          pay_link_expires_at: string | null
+          pay_link_voided_at: string | null
           program_start: string | null
           reenrollment_bonus_paid: boolean | null
           referral_code_used: string | null
@@ -6861,6 +6863,8 @@ export type Database = {
           product_id?: string | null
           program_description?: string | null
           program_end?: string | null
+          pay_link_expires_at?: string | null
+          pay_link_voided_at?: string | null
           program_start?: string | null
           reenrollment_bonus_paid?: boolean | null
           referral_code_used?: string | null
@@ -6969,6 +6973,8 @@ export type Database = {
           product_id?: string | null
           program_description?: string | null
           program_end?: string | null
+          pay_link_expires_at?: string | null
+          pay_link_voided_at?: string | null
           program_start?: string | null
           reenrollment_bonus_paid?: boolean | null
           referral_code_used?: string | null

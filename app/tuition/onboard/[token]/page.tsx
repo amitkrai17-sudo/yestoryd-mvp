@@ -342,6 +342,7 @@ export default function TuitionOnboardPage() {
               values={parentDetails}
               onChange={handleParentChange}
               errors={fieldErrors}
+              lockPhone={!!data?.parentPhone}
             />
           </div>
 

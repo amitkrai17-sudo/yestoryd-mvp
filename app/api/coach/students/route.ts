@@ -42,6 +42,8 @@ export async function GET(request: NextRequest) {
         age_band,
         lead_source,
         session_duration_minutes,
+        pay_link_expires_at,
+        pay_link_voided_at,
         child_id,
         children (
           id,
@@ -225,6 +227,9 @@ export async function GET(request: NextRequest) {
           session_rate: isTuition ? enrollment.session_rate : null,
           sessions_remaining: isTuition ? (enrollment.sessions_remaining ?? 0) : null,
           sessions_purchased: isTuition ? (enrollment.sessions_purchased ?? 0) : null,
+          // UI-2E pay-link lifecycle (payment_pending tuition only)
+          pay_link_expires_at: isTuition ? (enrollment.pay_link_expires_at ?? null) : null,
+          pay_link_voided_at: isTuition ? (enrollment.pay_link_voided_at ?? null) : null,
           schedule_preference: isTuition ? (onboarding?.schedule_preference || null) : null,
           default_session_mode: isTuition ? (onboarding?.default_session_mode || 'offline') : null,
           default_duration_minutes: isTuition

@@ -21,11 +21,14 @@ import {
   Eye,
   MessageSquare,
   CreditCard,
+  RefreshCw,
+  XCircle,
 } from 'lucide-react';
 import { ActionDropdown } from './ActionDropdown';
 import { CommunicationTrigger } from '@/components/shared/CommunicationTrigger';
 import { formatDateShort, formatTime12 } from '@/lib/utils/date-format';
 import { getAvatarColor } from '@/lib/utils/avatar-colors';
+import { computePayLinkState, PAY_LINK_STATE_META } from '@/lib/tuition/pay-link-status';
 
 export interface StudentData {
   child_id: string;
@@ -56,6 +59,9 @@ export interface StudentData {
   next_session_date: string | null;
   next_session_time: string | null;
   freshness_status?: string | null;
+  // UI-2E pay-link lifecycle (payment_pending tuition only)
+  pay_link_expires_at?: string | null;
+  pay_link_voided_at?: string | null;
 }
 
 interface StudentCardProps {
@@ -64,6 +70,8 @@ interface StudentCardProps {
   onToggleExpand: () => void;
   onSchedule?: (student: StudentData) => void;
   onRecordPayment?: (student: StudentData) => void;
+  onVoidPayLink?: (student: StudentData) => void;
+  onReissuePayLink?: (student: StudentData) => void;
 }
 
 function formatSchedulePref(raw: string): string {
@@ -119,7 +127,7 @@ function getAlert(student: StudentData): { text: string; className: string } | n
   return null;
 }
 
-export default function StudentCard({ student, isExpanded, onToggleExpand, onSchedule, onRecordPayment }: StudentCardProps) {
+export default function StudentCard({ student, isExpanded, onToggleExpand, onSchedule, onRecordPayment, onVoidPayLink, onReissuePayLink }: StudentCardProps) {
   const isTuition = student.enrollment_type === 'tuition';
   const completed = student.sessions_completed;
   const total = isTuition ? (student.sessions_purchased ?? student.total_sessions) : student.total_sessions;
@@ -358,6 +366,33 @@ export default function StudentCard({ student, isExpanded, onToggleExpand, onSch
               )}
             </div>
           )}
+
+          {/* Pay-link lifecycle (payment_pending tuition only) */}
+          {isTuition && student.status === 'payment_pending' && onVoidPayLink && onReissuePayLink && (() => {
+            const pl = computePayLinkState({ expiresAt: student.pay_link_expires_at ?? null, voidedAt: student.pay_link_voided_at ?? null, nowMs: Date.now() });
+            const meta = PAY_LINK_STATE_META[pl.state];
+            return (
+              <div className="flex items-center gap-2 flex-wrap pt-1" onClick={(e) => e.stopPropagation()}>
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-medium ${meta.cls}`}>
+                  {meta.label(pl.daysLeft)}
+                </span>
+                <button
+                  onClick={() => onReissuePayLink(student)}
+                  className="h-9 px-3 rounded-xl text-xs font-medium bg-blue-500/10 text-blue-300 hover:bg-blue-500/20 transition-colors flex items-center gap-1.5"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  Reissue link
+                </button>
+                <button
+                  onClick={() => onVoidPayLink(student)}
+                  className="h-9 px-3 rounded-xl text-xs font-medium bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors flex items-center gap-1.5"
+                >
+                  <XCircle className="w-3.5 h-3.5" />
+                  Void
+                </button>
+              </div>
+            );
+          })()}
 
           {/* Action buttons */}
           <div className="flex items-center gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
