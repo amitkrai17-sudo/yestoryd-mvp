@@ -1036,7 +1036,7 @@ export async function scheduleTuitionSessions(
             week_number: weekNumber,
             scheduled_date: dateStr,
             scheduled_time: sessionTime,
-            status: 'pending_scheduling',
+            status: 'scheduled',
             duration_minutes: durationMinutes,
             session_mode: defaultMode,
           };
