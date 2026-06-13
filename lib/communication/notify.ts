@@ -412,6 +412,11 @@ export async function sendNotification(
   // ── Load engine settings (daily cap + quiet window) in one query ──
   const settings = await loadEngineSettings();
 
+  // Auth (OTP) and admin templates bypass BOTH the daily cap (STEP 4) and quiet
+  // hours (STEP 5). Hoisted here so STEP 4 can reference them; STEP 5 reuses them.
+  const isAdmin = template.recipient_type === 'admin';
+  const isAuthCategory = template.wa_template_category === 'authentication';
+
   // ── STEP 4. Daily cap ──
   const { count: sentToday } = await supabase
     .from('communication_logs')
@@ -420,7 +425,7 @@ export async function sendNotification(
     .eq('wa_sent', true)
     .gte('created_at', startOfTodayIstUtc());
 
-  if ((sentToday ?? 0) >= settings.dailyCap) {
+  if (!isAdmin && !isAuthCategory && (sentToday ?? 0) >= settings.dailyCap) {
     await logCommunication({
       ...logBase,
       recipientPhone: phone,
@@ -434,8 +439,6 @@ export async function sendNotification(
   // ── STEP 5. Quiet hours ──
   const hour = istHour();
   const inQuiet = hour >= settings.quietStart || hour < settings.quietEnd;
-  const isAdmin = template.recipient_type === 'admin';
-  const isAuthCategory = template.wa_template_category === 'authentication';
   if (!isAdmin && !isAuthCategory && !meta?.forceImmediate && inQuiet) {
     const deferUntil = nextQuietEndUtc(settings.quietEnd);
     // Raw insert into communication_queue (different table from
