@@ -9,6 +9,7 @@ import { StatusBadge } from './StatusBadge';
 import { ActionDropdown, ActionIcons } from './ActionDropdown';
 import { getSessionTypeLabel as _getLabel } from '@/lib/utils/session-labels';
 import { CommunicationTrigger } from '@/components/shared/CommunicationTrigger';
+import SessionModeBadge from '@/components/shared/SessionModeBadge';
 import { formatTime12 } from '@/lib/utils/date-format';
 import { getAvatarColor } from '@/lib/utils/avatar-colors';
 
@@ -394,13 +395,14 @@ export function SessionCard({
               <span>{session.duration_minutes}m</span>
             </>
           )}
-          {isOffline && (
+          {session.session_mode && (
             <>
               <span className="text-gray-600">&middot;</span>
-              <span className="text-purple-400/80 flex items-center gap-0.5">
-                <MapPin className="w-3 h-3" />
-                In-Person
-              </span>
+              <SessionModeBadge
+                sessionMode={session.session_mode}
+                meetLink={session.google_meet_link}
+                tone="dark"
+              />
             </>
           )}
         </div>

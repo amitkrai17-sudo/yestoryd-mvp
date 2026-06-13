@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { Avatar } from '@/components/shared/Avatar';
+import SessionModeBadge from '@/components/shared/SessionModeBadge';
 import { formatDateShort, formatTime12 } from '@/lib/utils/date-format';
 
 interface UpcomingSession {
@@ -43,6 +44,7 @@ interface ChangeResult {
   to?: string;
   notifications?: { parent: string; coach: string };
   calendar_updated?: boolean;
+  google_meet_link?: string | null;
   error?: string;
 }
 
@@ -61,7 +63,7 @@ export default function ModeChangePage() {
   const [selected, setSelected] = useState<UpcomingSession | null>(null);
   const [newMode, setNewMode] = useState<'online' | 'offline'>('online');
   const [submitting, setSubmitting] = useState(false);
-  const [toast, setToast] = useState<{ kind: ToastKind; message: string; details?: string } | null>(null);
+  const [toast, setToast] = useState<{ kind: ToastKind; message: string; details?: string; link?: string } | null>(null);
 
   useEffect(() => {
     fetchSessions();
@@ -129,6 +131,7 @@ export default function ModeChangePage() {
         kind: 'success',
         message: `Session switched ${data.from} → ${data.to}`,
         details: parts.join(' · '),
+        link: data.to === 'online' ? data.google_meet_link || undefined : undefined,
       });
 
       setSessions((prev) =>
@@ -204,6 +207,19 @@ export default function ModeChangePage() {
                 {toast.message}
               </p>
               {toast.details && <p className="text-xs text-text-tertiary mt-1">{toast.details}</p>}
+              {toast.link && (
+                <p className="text-xs mt-1">
+                  <span className="text-text-tertiary">Meet link ready: </span>
+                  <a
+                    href={toast.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-300 hover:underline break-all"
+                  >
+                    {toast.link}
+                  </a>
+                </p>
+              )}
             </div>
             <button
               onClick={() => setToast(null)}
@@ -269,23 +285,11 @@ export default function ModeChangePage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-3 flex-shrink-0">
-                        <span
-                          className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-lg border ${
-                            s.session_mode === 'offline'
-                              ? 'bg-amber-500/10 text-amber-300 border-amber-500/30'
-                              : 'bg-blue-500/10 text-blue-300 border-blue-500/30'
-                          }`}
-                        >
-                          {s.session_mode === 'offline' ? (
-                            <>
-                              <MapPin className="w-3 h-3" /> In-person
-                            </>
-                          ) : (
-                            <>
-                              <Monitor className="w-3 h-3" /> Online
-                            </>
-                          )}
-                        </span>
+                        <SessionModeBadge
+                          sessionMode={s.session_mode}
+                          meetLink={s.google_meet_link}
+                          tone="dark"
+                        />
                         <button
                           onClick={() => openModal(s)}
                           disabled={s.session_mode === 'online'}

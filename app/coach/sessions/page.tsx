@@ -503,7 +503,16 @@ export default function CoachSessionsPage() {
         headers: { 'Content-Type': 'application/json' },
       });
       const data = await res.json();
-      if (!res.ok) { alert(data.error || 'Failed to switch to online'); return; }
+      if (!res.ok) {
+        if (res.status === 409 && data.error === 'link_unavailable') {
+          alert("Couldn't create a Meet link. Try again, or set a classroom link first.");
+        } else if (res.status === 400) {
+          alert('Only scheduled sessions can be switched online.');
+        } else {
+          alert(data.error || 'Failed to switch to online');
+        }
+        return;
+      }
       alert(data.message || 'Switched to online');
       loadSessions();
     } catch { alert('Network error. Please try again.'); }
