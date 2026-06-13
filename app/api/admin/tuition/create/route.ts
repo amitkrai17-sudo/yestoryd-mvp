@@ -19,7 +19,14 @@ const CreateTuitionSchema = z.object({
   sessionsPurchased: z.number().int().min(1).max(50),
   sessionDurationMinutes: z.number().int().min(15).max(120).default(60),
   sessionsPerWeek: z.number().int().min(1).max(7).default(2),
-  schedulePreference: z.string().max(500).optional(),
+  // Structured schedule (client sends the OBJECT; route validates then serializes
+  // to the string column on insert — the column shape is unchanged).
+  schedulePreference: z.object({
+    days: z.array(z.enum(['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'])),
+    times: z.record(z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/)).optional().default({}),
+    defaultTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional(),
+    timeSlot: z.string().max(50).optional(),
+  }).optional(),
   defaultSessionMode: z.enum(['offline', 'online']).default('offline'),
   parentPhone: z.string().regex(/^[6-9]\d{9}$/, 'Valid 10-digit Indian mobile number required'),
   coachId: z.string().uuid(),
@@ -97,7 +104,7 @@ export const POST = withApiHandler(async (req: NextRequest, { auth, supabase, re
     sessions_purchased: input.sessionsPurchased,
     session_duration_minutes: input.sessionDurationMinutes,
     sessions_per_week: input.sessionsPerWeek,
-    schedule_preference: input.schedulePreference ?? null,
+    schedule_preference: input.schedulePreference ? JSON.stringify(input.schedulePreference) : null,
     default_session_mode: input.defaultSessionMode,
     parent_phone: input.parentPhone,
     coach_id: input.coachId,
