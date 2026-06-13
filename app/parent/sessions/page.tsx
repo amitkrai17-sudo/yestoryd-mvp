@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { EmptyState } from '@/components/shared/EmptyState';
+import SessionModeBadge from '@/components/shared/SessionModeBadge';
 import { useParentContext } from '@/app/parent/context';
 
 // ============================================================
@@ -21,6 +22,7 @@ interface Session {
   scheduled_time: string;
   duration_minutes: number;
   google_meet_link: string | null;
+  session_mode?: string | null;
   focus_area: string | null;
   is_diagnostic: boolean;
   title: string | null;
@@ -269,6 +271,9 @@ export default function ParentSessionsPage() {
                         {formatTime(session.scheduled_time)} · {session.duration_minutes || 45} min
                         {coachName && ` · with ${coachName}`}
                       </p>
+                      <div className="mt-1.5">
+                        <SessionModeBadge sessionMode={session.session_mode} meetLink={session.google_meet_link} />
+                      </div>
                     </div>
 
                     {/* Join button */}
@@ -336,6 +341,9 @@ export default function ParentSessionsPage() {
                             {formatTime(session.scheduled_time)} · {session.duration_minutes || 45} min
                             {coachName && ` · with ${coachName}`}
                           </p>
+                          <div className="mt-1.5">
+                            <SessionModeBadge sessionMode={session.session_mode} meetLink={session.google_meet_link} />
+                          </div>
                           {/* Insight line */}
                           {session.insight && (
                             <p className="text-xs text-[#FF0099] mt-1 font-medium">

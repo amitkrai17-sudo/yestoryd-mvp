@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { Calendar, Video, ChevronRight } from 'lucide-react';
 import { getSessionTypeLabel } from '@/lib/utils/session-labels';
+import SessionModeBadge from '@/components/shared/SessionModeBadge';
 
 interface Session {
   id: string;
@@ -11,6 +12,7 @@ interface Session {
   scheduled_date: string;
   scheduled_time: string;
   google_meet_link: string;
+  session_mode?: string | null;
   status: string;
   title: string;
 }
@@ -91,6 +93,9 @@ export default function SessionList({
                     {formatDate(session.scheduled_date)} &bull; {formatTime(session.scheduled_time)}
                     {session.session_number ? ` \u2022 Session ${session.session_number}${isTuition ? '' : `/${displayTotal}`}` : ''}
                   </p>
+                  <div className="mt-1.5">
+                    <SessionModeBadge sessionMode={session.session_mode} meetLink={session.google_meet_link} />
+                  </div>
                 </div>
               </div>
               {session.google_meet_link && (

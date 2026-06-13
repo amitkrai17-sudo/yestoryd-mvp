@@ -88,7 +88,7 @@ export async function GET(
       .select(`
         id, session_number, session_type, status,
         scheduled_date, scheduled_time, duration_minutes,
-        google_meet_link, focus_area, is_diagnostic,
+        google_meet_link, session_mode, focus_area, is_diagnostic,
         title, session_template_id,
         session_templates:session_template_id(title)
       `)
@@ -150,6 +150,7 @@ export async function GET(
         scheduled_time: s.scheduled_time,
         duration_minutes: s.duration_minutes,
         google_meet_link: s.google_meet_link,
+        session_mode: s.session_mode,
         focus_area: s.focus_area,
         is_diagnostic: s.is_diagnostic,
         title: s.title,
