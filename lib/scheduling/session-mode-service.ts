@@ -9,14 +9,14 @@
 //   No second link path or direct AiSensy/Meta call may exist elsewhere.
 // ============================================================
 
-import { scheduleCalendarEvent } from '@/lib/calendar/events';
+import { scheduleCalendarEvent, updateCalendarEventForMode, getEventDetails } from '@/lib/calendar/events';
 import { getServiceSupabase } from '@/lib/api-auth';
 import { sendNotification, type NotifyResult } from '@/lib/communication/notify';
 import { formatDateShort, formatTime12 } from '@/lib/utils/date-format';
 
 type ServiceSupabase = ReturnType<typeof getServiceSupabase>;
 
-export type OnlineLinkSource = 'explicit' | 'existing' | 'room' | 'generated' | 'pending';
+export type OnlineLinkSource = 'explicit' | 'existing' | 'room' | 'generated' | 'patched' | 'pending';
 
 /** The scheduled_sessions fields resolveOnlineLink needs. */
 export interface SessionForLink {
@@ -24,6 +24,7 @@ export interface SessionForLink {
   session_type: string | null;
   session_number: number | null;
   google_meet_link: string | null;
+  google_event_id: string | null;
   scheduled_date: string | null;
   scheduled_time: string | null;
   duration_minutes: number | null;
@@ -39,6 +40,9 @@ export interface ResolveLinkContext {
   childName?: string | null;
   coachEmail?: string | null;
   parentEmail?: string | null;
+  /** When true, never reach step 4 (no calendar event creation) — used at session
+   *  birth to avoid N calendar API calls in the batch loop. Returns source 'pending'. */
+  noGenerate?: boolean;
 }
 
 export interface ResolveLinkResult {
@@ -70,7 +74,31 @@ export async function resolveOnlineLink(
   // 3. persistent room (batch / classroom)
   if (ctx.roomLink) return { link: ctx.roomLink, source: 'room' };
 
-  // 4. generate via Calendar (same helper as the legacy switch-to-online path)
+  // No-generate (born-online parity): never create a calendar event here. The row
+  // stays online-pending; a later switch/reminder resolves it lazily.
+  if (ctx.noGenerate) return { link: null, source: 'pending' };
+
+  // 4a. Reuse an EXISTING calendar event (no orphan): patch its mode metadata and
+  //     return its Meet link if it already has one. updateCalendarEventForMode does
+  //     not create conferenceData, so a linkless existing event falls through to 4b.
+  //     getEventDetails only READS the link — link generation stays in scheduleCalendarEvent.
+  if (session.google_event_id) {
+    try {
+      if (ctx.coachEmail) {
+        await updateCalendarEventForMode(session.google_event_id, ctx.coachEmail, 'online');
+      }
+      const details = await getEventDetails(session.google_event_id, ctx.coachEmail || undefined);
+      const d = details as { hangoutLink?: string; conferenceData?: { entryPoints?: { uri?: string }[] } } | null;
+      const existingLink = d?.hangoutLink || d?.conferenceData?.entryPoints?.[0]?.uri || null;
+      if (existingLink) {
+        return { link: existingLink, source: 'patched', calendarEventId: session.google_event_id };
+      }
+    } catch {
+      // fall through to 4b — create a fresh event
+    }
+  }
+
+  // 4b. generate via Calendar (same helper as the legacy switch-to-online path)
   const duration = session.duration_minutes || 45;
   const startTime = new Date(`${session.scheduled_date}T${session.scheduled_time}`);
   const endTime = new Date(startTime);
@@ -116,6 +144,9 @@ export interface SetSessionModeOpts {
   requestId?: string;
   /** Optional pre-built service client; one is created if absent. */
   supabase?: ServiceSupabase;
+  /** Skip the COACH notification (parent still notified). Used for batch siblings
+   *  so the single coach gets exactly one message, not one per child. */
+  suppressCoachNotify?: boolean;
 }
 
 export interface SetSessionModeResult {
@@ -261,7 +292,7 @@ export async function setSessionMode(
       })
     : Promise.resolve({ success: false, reason: 'phone_not_found' } as NotifyResult);
 
-  const coachPromise: Promise<NotifyResult> = coach?.phone
+  const coachPromise: Promise<NotifyResult> = (!opts.suppressCoachNotify && coach?.phone)
     ? sendNotification('coach_session_mode_online_v1', coach.phone, {
         coach_name: coach.name || 'Coach',
         child_name: child?.child_name || 'your student',
@@ -273,14 +304,14 @@ export async function setSessionMode(
         contextType: 'session_mode_change',
         contextId: sessionId,
       })
-    : Promise.resolve({ success: false, reason: 'phone_not_found' } as NotifyResult);
+    : Promise.resolve({ success: false, reason: opts.suppressCoachNotify ? 'suppressed' : 'phone_not_found' } as NotifyResult);
 
   let parentStatus = 'failed';
   let coachStatus = 'failed';
   try {
     const [pS, cS] = await Promise.allSettled([parentPromise, coachPromise]);
     parentStatus = notifyStatus(pS);
-    coachStatus = notifyStatus(cS);
+    coachStatus = opts.suppressCoachNotify ? 'suppressed' : notifyStatus(cS);
   } catch (waErr) {
     console.error(JSON.stringify({ requestId, event: 'session_mode_wa_error', sessionId, error: waErr instanceof Error ? waErr.message : String(waErr) }));
   }

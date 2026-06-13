@@ -66,7 +66,9 @@ export const POST = withParamsHandler<{ id: string }>(async (request, { id: sess
       .neq('id', sessionId);
 
     for (const sib of siblings || []) {
-      const sibResult = await setSessionMode(sib.id, 'online', { actor: 'coach', requestId, explicitLink: meetLink, supabase });
+      // Siblings reuse the same link AND suppress the coach notify — the (single)
+      // coach already got one message from the primary call above.
+      const sibResult = await setSessionMode(sib.id, 'online', { actor: 'coach', requestId, explicitLink: meetLink, suppressCoachNotify: true, supabase });
       if (sibResult.ok) siblingCount++;
     }
     if (siblingCount > 0) {

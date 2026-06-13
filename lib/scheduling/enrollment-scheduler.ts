@@ -28,6 +28,7 @@ import {
   createScheduledSessionsBatch,
   type CreateSessionParams,
 } from './session-engine';
+import { resolveOnlineLink } from './session-mode-service';
 
 // ============================================================================
 // TYPES
@@ -1042,8 +1043,26 @@ export async function scheduleTuitionSessions(
           };
           // Set batch_id from tuition_onboarding
           if (batchId) sessionData.batch_id = batchId;
-          // Copy persistent classroom link to session (tuition_onboarding.meet_link → scheduled_sessions.google_meet_link)
-          if (batchMeetLink && defaultMode === 'online') sessionData.google_meet_link = batchMeetLink;
+          // Born-online link parity via the sole resolver — room/explicit/existing ONLY
+          // (noGenerate: never create a calendar event per session in this loop). An
+          // online pack with no room link is born link-less (online-pending); a later
+          // switch/reminder resolves it lazily. Offline packs get no link.
+          if (defaultMode === 'online') {
+            const resolved = await resolveOnlineLink(
+              {
+                id: '',
+                session_type: 'tuition',
+                session_number: sessionNumber,
+                google_meet_link: null,
+                google_event_id: null,
+                scheduled_date: dateStr,
+                scheduled_time: sessionTime,
+                duration_minutes: durationMinutes,
+              },
+              { roomLink: batchMeetLink, noGenerate: true },
+            );
+            if (resolved.link) sessionData.google_meet_link = resolved.link;
+          }
 
           sessionsToCreate.push(sessionData as ScheduledSession);
 
