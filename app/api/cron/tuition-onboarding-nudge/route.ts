@@ -36,12 +36,12 @@ export async function GET(request: NextRequest) {
   try {
     // Load windows from BackOps policy
     const toPolicy = await getPolicy('tuition_onboarding_nudge', {
-      first_nudge_hours: 24, second_nudge_hours: 72, expire_hours: 168, max_nudges: 2, dedup_hours: 48,
+      first_nudge_hours: 48, second_nudge_hours: 120, expire_hours: 168, max_nudges: 2, dedup_hours: 48,
     });
     const tp = toPolicy as Record<string, number>;
 
     const now = new Date();
-    const twentyFourHoursAgo = new Date(now.getTime() - (tp.first_nudge_hours || 24) * 60 * 60 * 1000).toISOString();
+    const twoDaysAgo = new Date(now.getTime() - (tp.first_nudge_hours || 48) * 60 * 60 * 1000).toISOString();
     const sevenDaysAgo = new Date(now.getTime() - (tp.expire_hours || 168) * 60 * 60 * 1000).toISOString();
 
     // ── Phase A: Find parent_pending records 24h–7d old ──────────
@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
       .from('tuition_onboarding')
       .select('id, parent_phone, parent_name_hint, child_id, child_name, coach_id, session_rate, sessions_purchased, parent_form_token, created_at')
       .eq('status', 'parent_pending')
-      .lt('created_at', twentyFourHoursAgo)
+      .lt('created_at', twoDaysAgo)
       .gt('created_at', sevenDaysAgo)
       .order('created_at', { ascending: true });
 
@@ -67,9 +67,9 @@ export async function GET(request: NextRequest) {
         const { count: nudgeCount } = await supabase
           .from('communication_logs')
           .select('*', { count: 'exact', head: true })
-          .eq('template_code', 'tuition_onboarding_nudge')
+          .eq('template_code', 'parent_tuition_onboarding_v5')
           .eq('recipient_phone', `91${record.parent_phone}`)
-          .eq('related_entity_id', record.id);
+          .eq('context_id', record.id);
 
         const alreadySent = nudgeCount || 0;
 
@@ -90,8 +90,8 @@ export async function GET(request: NextRequest) {
         // 1st nudge: first_nudge_hours+ (alreadySent === 0)
         // 2nd nudge: second_nudge_hours+ (alreadySent === 1)
         const shouldNudge =
-          (alreadySent === 0 && ageHours >= (tp.first_nudge_hours || 24)) ||
-          (alreadySent === 1 && ageHours >= (tp.second_nudge_hours || 72));
+          (alreadySent === 0 && ageHours >= (tp.first_nudge_hours || 48)) ||
+          (alreadySent === 1 && ageHours >= (tp.second_nudge_hours || 120));
 
         if (!shouldNudge) {
           skipped++;
@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
         const { count: recentCount } = await supabase
           .from('communication_logs')
           .select('*', { count: 'exact', head: true })
-          .eq('template_code', 'tuition_onboarding_nudge')
+          .eq('template_code', 'parent_tuition_onboarding_v5')
           .eq('recipient_phone', `91${record.parent_phone}`)
           .gt('created_at', fortyEightHoursAgo);
 
@@ -112,7 +112,7 @@ export async function GET(request: NextRequest) {
           continue;
         }
 
-        try { await logDecision({ source: 'cron:tuition-onboarding-nudge', entity_type: 'tuition', entity_id: record.id, decision: 'send_tuition_nudge', reason: { age_hours: ageHours, nudge_number: alreadySent + 1 } as Json, action: 'aisensy:parent_tuition_onboarding_v4', outcome: 'pending' }); } catch {}
+        try { await logDecision({ source: 'cron:tuition-onboarding-nudge', entity_type: 'tuition', entity_id: record.id, decision: 'send_tuition_nudge', reason: { age_hours: ageHours, nudge_number: alreadySent + 1 } as Json, action: 'aisensy:parent_tuition_onboarding_v5', outcome: 'pending' }); } catch {}
 
         // Send the parent_tuition_onboarding_v5 template (magic link still valid).
         // v5 has a generic, no-variable body ("Hi Parent, ...") — no name resolution needed.
