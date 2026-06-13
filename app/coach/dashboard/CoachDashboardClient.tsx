@@ -7,7 +7,7 @@ import Link from 'next/link';
 import {
   Calendar, Clock, Users, ChevronRight,
   IndianRupee, Video, MapPin, AlertCircle, BookOpen,
-  GraduationCap, UserPlus, ClipboardCheck,
+  GraduationCap, UserPlus, ClipboardCheck, Send,
 } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { ProductBadge } from '@/components/shared/RevenueCalculator';
@@ -121,13 +121,31 @@ interface CoachOnboardingRow {
 function PendingOnboardingsCard() {
   const [rows, setRows] = useState<CoachOnboardingRow[] | null>(null);
   const [lastRun, setLastRun] = useState<{ ran_at: string } | null>(null);
+  const [resending, setResending] = useState<string | null>(null);
+  const [altOpen, setAltOpen] = useState<string | null>(null);
+  const [altInputs, setAltInputs] = useState<Record<string, string>>({});
 
-  useEffect(() => {
+  const load = () => {
     fetch('/api/coach/tuition-onboardings')
       .then(r => (r.ok ? r.json() : null))
       .then(d => { if (d) { setRows(d.onboardings || []); setLastRun(d.last_nudge_run || null); } })
       .catch(() => {});
-  }, []);
+  };
+
+  useEffect(() => { load(); }, []);
+
+  async function handleResend(id: string, altPhone?: string) {
+    setResending(id);
+    try {
+      await fetch(`/api/coach/tuition-onboardings/${id}/resend`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(altPhone ? { alt_phone: altPhone } : {}),
+      });
+      load();
+    } catch { /* */ }
+    setResending(null);
+  }
 
   if (!rows || rows.length === 0) return null; // hidden when empty
 
@@ -140,6 +158,8 @@ function PendingOnboardingsCard() {
       <div className="space-y-2">
         {rows.map(o => {
           const meta = NUDGE_STATUS_META[o.nudge_status];
+          const altRaw = (altInputs[o.id] ?? '').trim();
+          const altInvalid = altRaw !== '' && !/^[6-9]\d{9}$/.test(altRaw);
           return (
             <div key={o.id} className="bg-surface-1/50 rounded-xl border border-border p-3">
               <div className="flex items-center justify-between gap-2">
@@ -160,6 +180,34 @@ function PendingOnboardingsCard() {
                     ? `${o.nudge_count} nudge${o.nudge_count === 1 ? '' : 's'}${o.last_nudge_at ? ` · ${relativeTimeShort(o.last_nudge_at)}` : ''}`
                     : 'No nudges yet'}
                 </span>
+              </div>
+              <div className="mt-2 space-y-2">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <button
+                    onClick={() => handleResend(o.id, altRaw || undefined)}
+                    disabled={resending === o.id || altInvalid}
+                    className="flex items-center gap-1.5 text-xs text-[#00ABFF] hover:opacity-80 disabled:opacity-50 min-h-[44px] sm:min-h-0"
+                  >
+                    {resending === o.id ? <Spinner size="sm" className="text-[#00ABFF]" /> : <Send className="w-3 h-3" />}
+                    Resend Link
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAltOpen(altOpen === o.id ? null : o.id)}
+                    className="text-[11px] text-text-tertiary hover:text-white min-h-[44px] sm:min-h-0"
+                  >
+                    {altOpen === o.id ? 'Use parent number' : 'Send to a different number'}
+                  </button>
+                </div>
+                {altOpen === o.id && (
+                  <input
+                    value={altInputs[o.id] ?? ''}
+                    onChange={e => setAltInputs(p => ({ ...p, [o.id]: e.target.value.replace(/\D/g, '').slice(0, 10) }))}
+                    placeholder={o.parent_phone || 'Alternate 10-digit number'}
+                    inputMode="numeric"
+                    className={`w-full bg-surface-2 border rounded-xl px-3 py-1.5 text-xs text-white placeholder:text-text-tertiary ${altInvalid ? 'border-red-500/50' : 'border-border'}`}
+                  />
+                )}
               </div>
             </div>
           );

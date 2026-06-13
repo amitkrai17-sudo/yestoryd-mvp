@@ -174,6 +174,9 @@ export default function AdminTuitionPage() {
   const [lastNudgeRun, setLastNudgeRun] = useState<{ ran_at: string; nudged?: number; skipped?: number; expired?: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [resending, setResending] = useState<string | null>(null);
+  // UI-2B: optional "send link to a different number" per Awaiting card.
+  const [altOpen, setAltOpen] = useState<string | null>(null);
+  const [altPhoneInputs, setAltPhoneInputs] = useState<Record<string, string>>({});
   const [archiving, setArchiving] = useState<string | null>(null);
   const [waOpen, setWaOpen] = useState<string | null>(null);
   // Transient per-onboarding WhatsApp send outcome from create/resend responses.
@@ -254,10 +257,14 @@ export default function AdminTuitionPage() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  async function handleResend(id: string) {
+  async function handleResend(id: string, altPhone?: string) {
     setResending(id);
     try {
-      const res = await fetch(`/api/admin/tuition/${id}/resend`, { method: 'POST' });
+      const res = await fetch(`/api/admin/tuition/${id}/resend`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(altPhone ? { alt_phone: altPhone } : {}),
+      });
       if (res.ok) {
         const data = await res.json();
         setWaResults(prev => ({ ...prev, [id]: { waStatus: data.waStatus ?? 'failed', magicLink: data.magicLink } }));
@@ -695,16 +702,40 @@ export default function AdminTuitionPage() {
                         : 'No nudges yet'}
                     </span>
                   </div>
-                  {o.status === 'parent_pending' && (
-                    <button
-                      onClick={() => handleResend(o.id)}
-                      disabled={resending === o.id}
-                      className="mt-3 flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 disabled:opacity-50 min-h-[44px] sm:min-h-0"
-                    >
-                      {resending === o.id ? <Spinner size="sm" color="muted" /> : <Send className="w-3 h-3" />}
-                      Resend Link
-                    </button>
-                  )}
+                  {o.status === 'parent_pending' && (() => {
+                    const altRaw = (altPhoneInputs[o.id] ?? '').trim();
+                    const altInvalid = altRaw !== '' && !/^[6-9]\d{9}$/.test(altRaw);
+                    return (
+                      <div className="mt-3 space-y-2">
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <button
+                            onClick={() => handleResend(o.id, altRaw || undefined)}
+                            disabled={resending === o.id || altInvalid}
+                            className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 disabled:opacity-50 min-h-[44px] sm:min-h-0"
+                          >
+                            {resending === o.id ? <Spinner size="sm" color="muted" /> : <Send className="w-3 h-3" />}
+                            Resend Link
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setAltOpen(altOpen === o.id ? null : o.id)}
+                            className="text-[11px] text-text-tertiary hover:text-white min-h-[44px] sm:min-h-0"
+                          >
+                            {altOpen === o.id ? 'Use parent number' : 'Send to a different number'}
+                          </button>
+                        </div>
+                        {altOpen === o.id && (
+                          <input
+                            value={altPhoneInputs[o.id] ?? ''}
+                            onChange={e => setAltPhoneInputs(p => ({ ...p, [o.id]: e.target.value.replace(/\D/g, '').slice(0, 10) }))}
+                            placeholder={o.parent_phone || 'Alternate 10-digit number'}
+                            inputMode="numeric"
+                            className={`w-full bg-surface-2 border rounded-xl px-3 py-1.5 text-xs text-white placeholder:text-text-tertiary ${altInvalid ? 'border-red-500/50' : 'border-border'}`}
+                          />
+                        )}
+                      </div>
+                    );
+                  })()}
                   <WaStatusBadge id={o.id} />
                 </div>
               ))}
@@ -732,24 +763,48 @@ export default function AdminTuitionPage() {
                     {o.coach_name && <p>Coach: {o.coach_name}</p>}
                     <p>Created {new Date(o.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</p>
                   </div>
-                  <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1">
-                    <button
-                      onClick={() => handleResend(o.id)}
-                      disabled={resending === o.id || archiving === o.id}
-                      className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 disabled:opacity-50 min-h-[44px] sm:min-h-0"
-                    >
-                      {resending === o.id ? <Spinner size="sm" color="muted" /> : <Send className="w-3 h-3" />}
-                      Resend link
-                    </button>
-                    <button
-                      onClick={() => handleArchive(o.id, o.child_name)}
-                      disabled={archiving === o.id || resending === o.id}
-                      className="flex items-center gap-1.5 text-xs text-text-tertiary hover:text-red-400 disabled:opacity-50 min-h-[44px] sm:min-h-0"
-                    >
-                      {archiving === o.id ? <Spinner size="sm" color="muted" /> : <Trash2 className="w-3 h-3" />}
-                      Remove from queue
-                    </button>
-                  </div>
+                  {(() => {
+                    const altRaw = (altPhoneInputs[o.id] ?? '').trim();
+                    const altInvalid = altRaw !== '' && !/^[6-9]\d{9}$/.test(altRaw);
+                    return (
+                      <div className="mt-3 space-y-2">
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                          <button
+                            onClick={() => handleResend(o.id, altRaw || undefined)}
+                            disabled={resending === o.id || archiving === o.id || altInvalid}
+                            className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 disabled:opacity-50 min-h-[44px] sm:min-h-0"
+                          >
+                            {resending === o.id ? <Spinner size="sm" color="muted" /> : <Send className="w-3 h-3" />}
+                            Resend link
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setAltOpen(altOpen === o.id ? null : o.id)}
+                            className="text-[11px] text-text-tertiary hover:text-white min-h-[44px] sm:min-h-0"
+                          >
+                            {altOpen === o.id ? 'Use parent number' : 'Send to a different number'}
+                          </button>
+                          <button
+                            onClick={() => handleArchive(o.id, o.child_name)}
+                            disabled={archiving === o.id || resending === o.id}
+                            className="flex items-center gap-1.5 text-xs text-text-tertiary hover:text-red-400 disabled:opacity-50 min-h-[44px] sm:min-h-0"
+                          >
+                            {archiving === o.id ? <Spinner size="sm" color="muted" /> : <Trash2 className="w-3 h-3" />}
+                            Remove from queue
+                          </button>
+                        </div>
+                        {altOpen === o.id && (
+                          <input
+                            value={altPhoneInputs[o.id] ?? ''}
+                            onChange={e => setAltPhoneInputs(p => ({ ...p, [o.id]: e.target.value.replace(/\D/g, '').slice(0, 10) }))}
+                            placeholder={o.parent_phone || 'Alternate 10-digit number'}
+                            inputMode="numeric"
+                            className={`w-full bg-surface-2 border rounded-xl px-3 py-1.5 text-xs text-white placeholder:text-text-tertiary ${altInvalid ? 'border-red-500/50' : 'border-border'}`}
+                          />
+                        )}
+                      </div>
+                    );
+                  })()}
                   <WaStatusBadge id={o.id} />
                 </div>
               ))}
