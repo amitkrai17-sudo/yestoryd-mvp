@@ -265,8 +265,8 @@ export function format12(hm: string): string {
  * JSON string, or null (readers hold different forms). Pure — no React.
  *   - null/empty → ''
  *   - unparseable string → returned as-is (legacy plain text)
- * Time precedence: per-day times → defaultTime → timeSlot bucket → legacy raw
- * preferredTime → ''. Output: "Monday, Saturday · Mon 6:00 PM, Sat 12:45 PM".
+ * Time precedence: per-day times → defaultTime → legacy raw preferredTime →
+ * timeSlot bucket → ''. Output: "Monday, Saturday · Mon 6:00 PM, Sat 12:45 PM".
  */
 export function formatSchedulePreference(pref: SchedulePreference | string | null): string {
   if (pref === null || pref === undefined) return '';
@@ -291,7 +291,8 @@ export function formatSchedulePreference(pref: SchedulePreference | string | nul
     ? obj.days.map((d: string) => DAY_LONG[d as DayKey] || d).join(', ')
     : '';
 
-  // Time (precedence)
+  // Time precedence: structured always wins; for un-migrated rows the SPECIFIC
+  // legacy preferredTime beats the GENERIC timeSlot bucket (display fidelity).
   let time = '';
   const times = obj.times && typeof obj.times === 'object' ? obj.times : null;
   if (times && Object.keys(times).length > 0) {
@@ -301,10 +302,10 @@ export function formatSchedulePreference(pref: SchedulePreference | string | nul
       .join(', ');
   } else if (typeof obj.defaultTime === 'string' && obj.defaultTime) {
     time = format12(obj.defaultTime);
-  } else if (typeof obj.timeSlot === 'string' && obj.timeSlot) {
-    time = obj.timeSlot;
   } else if (typeof obj.preferredTime === 'string' && obj.preferredTime) {
-    time = obj.preferredTime; // un-migrated legacy raw
+    time = obj.preferredTime; // un-migrated legacy raw (specific) — surfaced verbatim
+  } else if (typeof obj.timeSlot === 'string' && obj.timeSlot) {
+    time = obj.timeSlot; // generic bucket fallback
   }
 
   return [days, time].filter(Boolean).join(' · ');
