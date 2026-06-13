@@ -167,7 +167,7 @@ export async function deductTuitionBalance(
       // Zero or negative — send renewal link
       if (parentPhone) {
         try {
-          const result = await sendNotification('parent_tuition_renewal_v3', parentPhone, {
+          const result = await sendNotification('parent_tuition_renewal_v4', parentPhone, {
             parent_name: parentName,
             child_name: childName,
           }, {
@@ -306,7 +306,7 @@ export async function deductTuitionBalance(
       // Low balance alert
       if (parentPhone) {
         try {
-          const result = await sendNotification('parent_tuition_low_balance_v3', parentPhone, {
+          const result = await sendNotification('parent_tuition_low_balance_v4', parentPhone, {
             parent_name: parentName,
             child_name: childName,
             new_balance: String(newBalance),
@@ -423,7 +423,7 @@ async function checkAndPause(
   // Send paused WA
   if (parentPhone) {
     try {
-      const result = await sendNotification('parent_tuition_paused_v3', parentPhone, {
+      const result = await sendNotification('parent_tuition_paused_v4', parentPhone, {
         parent_name: parentName,
         child_name: childName,
       }, {
