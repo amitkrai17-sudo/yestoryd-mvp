@@ -24,6 +24,7 @@
 import { scheduleCalendarEvent, cancelEvent } from '@/lib/calendar';
 import { createRecallBot, cancelRecallBot } from '@/lib/recall-auto-bot';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { attachCalendarLink } from './calendar-link';
 import { withCircuitBreaker } from './circuit-breaker';
 import { executeWithCompensation, type TransactionStep } from './transaction-manager';
 import { enqueue as retryEnqueue } from './retry-queue';
@@ -331,10 +332,7 @@ export async function createScheduledSession(
             calendarEventId = calResult.eventId;
             meetLink = calResult.meetLink || meetLink;
             if (sessionId) {
-              await supabase
-                .from('scheduled_sessions')
-                .update({ google_event_id: calendarEventId, google_meet_link: meetLink })
-                .eq('id', sessionId);
+              await attachCalendarLink(supabase, sessionId, calendarEventId, meetLink);
             }
             logger.info('calendar_created', { requestId, sessionId, eventId: calendarEventId });
             return { eventId: calendarEventId, meetLink };
@@ -689,10 +687,7 @@ async function syncPerRowCalendarEvents(
           sessionType: params.sessionType === 'parent_checkin' ? 'parent_checkin' : 'coaching',
         }),
       );
-      await supabase
-        .from('scheduled_sessions')
-        .update({ google_event_id: calResult.eventId, google_meet_link: calResult.meetLink })
-        .eq('id', id);
+      await attachCalendarLink(supabase, id, calResult.eventId, calResult.meetLink);
 
       let recallBotId: string | null = null;
       if (!options.skipRecall && calResult.meetLink) {

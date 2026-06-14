@@ -23,6 +23,7 @@ import { withCircuitBreaker } from '../circuit-breaker';
 import { createLogger } from '../logger';
 import { executeWithCompensation, type TransactionStep } from '../transaction-manager';
 import { getSupabase, logAudit, getSessionWithRelations } from './helpers';
+import { attachCalendarLink } from '../calendar-link';
 import type { SessionResult } from './types';
 import { formatDateShort, formatTime12 } from '@/lib/utils/date-format';
 
@@ -259,14 +260,7 @@ export async function rescheduleExistingSession(
             );
             calendarEventId = calResult.eventId;
             meetLink = calResult.meetLink;
-            await supabase
-              .from('scheduled_sessions')
-              .update({
-                google_event_id: calendarEventId,
-                google_meet_link: meetLink,
-                updated_at: new Date().toISOString(),
-              })
-              .eq('id', sessionId);
+            await attachCalendarLink(supabase, sessionId, calendarEventId, meetLink);
             logger.info('calendar_created', { requestId, sessionId, eventId: calendarEventId });
             return { eventId: calendarEventId, meetLink };
           } catch (calError: any) {
