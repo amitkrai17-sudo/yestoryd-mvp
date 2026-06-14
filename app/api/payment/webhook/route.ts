@@ -291,22 +291,8 @@ async function processPaymentCaptured(
       }).eq('id', tuitionEnrollment.child_id);
     }
 
-    // Revenue split — INITIAL ACTIVATION ONLY (OFFLINE-PAY.1). enrollment_revenue is the
-    // activation terms-snapshot (one row per enrollment, unique on enrollment_id); a renewal
-    // never changes grandfather-frozen terms, so it is written once. Per-class coach revenue
-    // is realized in coach_payouts at delivery. Skipping on renewal avoids the duplicate-key
-    // collision (enrollment_revenue_enrollment_id_key). Matches verify + offline gates.
-    if (isFirstPayment) {
-      try {
-        const coach = await getCoach(tuitionEnrollment.coach_id || null, requestId);
-        await calculateRevenueSplit(
-          tuitionEnrollmentId, amount, coach, 'yestoryd', null,
-          tuitionEnrollment.child_id || '', bookingData.child_name, requestId, 1,
-        );
-      } catch (revErr: any) {
-        console.error(JSON.stringify({ requestId, event: 'tuition_webhook_revenue_error', error: revErr.message }));
-      }
-    }
+    // Tuition revenue is realized per-session in session-closure.ts (coach_payouts at delivery);
+    // no enrollment-level split is written here (calculateRevenueSplit early-returns for tuition).
 
     // Auto-schedule tuition sessions
     try {

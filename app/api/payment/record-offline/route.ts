@@ -11,7 +11,6 @@ import { loadPaymentConfig } from '@/lib/config/loader';
 import { scheduleTuitionSessions } from '@/lib/scheduling';
 import { queueEnrollmentComplete } from '@/lib/qstash';
 import { getCoach } from '@/lib/payment/coach-assigner';
-import { calculateRevenueSplit } from '@/lib/payment/post-payment-notifications';
 import { addTuitionBalance } from '@/lib/tuition/add-balance';
 
 export const dynamic = 'force-dynamic';
@@ -150,24 +149,8 @@ export const POST = withApiHandler(async (req: NextRequest, ctx) => {
     }
   }
 
-  // 7. Revenue split — INITIAL ACTIVATION ONLY (OFFLINE-PAY.1).
-  // enrollment_revenue is the activation terms-snapshot (one row per enrollment,
-  // unique on enrollment_id). Grandfather-frozen rates mean a top-up never changes
-  // terms, so it is written once at activation. Per-class coach revenue is realized
-  // in coach_payouts at delivery (fires for every session incl. top-ups) — that is
-  // the SSOT for earnings. Skipping on top-up avoids double-counting AND the
-  // duplicate-key collision (enrollment_revenue_enrollment_id_key). Do NOT upsert.
-  if (isFirstPayment) {
-    try {
-      const coach = await getCoach(enrollment.coach_id || null, requestId);
-      await calculateRevenueSplit(
-        body.enrollment_id, body.amount, coach, 'yestoryd', null,
-        enrollment.child_id || '', childName, requestId, 1,
-      );
-    } catch (revErr: unknown) {
-      console.error(JSON.stringify({ requestId, event: 'offline_revenue_error', error: revErr instanceof Error ? revErr.message : String(revErr) }));
-    }
-  }
+  // 7. Tuition revenue is realized per-session in session-closure.ts (coach_payouts at delivery);
+  // no enrollment-level split is written here (calculateRevenueSplit early-returns for tuition).
 
   // 7b. Auto-schedule tuition sessions — INITIAL ACTIVATION ONLY (OFFLINE-PAY.1).
   // Top-ups must NOT re-run full-pack scheduling: scheduleTuitionSessions schedules
