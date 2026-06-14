@@ -125,7 +125,7 @@ export const POST = withApiHandler(async (req: NextRequest, ctx) => {
   await addTuitionBalance({
     enrollmentId: body.enrollment_id,
     changeAmount: body.sessions_purchased,
-    reason: isFirstPayment ? 'initial_purchase' : 'top_up',
+    reason: isFirstPayment ? 'initial_purchase' : 'renewal',
     paymentId: payment.id,
     notes: `Offline ${body.payment_method}: ₹${body.amount} — ${body.sessions_purchased} sessions credited${body.notes ? ` (${body.notes})` : ''}`,
     createdBy: auth.email || 'system',
