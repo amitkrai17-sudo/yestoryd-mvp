@@ -71,6 +71,7 @@ import { cancelRecallBot } from '@/lib/recall-auto-bot';
 import { withCircuitBreaker } from './circuit-breaker';
 import { notify } from './notification-manager';
 import { logAudit } from './operations/helpers';
+import { closeTuitionSession } from '@/lib/tuition/session-closure';
 import { createLogger } from './logger';
 
 const logger = createLogger('transition-session-status');
@@ -120,6 +121,9 @@ export interface TransitionOpts {
   /** Fire the to-specific notification. For `cancelled` → notify('session.cancelled').
    *  Default false (callers that send their own route-level template pass false). */
   notify?: boolean;
+  /** Audit/actor label forwarded to deductTuitionBalance (e.g. the marking coach's
+   *  email). Defaults to the `actor` enum when absent. */
+  actorLabel?: string;
 }
 
 export interface TransitionInput {
@@ -222,6 +226,28 @@ export async function transitionSessionStatus(
     return { ok: false, from, to, sideEffects: {}, error: 'illegal_transition' };
   }
 
+  // ── Product + disposition resolution for the missed/no-show family (POLICY E) ──
+  // Determined BEFORE the core write so the atomic update carries the right disposition.
+  let isTuition = false;
+  let effectiveDisposition: string | null = input.disposition ?? null;
+  if (to === 'missed' || to === 'no_show' || to === 'coach_no_show') {
+    if (session.enrollment_id) {
+      const { data: enr } = await supabase
+        .from('enrollments')
+        .select('enrollment_type')
+        .eq('id', session.enrollment_id)
+        .single();
+      isTuition = enr?.enrollment_type === 'tuition';
+    }
+    if (effectiveDisposition == null) {
+      // tuition 'missed' → parent_no_show; coaching 'missed' → none. no_show / coach_no_show
+      // mirror the absorbed recall updateSessionStatus defaults.
+      if (to === 'missed') effectiveDisposition = isTuition ? 'parent_no_show' : null;
+      else if (to === 'no_show') effectiveDisposition = 'parent_no_show';
+      else if (to === 'coach_no_show') effectiveDisposition = 'coach_no_show';
+    }
+  }
+
   // ── CORE — one atomic update ──
   const update: Record<string, unknown> = {
     status: to,
@@ -230,8 +256,8 @@ export async function transitionSessionStatus(
   if (COMPLETED_AT_STATES.has(to)) {
     update.completed_at = opts.explicitCompletedAt ?? new Date().toISOString();
   }
-  if (input.disposition != null) {
-    update.disposition = input.disposition;
+  if (effectiveDisposition != null) {
+    update.disposition = effectiveDisposition;
   }
   if (RECALL_AXIS_STATES.has(to)) {
     update.recall_status = to;
@@ -319,10 +345,39 @@ export async function transitionSessionStatus(
     // callers are migrated in their own cluster — do not route them here yet.
     void opts.skipSideEffects;
   } else if (to === 'missed' || to === 'no_show' || to === 'coach_no_show') {
-    // PHASE 2-missed: POLICY-E product-gated deduct(1) + insertPayout + disposition
-    // (tuition) vs none (coaching) are NOT wired here yet. Missed/no-show callers
-    // are migrated in their own cluster — do not route them here yet.
-    void opts.sessionsDelivered;
+    // POLICY E — tuition 'missed' deducts 1 + pays the coach (parent_no_show). Coaching
+    // 'missed' and the recall no_show/coach_no_show paths (1:1, not tuition) deduct nothing.
+    // BRAIN-SILENT (POLICY B): the session_missed learning_event, the no-show counter
+    // cascade (dispatch session.no_show), and the parent_session_noshow_v3 WhatsApp stay
+    // with the marking route — the dispatch handler does NOT emit the LE (Phase 2-missed
+    // confirm), so the route retains it as a documented exception. The service owns
+    // status + disposition + tuition balance/payout only.
+    if (to === 'missed' && isTuition && !opts.skipSideEffects) {
+      try {
+        const close = await closeTuitionSession({
+          supabase,
+          sessionId,
+          session: {
+            enrollment_id: session.enrollment_id,
+            child_id: session.child_id,
+            coach_id: session.coach_id,
+            session_type: 'tuition',
+          },
+          requestId,
+          setStatus: false, // service CORE already wrote status + disposition
+          deductBalance: true,
+          insertPayout: true,
+          dispatchSummary: false,
+          sessionsDelivered: opts.sessionsDelivered ?? 1,
+          deductActor: opts.actorLabel ?? input.actor,
+          appUrl: process.env.NEXT_PUBLIC_APP_URL || 'https://www.yestoryd.com',
+        });
+        sideEffects.balanceDeducted = !!close.deductResult;
+        sideEffects.payoutInserted = true; // payout op ran (idempotent on session_id + product_type)
+      } catch (e) {
+        logger.error('missed_tuition_close_failed', { requestId, sessionId, error: e instanceof Error ? e.message : String(e) });
+      }
+    }
   }
   // Other `to` values (scheduled, in_progress, bot_joining, bot_error, partial,
   // pending_scheduling) are CORE-only by design — no side-effects.
