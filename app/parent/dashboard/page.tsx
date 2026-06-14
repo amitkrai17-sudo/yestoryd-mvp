@@ -468,6 +468,18 @@ export default function ParentDashboardPage() {
   // PARENT-PAY.2: the single actionable pay_state (payment due), if any.
   const actionablePay = payStates.find(p => p.pay_due) ?? null;
 
+  // PARENT-PAY: tuition balance for the always-visible greeting chip.
+  // payStates comes from /api/parent/payments (tuition-scoped); match the active enrollment.
+  const tuitionPay = enrollment?.enrollment_type === 'tuition'
+    ? (payStates.find(p => p.enrollment_id === enrollment.id) ?? payStates[0] ?? null)
+    : null;
+
+  // PARENT-PAY: always-on renew link. Build explicitly (NOT pay_url — a healthy
+  // enrollment's pay_url omits ?renewal=true and hits the alreadyPaid 400).
+  const renewUrl = enrollment?.enrollment_type === 'tuition'
+    ? `/tuition/pay/${enrollment.id}?renewal=true`
+    : null;
+
   // --- Loading ---
   if (loading) {
     return (
@@ -563,8 +575,20 @@ export default function ParentDashboardPage() {
               </span>
             </div>
           </div>
-          <div className="w-10 h-10 rounded-full bg-[#FBEAF0] flex items-center justify-center flex-shrink-0 mt-1">
-            <span className="text-sm font-medium text-[#993556]">{getChildInitials()}</span>
+          <div className="flex flex-col items-end gap-1.5 flex-shrink-0 mt-1">
+            <div className="w-10 h-10 rounded-full bg-[#FBEAF0] flex items-center justify-center">
+              <span className="text-sm font-medium text-[#993556]">{getChildInitials()}</span>
+            </div>
+            {tuitionPay && (() => {
+              const chip = (
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${tuitionPay.sessions_remaining <= 2 ? 'bg-[#FFF5F9] text-[#993556]' : 'bg-gray-100 text-gray-600'}`}>
+                  {tuitionPay.sessions_remaining <= 0
+                    ? 'No sessions left'
+                    : `${tuitionPay.sessions_remaining} session${tuitionPay.sessions_remaining === 1 ? '' : 's'} left`}
+                </span>
+              );
+              return renewUrl ? <Link href={renewUrl}>{chip}</Link> : chip;
+            })()}
           </div>
         </div>
 
@@ -641,7 +665,17 @@ export default function ParentDashboardPage() {
 
         {/* ── SECTION 3: NEXT SESSION ── */}
         <div className="rounded-2xl bg-white border border-gray-100 p-4 md:p-5">
-          <p className="text-xs text-gray-500 tracking-wide uppercase mb-3">Next session</p>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs text-gray-500 tracking-wide uppercase">Next session</p>
+            {renewUrl && (
+              <Link
+                href={renewUrl}
+                className="inline-flex items-center bg-[#FF0099] text-white text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-[#cc007a] transition-colors"
+              >
+                Add sessions
+              </Link>
+            )}
+          </div>
           {nextSession ? (
             <div className="flex items-center gap-3">
               <div className="w-14 h-14 bg-gray-50 rounded-lg flex flex-col items-center justify-center flex-shrink-0">

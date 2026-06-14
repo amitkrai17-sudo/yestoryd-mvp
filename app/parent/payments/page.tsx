@@ -8,6 +8,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import Link from 'next/link';
 import { IndianRupee, Receipt, CheckCircle, ChevronRight, AlertCircle } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 
@@ -150,11 +151,19 @@ export default function ParentPaymentsPage() {
           .filter(p => (history[p.enrollment_id]?.length ?? 0) > 0)
           .map(p => (
             <div key={p.enrollment_id} className="space-y-2">
-              {payStates.length > 1 && (
-                <p className="text-xs font-medium text-gray-400 px-1">
-                  {p.lifetime_credited} sessions purchased &middot; {p.sessions_remaining} left
-                </p>
-              )}
+              <div className="flex items-center justify-between gap-3 px-1">
+                {payStates.length > 1 ? (
+                  <p className="text-xs font-medium text-gray-400">
+                    {p.lifetime_credited} sessions purchased &middot; {p.sessions_remaining} left
+                  </p>
+                ) : <span />}
+                <Link
+                  href={`/tuition/pay/${p.enrollment_id}?renewal=true`}
+                  className="inline-flex items-center bg-[#FF0099] text-white text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-[#cc007a] transition-colors"
+                >
+                  Add sessions
+                </Link>
+              </div>
               <div className="rounded-2xl bg-white border border-gray-100 overflow-hidden divide-y divide-gray-50">
                 {(history[p.enrollment_id] ?? []).map((row, i) => (
                   <div key={i} className="flex items-center justify-between gap-3 p-4">
