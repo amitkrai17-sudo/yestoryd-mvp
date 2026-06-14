@@ -3,8 +3,7 @@
 // PURPOSE: Admin UI to change session_mode on upcoming sessions.
 //          Lists next 30 days grouped by date, opens a confirm
 //          modal, posts to /api/admin/sessions/[id]/change-mode.
-// SCOPE:   Online direction only. Offline radio is disabled
-//          (matches the 501 gate on the backend).
+// SCOPE:   Both directions, repeatable — online↔offline any number of times.
 // ============================================================
 
 'use client';
@@ -86,7 +85,8 @@ export default function ModeChangePage() {
 
   function openModal(session: UpcomingSession) {
     setSelected(session);
-    setNewMode('online'); // Only online is enabled today; offline blocked by 501
+    // Default to the OPPOSITE of the current mode — the meaningful flip.
+    setNewMode(session.session_mode === 'online' ? 'offline' : 'online');
   }
 
   function closeModal() {
@@ -292,9 +292,8 @@ export default function ModeChangePage() {
                         />
                         <button
                           onClick={() => openModal(s)}
-                          disabled={s.session_mode === 'online'}
-                          title={s.session_mode === 'online' ? 'Already online — no change needed' : 'Change this session'}
-                          className="px-3 py-1.5 text-xs font-medium text-white bg-white/[0.08] border border-white/[0.08] rounded-xl hover:bg-white/[0.12] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                          title="Change this session's mode"
+                          className="px-3 py-1.5 text-xs font-medium text-white bg-white/[0.08] border border-white/[0.08] rounded-xl hover:bg-white/[0.12] transition-colors"
                         >
                           Change Mode
                         </button>
@@ -363,12 +362,25 @@ export default function ModeChangePage() {
                 </div>
               </label>
 
-              <label className="flex items-center gap-3 p-3 rounded-xl border border-border bg-surface-2/50 cursor-not-allowed opacity-60">
-                <input type="radio" name="mode" value="offline" disabled className="w-4 h-4" />
+              <label
+                className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
+                  newMode === 'offline'
+                    ? 'bg-amber-500/10 border-amber-500/40'
+                    : 'bg-surface-2 border-border hover:bg-surface-3'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="mode"
+                  value="offline"
+                  checked={newMode === 'offline'}
+                  onChange={() => setNewMode('offline')}
+                  className="w-4 h-4 accent-amber-500"
+                />
                 <MapPin className="w-4 h-4 text-amber-300" />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm text-white font-medium">In-person</p>
-                  <p className="text-[11px] text-text-tertiary">Coming soon · offline templates pending</p>
+                  <p className="text-[11px] text-text-tertiary">Switches to offline · parent notified</p>
                 </div>
               </label>
             </div>

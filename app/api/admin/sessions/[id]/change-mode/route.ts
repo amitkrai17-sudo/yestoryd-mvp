@@ -1,10 +1,10 @@
 // ============================================================
 // FILE: app/api/admin/sessions/[id]/change-mode/route.ts
-// PURPOSE: Admin changes session_mode on a scheduled session.
-//          Scope today: offline → online only (offline direction → 501).
-//          The mode write, link guarantee, calendar, and parent+coach WA are
-//          ALL owned by setSessionMode() (lib/scheduling/session-mode-service).
-//          This route only does auth, the past-session guard, and audit.
+// PURPOSE: Admin changes session_mode on a scheduled session — BOTH directions,
+//          repeatable (online↔offline any number of times). The mode write, link
+//          guarantee, calendar, and parent+coach WA are ALL owned by setSessionMode()
+//          (lib/scheduling/session-mode-service). This route only does auth, the
+//          past-session guard, and audit.
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -38,12 +38,9 @@ export async function POST(
       return NextResponse.json({ error: 'invalid_mode' }, { status: 400 });
     }
 
-    if (body.new_mode === 'offline') {
-      return NextResponse.json(
-        { error: 'offline_direction_not_yet_supported' },
-        { status: 501 }
-      );
-    }
+    // Both directions are supported. setSessionMode is fully bidirectional + repeatable:
+    // online flips generate/attach the Meet link + notify parent & coach; offline flips
+    // fire parent_offline_notification_v3 (coach gracefully 'no_offline_template').
 
     const supabase = getServiceSupabase();
 
