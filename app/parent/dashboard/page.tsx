@@ -17,6 +17,7 @@ import ReEnrollmentBanner from '@/components/parent/ReEnrollmentBanner';
 import type { LearningProfile } from '@/components/parent/AIInsightCard';
 import { supabase } from '@/lib/supabase/client';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
+import { startOfTodayIST } from '@/lib/utils/date-format';
 import { FeatureGate } from '@/components/shared/FeatureGate';
 
 const DEFAULT_WHATSAPP = COMPANY_CONFIG.leadBotWhatsApp;
@@ -557,6 +558,15 @@ export default function ParentDashboardPage() {
     : Math.max(0, (enrollment?.sessions_purchased || totalSessions) - completedSessions);
   const nextSession = upcomingSessions[0] || null;
 
+  // Join button shows only when the next session is TODAY (IST) and has a meet link.
+  // IST-today via startOfTodayIST() formatted back in Asia/Kolkata (NOT UTC toISOString).
+  const istTodayStr = startOfTodayIST().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+  const meetLink = nextSession?.google_meet_link?.trim() || '';
+  const canJoinNext =
+    !!nextSession &&
+    meetLink !== '' &&
+    nextSession.scheduled_date?.slice(0, 10) === istTodayStr;
+
   return (
     <div className="px-4 md:px-6 py-4 md:py-6 max-w-2xl mx-auto">
       <div className="space-y-2">
@@ -677,39 +687,53 @@ export default function ParentDashboardPage() {
             )}
           </div>
           {nextSession ? (
-            <div className="flex items-center gap-3">
-              <div className="w-14 h-14 bg-gray-50 rounded-lg flex flex-col items-center justify-center flex-shrink-0">
-                <p className="text-[10px] text-gray-500 uppercase leading-none">
-                  {(() => {
-                    try {
-                      return new Date(nextSession.scheduled_date).toLocaleDateString('en-IN', { weekday: 'short' });
-                    } catch { return ''; }
-                  })()}
-                </p>
-                <p className="text-lg font-medium text-gray-900 leading-none mt-0.5">
-                  {(() => {
-                    try {
-                      return new Date(nextSession.scheduled_date).getDate();
-                    } catch { return ''; }
-                  })()}
-                </p>
-                <p className="text-[10px] text-gray-500 uppercase leading-none">
-                  {(() => {
-                    try {
-                      return new Date(nextSession.scheduled_date).toLocaleDateString('en-IN', { month: 'short' });
-                    } catch { return ''; }
-                  })()}
-                </p>
+            <>
+              <div className="flex items-center gap-3">
+                <div className="w-14 h-14 bg-gray-50 rounded-lg flex flex-col items-center justify-center flex-shrink-0">
+                  <p className="text-[10px] text-gray-500 uppercase leading-none">
+                    {(() => {
+                      try {
+                        return new Date(nextSession.scheduled_date).toLocaleDateString('en-IN', { weekday: 'short' });
+                      } catch { return ''; }
+                    })()}
+                  </p>
+                  <p className="text-lg font-medium text-gray-900 leading-none mt-0.5">
+                    {(() => {
+                      try {
+                        return new Date(nextSession.scheduled_date).getDate();
+                      } catch { return ''; }
+                    })()}
+                  </p>
+                  <p className="text-[10px] text-gray-500 uppercase leading-none">
+                    {(() => {
+                      try {
+                        return new Date(nextSession.scheduled_date).toLocaleDateString('en-IN', { month: 'short' });
+                      } catch { return ''; }
+                    })()}
+                  </p>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-900">
+                    {nextSession.title || `Session #${nextSession.session_number}`}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {formatTime(nextSession.scheduled_time)} · {getSessionDuration()} min · with {getCoachName()}
+                  </p>
+                </div>
               </div>
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-gray-900">
-                  {nextSession.title || `Session #${nextSession.session_number}`}
-                </p>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  {formatTime(nextSession.scheduled_time)} · {getSessionDuration()} min · with {getCoachName()}
-                </p>
-              </div>
-            </div>
+              {canJoinNext && (
+                <div className="mt-3 sm:flex sm:justify-end">
+                  <a
+                    href={meetLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full sm:w-auto bg-[#1D9E75] text-white font-medium px-4 py-2 rounded-xl text-sm hover:bg-[#178a65] transition-colors min-h-[44px] inline-flex items-center justify-center"
+                  >
+                    Join class
+                  </a>
+                </div>
+              )}
+            </>
           ) : (
             <div className="flex items-center gap-3">
               <div className="w-14 h-14 bg-gray-50 rounded-lg flex flex-col items-center justify-center flex-shrink-0">
