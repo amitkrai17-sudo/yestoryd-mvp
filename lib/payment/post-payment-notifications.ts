@@ -175,6 +175,13 @@ export async function calculateRevenueSplit(
   try {
     const group = normalizeGroup(coach);
 
+    // Tuition splits are written per-session in session-closure.ts — never run the coaching-model
+    // split for tuition (it would write malformed enrollment_revenue + duplicate coach_payouts).
+    const enrollmentContext = await getEnrollmentContext(enrollmentId, requestId);
+    if (enrollmentContext.enrollmentType === 'tuition') {
+      return { success: true, payouts_scheduled: 0 };
+    }
+
     // Handle Internal Coach (100% Platform) — no Calculator B needed
     if (group.is_internal) {
       const { data: revenue } = await supabase.from('enrollment_revenue').insert({
@@ -218,8 +225,7 @@ export async function calculateRevenueSplit(
       coachGroupConfig = toCoachGroupConfig(group);
     }
 
-    // 3. Session counts + product code from the enrollment
-    const enrollmentContext = await getEnrollmentContext(enrollmentId, requestId);
+    // 3. Session counts + product code from the enrollment (enrollmentContext loaded at entry, reused here)
     const sessions = { coaching: enrollmentContext.coaching, skillBuilding: enrollmentContext.skillBuilding };
 
     // 4. Enrollment sequence
