@@ -85,7 +85,6 @@ describe('deductTuitionBalance — INSERT-FIRST idempotency (2B.1)', () => {
       session_rate: 50000,
       enrollment_type: 'tuition',
       status: 'active',
-      is_paused: false,
       renewal_intent: 'pending',
       renewal_intent_set_at: null,
       low_balance_nudges_sent: 0,

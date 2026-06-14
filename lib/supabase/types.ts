@@ -6717,7 +6717,6 @@ export type Database = {
           final_assessment_completed_at: string | null
           id: string
           is_continuation: boolean | null
-          is_paused: boolean | null
           last_alert_sent_at: string | null
           last_low_balance_nudge_at: string | null
           lead_source: string | null
@@ -6825,7 +6824,6 @@ export type Database = {
           final_assessment_completed_at?: string | null
           id?: string
           is_continuation?: boolean | null
-          is_paused?: boolean | null
           last_alert_sent_at?: string | null
           last_low_balance_nudge_at?: string | null
           lead_source?: string | null
@@ -6933,7 +6931,6 @@ export type Database = {
           final_assessment_completed_at?: string | null
           id?: string
           is_continuation?: boolean | null
-          is_paused?: boolean | null
           last_alert_sent_at?: string | null
           last_low_balance_nudge_at?: string | null
           lead_source?: string | null

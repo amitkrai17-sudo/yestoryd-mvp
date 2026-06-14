@@ -123,7 +123,7 @@ describe('pause-service / policy enforcement', () => {
   it('rejects when pause_count is already at the max — PARENT source (no write)', async () => {
     state.enrollment = {
       id: 'e1', child_id: 'c1', enrollment_type: 'tuition', status: 'active',
-      is_paused: false, pause_count: 3, total_pause_days: 0, program_end: null,
+      pause_count: 3, total_pause_days: 0, program_end: null,
       original_end_date: null, resume_eligible_until: null, paused_at: null, sessions_remaining: 5,
     };
     const res = await pause('e1', { reason: 'exams', source: 'parent_self_service' }, baseDeps());
@@ -135,7 +135,7 @@ describe('pause-service / policy enforcement', () => {
   it('S1: SYSTEM source bypasses policy — pauses even at max pause_count', async () => {
     state.enrollment = {
       id: 'e1b', child_id: 'c1', enrollment_type: 'tuition', status: 'active',
-      is_paused: false, pause_count: 3, total_pause_days: 0, program_end: null,
+      pause_count: 3, total_pause_days: 0, program_end: null,
       original_end_date: null, resume_eligible_until: null, paused_at: null, sessions_remaining: 5,
     };
     const deps = baseDeps();
@@ -151,7 +151,7 @@ describe('pause-service / policy enforcement', () => {
   it('rejects a single window exceeding maxPauseDaysSingle (no write)', async () => {
     state.enrollment = {
       id: 'e2', child_id: 'c1', enrollment_type: 'starter', status: 'active',
-      is_paused: false, pause_count: 0, total_pause_days: 0, program_end: '2026-09-01T00:00:00.000Z',
+      pause_count: 0, total_pause_days: 0, program_end: '2026-09-01T00:00:00.000Z',
       original_end_date: null, resume_eligible_until: null, paused_at: null, sessions_remaining: null,
     };
     // 20-day window > 10-day single cap
@@ -167,7 +167,7 @@ describe('pause-service / policy enforcement', () => {
   it('rejects when total pause days would exceed the cap (no write)', async () => {
     state.enrollment = {
       id: 'e3', child_id: 'c1', enrollment_type: 'starter', status: 'active',
-      is_paused: false, pause_count: 1, total_pause_days: 25, program_end: '2026-09-01T00:00:00.000Z',
+      pause_count: 1, total_pause_days: 25, program_end: '2026-09-01T00:00:00.000Z',
       original_end_date: null, resume_eligible_until: null, paused_at: null, sessions_remaining: null,
     };
     // 8 more days on top of 25 used > 30 total
@@ -185,7 +185,7 @@ describe('pause-service / canonical write + product branching', () => {
   it('tuition pause: canonical status=paused, dual-write is_paused, NO Recall, NO season-extension', async () => {
     state.enrollment = {
       id: 't1', child_id: 'c9', enrollment_type: 'tuition', status: 'active',
-      is_paused: false, pause_count: 0, total_pause_days: 0, program_end: null,
+      pause_count: 0, total_pause_days: 0, program_end: null,
       original_end_date: null, resume_eligible_until: null, paused_at: null, sessions_remaining: 4,
     };
     state.windowSessions = [
@@ -216,7 +216,7 @@ describe('pause-service / canonical write + product branching', () => {
   it('coaching pause: Recall teardown runs + season extension applied', async () => {
     state.enrollment = {
       id: 'k1', child_id: 'c9', enrollment_type: 'starter', status: 'active',
-      is_paused: false, pause_count: 0, total_pause_days: 0,
+      pause_count: 0, total_pause_days: 0,
       program_end: '2026-09-01T00:00:00.000Z',
       original_end_date: null, resume_eligible_until: null, paused_at: null, sessions_remaining: null,
     };
@@ -245,7 +245,7 @@ describe('pause-service / skipSideEffects (S2 — callers own teardown/logging)'
   it('skipSideEffects:true writes canonical row but SKIPS calendar/Recall/log', async () => {
     state.enrollment = {
       id: 'ss1', child_id: 'c9', enrollment_type: 'starter', status: 'active',
-      is_paused: false, pause_count: 0, total_pause_days: 0,
+      pause_count: 0, total_pause_days: 0,
       program_end: '2026-09-01T00:00:00.000Z',
       original_end_date: null, resume_eligible_until: null, paused_at: null, sessions_remaining: null,
     };
@@ -275,7 +275,7 @@ describe('pause-service / resume', () => {
   it('tuition resume rejected when no sessions remaining', async () => {
     state.enrollment = {
       id: 't2', child_id: 'c9', enrollment_type: 'tuition', status: 'paused',
-      is_paused: true, pause_count: 1, total_pause_days: 4, program_end: null,
+      pause_count: 1, total_pause_days: 4, program_end: null,
       original_end_date: null, resume_eligible_until: null, paused_at: '2026-06-01T00:00:00.000Z',
       pause_start_date: '2026-06-01', pause_end_date: '2026-06-05', sessions_remaining: 0,
     };
@@ -288,7 +288,7 @@ describe('pause-service / resume', () => {
   it('happy resume writes canonical status=active and clears pause fields', async () => {
     state.enrollment = {
       id: 't3', child_id: 'c9', enrollment_type: 'tuition', status: 'paused',
-      is_paused: true, pause_count: 1, total_pause_days: 4, program_end: null,
+      pause_count: 1, total_pause_days: 4, program_end: null,
       original_end_date: null, resume_eligible_until: null, paused_at: '2026-06-01T00:00:00.000Z',
       pause_start_date: '2026-06-01', pause_end_date: '2026-06-05', sessions_remaining: 3,
     };
