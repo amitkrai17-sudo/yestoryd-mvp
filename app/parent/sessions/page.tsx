@@ -276,8 +276,8 @@ export default function ParentSessionsPage() {
                       </div>
                     </div>
 
-                    {/* Join button */}
-                    {session.google_meet_link && (
+                    {/* Join button — online only (offline sessions retain the meet link) */}
+                    {session.google_meet_link && session.session_mode === 'online' && (
                       <a
                         href={session.google_meet_link}
                         target="_blank"
