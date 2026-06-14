@@ -12,6 +12,8 @@ import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import { insertLearningEvent } from '@/lib/rai/learning-events';
 import { getProgramLabel } from '@/lib/utils/program-label';
 import { sendNotification } from '@/lib/communication/notify';
+import { transitionSessionStatus } from '@/lib/scheduling/transition-session-status';
+import { randomUUID } from 'crypto';
 
 const supabase = createAdminClient();
 
@@ -350,36 +352,36 @@ export async function POST(request: NextRequest) {
     );
 
     // Update scheduled_sessions with check-in data
-    const { error: sessionError } = await supabase
-      .from('scheduled_sessions')
-      .update({
-        status: 'completed',
-        completed_at: new Date().toISOString(),
+    // Complete via the SOLE status writer — CORE only (skipSideEffects): parent check-in is
+    // a coaching-season path, fires NO tuition deduct/payout and NO dispatch; brain
+    // (learning_events) + final-assessment trigger run inline below. Check-in fields pass
+    // through extraSessionFields so the single atomic update is preserved.
+    const completeResult = await transitionSessionStatus({
+      sessionId: data.sessionId,
+      to: 'completed',
+      actor: 'coach',
+      requestId: randomUUID(),
+      opts: {
+        skipSideEffects: true,
+        extraSessionFields: {
+          parent_sentiment: data.parentSentiment,
+          parent_sees_progress: data.parentSeesProgress,
+          home_practice_frequency: data.homePracticeFrequency,
+          home_helpers: data.homeHelpers,
+          concerns_raised: data.concernsRaised,
+          concern_details: data.concernDetails || null,
+          action_items: data.actionItems || null,
+          follow_up_needed: data.followUpNeeded,
+          follow_up_date: data.followUpDate || null,
+          escalate_to_admin: data.escalateToAdmin,
+          voice_note_transcript: voiceTranscript || null,
+          ai_summary: aiSummary,
+        },
+      },
+    });
 
-        // Parent check-in specific fields
-        parent_sentiment: data.parentSentiment,
-        parent_sees_progress: data.parentSeesProgress,
-        home_practice_frequency: data.homePracticeFrequency,
-        home_helpers: data.homeHelpers,
-        concerns_raised: data.concernsRaised,
-        concern_details: data.concernDetails || null,
-        action_items: data.actionItems || null,
-        follow_up_needed: data.followUpNeeded,
-        follow_up_date: data.followUpDate || null,
-        escalate_to_admin: data.escalateToAdmin,
-
-        // Voice note
-        voice_note_transcript: voiceTranscript || null,
-
-        // AI summary (visible to coach/parent)
-        ai_summary: aiSummary,
-
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', data.sessionId);
-
-    if (sessionError) {
-      console.error('Session update error:', sessionError);
+    if (!completeResult.ok && !completeResult.noop) {
+      console.error('Session update error:', completeResult.error);
       return NextResponse.json(
         { error: 'Failed to update session' },
         { status: 500 }

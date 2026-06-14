@@ -7,11 +7,10 @@
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { timedQuery } from '@/lib/db-utils';
 import { NextRequest, NextResponse } from 'next/server';
-import { dispatch } from '@/lib/scheduling/orchestrator';
+import { transitionSessionStatus } from '@/lib/scheduling/transition-session-status';
 import { generateAndInsertDailyTasks } from '@/lib/tasks/generate-daily-tasks';
 import { queueProgressPulse, qstash } from '@/lib/qstash';
 import { getCategoryBySlug } from '@/lib/config/skill-categories';
-import { closeTuitionSession } from '@/lib/tuition/session-closure';
 import { buildUnifiedEmbeddingContent } from '@/lib/intelligence/embedding-builder';
 
 
@@ -85,31 +84,33 @@ export async function POST(
     // 2. Resolve category_id from focus area slug (skip if structured capture)
     const category = primaryFocus ? await getCategoryBySlug(primaryFocus) : null;
 
-    // 3. Update scheduled_sessions status + focus metadata
-    // 2B: consolidate complete status write into helper at complete's :105
-    //     (in 2A this inline write stays; closeTuitionSession is called below with setStatus:false)
-    const sessionUpdate: Record<string, any> = {
-      status: 'completed',
-      completed_at: new Date().toISOString(),
-    };
+    // 3. Complete via the SOLE status writer. CORE writes status + completed_at + capture
+    //    metadata in one atomic update; the completed branch then makes the SAME
+    //    closeTuitionSession call this route used to make inline (deduct/payout/summary gated
+    //    on enrollment_type/session_type) AND fires dispatch('session.completed'). The direct
+    //    closeTuitionSession call + inline dispatch below are removed so money fires ONCE.
+    const completeExtra: Record<string, unknown> = {};
     if (primaryFocus) {
-      sessionUpdate.focus_area = primaryFocus;
-      sessionUpdate.category_id = category?.id ?? null;
+      completeExtra.focus_area = primaryFocus;
+      completeExtra.category_id = category?.id ?? null;
     }
-    if (payload.captureId) {
-      sessionUpdate.capture_id = payload.captureId;
-    }
-    if (payload.intelligenceScore != null) {
-      sessionUpdate.intelligence_score = payload.intelligenceScore;
-    }
+    if (payload.captureId) completeExtra.capture_id = payload.captureId;
+    if (payload.intelligenceScore != null) completeExtra.intelligence_score = payload.intelligenceScore;
 
-    const { error: sessionError } = await supabase
-      .from('scheduled_sessions')
-      .update(sessionUpdate)
-      .eq('id', sessionId);
+    const completeResult = await transitionSessionStatus({
+      sessionId,
+      to: 'completed',
+      actor: 'coach',
+      requestId: crypto.randomUUID(),
+      opts: {
+        sessionsDelivered: payload.sessionsDelivered || 1,
+        actorLabel: session.coach_id || 'coach',
+        extraSessionFields: completeExtra,
+      },
+    });
 
-    if (sessionError) {
-      console.error('Session update error:', sessionError);
+    if (!completeResult.ok && !completeResult.noop) {
+      console.error('Session update error:', completeResult.error);
       return NextResponse.json({ error: 'Failed to update session' }, { status: 500 });
     }
 
@@ -189,25 +190,8 @@ export async function POST(
       console.error('Intelligence profile upsert error:', profileErr);
     }
 
-    // Dispatch to orchestrator for consistent post-completion handling
-    try {
-      await dispatch('session.completed', {
-        sessionId,
-        requestId: crypto.randomUUID(),
-      });
-    } catch (dispatchError) {
-      console.error('Orchestrator session.completed dispatch failed:', dispatchError);
-      // Fallback: reset no-shows directly
-      try {
-        await supabase
-          .from('enrollments')
-          .update({ consecutive_no_shows: 0, updated_at: new Date().toISOString() })
-          .eq('child_id', session.child_id!)
-          .eq('status', 'active');
-      } catch (noShowResetError) {
-        console.error('Failed to reset consecutive_no_shows:', noShowResetError);
-      }
-    }
+    // (session.completed dispatch — no-show reset + program-complete check — is now fired
+    //  by the service's completed branch in step 3 above.)
 
     // Generate daily parent tasks — skip if homework already assigned (AI or coach)
     try {
@@ -382,46 +366,10 @@ export async function POST(
       console.error('Activity log error:', logErr);
     }
 
-    // Tuition balance deduction + payout + parent-summary now route through the SSOT
-    // helper closeTuitionSession() (Phase 2A). complete KEEPS its inline status write at
-    // the :105 update (setStatus:false here). Gating stays caller-side (LOCK 1).
-    // TUITION-SESSION-SUMMARY-GAP: enrollmentType is hoisted/re-fetched here so the helper
-    // booleans (deductBalance, dispatchSummary) can be computed without a second query.
-    // 2B: unify tuition discriminator (session_type vs enrollment_type)
-    let enrollmentType: string | null = null;
-    if (session.enrollment_id) {
-      try {
-        const { data: enrollment } = await supabase
-          .from('enrollments')
-          .select('enrollment_type')
-          .eq('id', session.enrollment_id)
-          .single();
-
-        enrollmentType = enrollment?.enrollment_type ?? null;
-      } catch (tuitionErr) {
-        console.error('Tuition balance deduction error:', tuitionErr);
-      }
-    }
-
-    await closeTuitionSession({
-      supabase,
-      sessionId,
-      session: {
-        enrollment_id: session.enrollment_id,
-        child_id: session.child_id,
-        coach_id: session.coach_id,
-        session_type: (session as any).session_type ?? null,
-      },
-      requestId: crypto.randomUUID(),
-      setStatus: false, // complete writes status inline at :105 in 2A
-      deductBalance: enrollmentType === 'tuition',
-      sessionsDelivered: payload.sessionsDelivered || 1,
-      deductActor: session.coach_id || 'coach',
-      deductRequestId: crypto.randomUUID(),
-      insertPayout: (session as any).session_type === 'tuition' && !!session.coach_id,
-      dispatchSummary: enrollmentType === 'tuition' && !!session.child_id,
-      appUrl: APP_URL,
-    });
+    // Tuition deduct + payout + parent-summary dispatch are now made by the service's
+    // completed branch in step 3 above (closeTuitionSession with setStatus:false, gated on
+    // enrollment_type/session_type) — the direct call here was removed so balance/payout
+    // fire exactly once.
 
     return NextResponse.json({
       success: true,

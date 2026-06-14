@@ -10,6 +10,7 @@ import { requireAdminOrCoach, getServiceSupabase } from '@/lib/api-auth';
 import { qstash } from '@/lib/qstash';
 import crypto from 'crypto';
 import { closeTuitionSession } from '@/lib/tuition/session-closure';
+import { transitionSessionStatus } from '@/lib/scheduling/transition-session-status';
 import { insertLearningEvent, insertLearningEventsBatch } from '@/lib/rai/learning-events';
 
 export const dynamic = 'force-dynamic';
@@ -244,27 +245,25 @@ export async function POST(
       // No bot attached — that's fine
     }
 
-    // Option A (Phase 2A): closeTuitionSession owns the SINGLE combined status update.
-    // status + completed_at are written by the helper; the other path-specific fields pass
-    // through extraSessionFields so the one atomic .update() is preserved verbatim.
-    await closeTuitionSession({
-      supabase,
+    // Status leg via the SOLE status writer — CORE writes status + completed_at + path
+    // columns. skipSideEffects:true: the qstash parent-summary (fired BEFORE the deduct per
+    // LOCK-3) and the tuition deduct stay as their OWN closeTuitionSession(setStatus:false)
+    // calls below — their gates differ from the standard completed branch (summary qstash-only,
+    // NO payout). updated_at is owned by CORE.
+    await transitionSessionStatus({
       sessionId,
-      session: {
-        enrollment_id: session.enrollment_id,
-        child_id: session.child_id,
-        coach_id: session.coach_id,
-      },
+      to: 'completed',
+      actor: 'coach',
       requestId,
-      setStatus: true,
-      extraSessionFields: {
-        companion_panel_completed: true,
-        coach_notes: coach_notes || null,
-        session_timer_seconds: session_elapsed_seconds || null,
-        transcript_status: transcriptStatus,
-        updated_at: new Date().toISOString(),
+      opts: {
+        skipSideEffects: true,
+        extraSessionFields: {
+          companion_panel_completed: true,
+          coach_notes: coach_notes || null,
+          session_timer_seconds: session_elapsed_seconds || null,
+          transcript_status: transcriptStatus,
+        },
       },
-      appUrl: APP_URL,
     });
 
     // 6. Increment coach.completed_sessions_with_logs

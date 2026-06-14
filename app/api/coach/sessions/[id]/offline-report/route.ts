@@ -16,6 +16,7 @@ import { qstash } from '@/lib/qstash';
 import { insertLearningEvent, insertLearningEventsBatch } from '@/lib/rai/learning-events';
 import { transcribeVoiceNote, analyzeChildReading } from '@/lib/gemini/audio-analysis';
 import { closeTuitionSession } from '@/lib/tuition/session-closure';
+import { transitionSessionStatus } from '@/lib/scheduling/transition-session-status';
 import type { ReadingAnalysis } from '@/lib/gemini/audio-analysis';
 import crypto from 'crypto';
 
@@ -432,30 +433,28 @@ export async function POST(
     const endTime = new Date(body.actual_end_time);
     const elapsedSeconds = Math.round((endTime.getTime() - startTime.getTime()) / 1000);
 
-    // Option A (Phase 2A): closeTuitionSession owns the SINGLE combined status update.
-    // status + completed_at are written by the helper; every other path-specific field
-    // passes through extraSessionFields so the one atomic .update() is preserved verbatim.
-    await closeTuitionSession({
-      supabase,
+    // Status leg via the SOLE status writer — CORE writes status + completed_at + the path
+    // columns in one atomic update. skipSideEffects:true: the tuition deduct and the qstash
+    // parent-summary stay as their OWN closeTuitionSession(setStatus:false) calls below,
+    // because their gates differ from the standard completed branch (summary is qstash-only
+    // NOT tuition-gated, and NO payout ever fires here). updated_at is owned by CORE.
+    await transitionSessionStatus({
       sessionId,
-      session: {
-        enrollment_id: session.enrollment_id,
-        child_id: childId,
-        coach_id: session.coach_id,
-      },
+      to: 'completed',
+      actor: 'coach',
       requestId,
-      setStatus: true,
-      extraSessionFields: {
-        companion_panel_completed: true,
-        coach_notes: body.coach_notes || null,
-        session_timer_seconds: elapsedSeconds > 0 ? elapsedSeconds : null,
-        transcript_status: 'none',
-        voice_note_transcript: voiceNoteTranscript,
-        report_submitted_at: new Date().toISOString(),
-        report_late: reportLate,
-        updated_at: new Date().toISOString(),
+      opts: {
+        skipSideEffects: true,
+        extraSessionFields: {
+          companion_panel_completed: true,
+          coach_notes: body.coach_notes || null,
+          session_timer_seconds: elapsedSeconds > 0 ? elapsedSeconds : null,
+          transcript_status: 'none',
+          voice_note_transcript: voiceNoteTranscript,
+          report_submitted_at: new Date().toISOString(),
+          report_late: reportLate,
+        },
       },
-      appUrl: APP_URL,
     });
 
     // ============================================================

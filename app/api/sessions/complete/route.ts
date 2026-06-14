@@ -10,6 +10,8 @@ import {
   generateSessionSummary,
 } from '@/lib/gemini/audio-analysis';
 import { insertLearningEvent } from '@/lib/rai/learning-events';
+import { transitionSessionStatus } from '@/lib/scheduling/transition-session-status';
+import { randomUUID } from 'crypto';
 
 const supabase = createAdminClient();
 
@@ -199,45 +201,41 @@ export async function POST(request: NextRequest) {
     const category = await getCategoryBySlug(data.focusArea);
 
     // Update scheduled_sessions
-    const { error: sessionError } = await supabase
-      .from('scheduled_sessions')
-      .update({
-        status: 'completed',
-        completed_at: new Date().toISOString(),
+    // Complete via the SOLE status writer — CORE only (skipSideEffects): this legacy 1:1
+    // coaching path fires NO tuition deduct/payout (guaranteed regardless of enrollment_type)
+    // and NO dispatch; brain (learning_events) is written inline below. Path-specific fields
+    // pass through extraSessionFields so the single atomic update is preserved.
+    const completeResult = await transitionSessionStatus({
+      sessionId: data.sessionId,
+      to: 'completed',
+      actor: 'coach',
+      requestId: randomUUID(),
+      opts: {
+        skipSideEffects: true,
+        extraSessionFields: {
+          focus_area: data.focusArea,
+          category_id: category?.id ?? null,
+          progress_rating: data.progressRating ? Number(data.progressRating) : null,
+          engagement_level: data.engagementLevel ? Number(data.engagementLevel) : null,
+          confidence_level: data.confidenceLevel,
+          skills_worked_on: data.skillsWorkedOn,
+          voice_note_transcript: voiceTranscript || null,
+          homework_assigned: data.homeworkAssigned,
+          homework_topic: data.homeworkTopic || null,
+          homework_description: data.homeworkDescription || null,
+          quiz_assigned: data.quizAssigned,
+          quiz_topic: data.quizTopic || null,
+          flagged_for_attention: data.flaggedForAttention,
+          flag_reason: data.flagReason || null,
+          breakthrough_moment: data.breakthroughMoment || null,
+          concerns_noted: data.concerns || null,
+          ai_summary: aiSummary,
+        },
+      },
+    });
 
-        // Form data
-        focus_area: data.focusArea,
-        category_id: category?.id ?? null,
-        progress_rating: data.progressRating ? Number(data.progressRating) : null,
-        engagement_level: data.engagementLevel ? Number(data.engagementLevel) : null,
-        confidence_level: data.confidenceLevel,
-        skills_worked_on: data.skillsWorkedOn,
-
-        // Voice note
-        voice_note_transcript: voiceTranscript || null,
-
-        // Homework & quiz
-        homework_assigned: data.homeworkAssigned,
-        homework_topic: data.homeworkTopic || null,
-        homework_description: data.homeworkDescription || null,
-        quiz_assigned: data.quizAssigned,
-        quiz_topic: data.quizTopic || null,
-
-        // Flags
-        flagged_for_attention: data.flaggedForAttention,
-        flag_reason: data.flagReason || null,
-        breakthrough_moment: data.breakthroughMoment || null,
-        concerns_noted: data.concerns || null,
-
-        // AI summary
-        ai_summary: aiSummary,
-
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', data.sessionId);
-
-    if (sessionError) {
-      console.error('Session update error:', sessionError);
+    if (!completeResult.ok && !completeResult.noop) {
+      console.error('Session update error:', completeResult.error);
       return NextResponse.json(
         { error: 'Failed to update session' },
         { status: 500 }
