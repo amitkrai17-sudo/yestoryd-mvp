@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import {
   Calendar, Clock, Video, Check, ChevronRight, BookOpen,
 } from 'lucide-react';
@@ -87,6 +88,7 @@ export default function ParentSessionsPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [coachName, setCoachName] = useState<string | null>(null);
   const [enrollmentType, setEnrollmentType] = useState<string | null>(null);
+  const [enrollmentId, setEnrollmentId] = useState<string | null>(null);
   const [totalSessions, setTotalSessions] = useState(0);
   const [completedCount, setCompletedCount] = useState(0);
   const [showAll, setShowAll] = useState(false);
@@ -99,6 +101,7 @@ export default function ParentSessionsPage() {
         setSessions(data.sessions || []);
         setCoachName(data.coach_name);
         setEnrollmentType(data.enrollment_type);
+        setEnrollmentId(data.enrollment_id ?? null);
         setTotalSessions(data.total_sessions || 0);
         setCompletedCount(data.completed_count || 0);
       }
@@ -125,6 +128,11 @@ export default function ParentSessionsPage() {
 
   // Derived data
   const progressPercent = totalSessions > 0 ? Math.round((completedCount / totalSessions) * 100) : 0;
+
+  // Renew link — tuition only (this page is mixed tuition/coaching). Constructed, not pay_url.
+  const renewUrl = (enrollmentType === 'tuition' && enrollmentId)
+    ? `/tuition/pay/${enrollmentId}?renewal=true`
+    : null;
 
   // Sessions are returned newest-first from API. Split into upcoming and completed.
   const upcomingSessions = sessions
@@ -196,11 +204,21 @@ export default function ParentSessionsPage() {
     <div className="p-4 lg:p-8">
       <div className="max-w-2xl mx-auto space-y-5">
         {/* ============ HEADER ============ */}
-        <div>
-          <h1 className="text-xl font-medium text-gray-900">Sessions</h1>
-          <p className="text-gray-500 text-sm mt-0.5">
-            {childName}&apos;s {enrollmentType === 'tuition' ? 'tuition' : 'coaching'} sessions
-          </p>
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-medium text-gray-900">Sessions</h1>
+            <p className="text-gray-500 text-sm mt-0.5">
+              {childName}&apos;s {enrollmentType === 'tuition' ? 'tuition' : 'coaching'} sessions
+            </p>
+          </div>
+          {renewUrl && (
+            <Link
+              href={renewUrl}
+              className="inline-flex items-center bg-[#FF0099] text-white text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-[#cc007a] transition-colors flex-shrink-0"
+            >
+              Add sessions
+            </Link>
+          )}
         </div>
 
         {/* ============ SECTION 1: PROGRESS SUMMARY ============ */}

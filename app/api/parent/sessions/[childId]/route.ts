@@ -63,7 +63,7 @@ export async function GET(
     // Fetch enrollment for total sessions + coach info
     const { data: enrollment } = await supabase
       .from('enrollments')
-      .select('total_sessions, age_band, enrollment_type, coaches(id, name)')
+      .select('id, total_sessions, age_band, enrollment_type, coaches(id, name)')
       .eq('child_id', childId)
       .eq('status', 'active')
       .order('created_at', { ascending: false })
@@ -166,6 +166,7 @@ export async function GET(
       child_name: child.child_name || child.name,
       coach_name: coachName,
       enrollment_type: enrollment?.enrollment_type || null,
+      enrollment_id: enrollment?.id ?? null,
       total_sessions: totalSessions,
       completed_count: completedCount,
       sessions: enriched,
