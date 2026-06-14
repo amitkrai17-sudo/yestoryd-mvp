@@ -310,11 +310,11 @@ export async function setSessionMode(
         child_name: child.child_name || 'your child',
         session_date: formattedDate,
         session_time: formattedTime,
-        meet_link: resolved.link,
       }, {
         triggeredBy: opts.actor,
         contextType: 'session_mode_change',
         contextId: sessionId,
+        templateButtons: { category: 'utility_cta', url: `j/${sessionId}` },
       })
     : Promise.resolve({ success: false, reason: 'phone_not_found' } as NotifyResult);
 
@@ -324,11 +324,11 @@ export async function setSessionMode(
         child_name: child?.child_name || 'your student',
         session_date: formattedDate,
         session_time: formattedTime,
-        meet_link: resolved.link,
       }, {
         triggeredBy: opts.actor,
         contextType: 'session_mode_change',
         contextId: sessionId,
+        templateButtons: { category: 'utility_cta', url: `j/${sessionId}` },
       })
     : Promise.resolve({ success: false, reason: opts.suppressCoachNotify ? 'suppressed' : 'phone_not_found' } as NotifyResult);
 
