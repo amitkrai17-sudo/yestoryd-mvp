@@ -432,11 +432,15 @@ export async function GET(request: NextRequest) {
         total_sessions,
         age_band,
         children (name, parent_email),
-        coaches (name, email)
+        coaches!enrollments_coach_id_fkey (name, email)
       `)
       .eq('status', 'active')
       .lte('program_end_date', sevenDaysStr)
       .gte('program_end_date', todayStr);
+
+    // enrollments has TWO FKs to coaches (coach_id + lead_source_coach_id); the bare embed
+    // was ambiguous (PGRST201) → atRiskEnrollments null → alerts silently no-op'd. Surface it.
+    if (riskError) { console.error('[enrollment-lifecycle] at-risk query failed', riskError.code); }
 
     if (!riskError && atRiskEnrollments && atRiskEnrollments.length > 0) {
       // Filter out enrollments already alerted in the last 7 days (prevent alert fatigue)
