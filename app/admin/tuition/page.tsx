@@ -20,6 +20,7 @@ import ScheduleCapture from '@/components/shared/ScheduleCapture';
 import type { SchedulePreference } from '@/lib/scheduling/schedule-time';
 import { NUDGE_STATUS_META, NUDGE_TONE_CLASS, type NudgeStatus } from '@/lib/tuition/nudge-status';
 import { computePayLinkState, PAY_LINK_STATE_META } from '@/lib/tuition/pay-link-status';
+import RecordPaymentSheet from '@/components/coach/RecordPaymentSheet';
 
 // ============================================================
 // TYPES
@@ -204,6 +205,9 @@ export default function AdminTuitionPage() {
 
   // Existing batches for dropdown
   const [batches, setBatches] = useState<{ batch_id: string; label: string }[]>([]);
+
+  // Record Payment sheet (reuses coach RecordPaymentSheet)
+  const [paymentTarget, setPaymentTarget] = useState<Onboarding | null>(null);
 
   // Adjust modal
   const [adjusting, setAdjusting] = useState<string | null>(null);
@@ -939,6 +943,14 @@ export default function AdminTuitionPage() {
                               <ArrowUpDown className="w-3.5 h-3.5" />
                             </button>
                             <button
+                              onClick={() => setPaymentTarget(o)}
+                              className="text-xs text-green-400 hover:text-green-300 px-2 py-1 rounded-lg hover:bg-surface-2 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center"
+                              title="Record payment"
+                              aria-label="Record payment"
+                            >
+                              <IndianRupee className="w-3.5 h-3.5" />
+                            </button>
+                            <button
                               onClick={() => loadLedger(o.enrollment_id!)}
                               className="text-xs text-text-tertiary hover:text-white px-2 py-1 rounded-lg hover:bg-surface-2 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center"
                               title="View ledger"
@@ -1259,6 +1271,19 @@ export default function AdminTuitionPage() {
           </div>
         </div>
       )}
+
+      {/* Record Payment Bottom Sheet (reuses coach RecordPaymentSheet) */}
+      <RecordPaymentSheet
+        enrollment={paymentTarget ? {
+          id: paymentTarget.enrollment_id!,
+          child_name: paymentTarget.child_name,
+          session_rate: paymentTarget.session_rate || 0,
+          sessions_remaining: paymentTarget.enrollment_sessions_remaining ?? 0,
+          parent_name: paymentTarget.parent_name_hint,
+        } : null}
+        onClose={() => setPaymentTarget(null)}
+        onSuccess={() => { setPaymentTarget(null); fetchData(); }}
+      />
     </div>
   );
 }
