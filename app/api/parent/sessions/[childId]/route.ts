@@ -61,14 +61,18 @@ export async function GET(
     }
 
     // Fetch enrollment for total sessions + coach info
-    const { data: enrollment } = await supabase
+    const { data: enrollment, error: enrErr } = await supabase
       .from('enrollments')
-      .select('id, total_sessions, age_band, enrollment_type, coaches(id, name)')
+      .select('id, total_sessions, age_band, enrollment_type, billing_model, coaches!enrollments_coach_id_fkey(id, name)')
       .eq('child_id', childId)
       .eq('status', 'active')
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
+    // enrollments has TWO FKs to coaches (coach_id + lead_source_coach_id); the bare embed
+    // is ambiguous (PGRST201) and was silently swallowed → enrollment null. Disambiguate to
+    // coach_id and surface (don't throw) any future error.
+    if (enrErr) { console.error('[sessions] enrollment query failed', enrErr.code); }
 
     let totalSessions = enrollment?.total_sessions || 0;
     if (!totalSessions && enrollment?.age_band) {
@@ -167,6 +171,7 @@ export async function GET(
       coach_name: coachName,
       enrollment_type: enrollment?.enrollment_type || null,
       enrollment_id: enrollment?.id ?? null,
+      billing_model: enrollment?.billing_model ?? null,
       total_sessions: totalSessions,
       completed_count: completedCount,
       sessions: enriched,

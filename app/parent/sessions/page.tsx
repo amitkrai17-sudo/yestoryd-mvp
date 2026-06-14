@@ -9,6 +9,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { EmptyState } from '@/components/shared/EmptyState';
 import SessionModeBadge from '@/components/shared/SessionModeBadge';
 import { useParentContext } from '@/app/parent/context';
+import { getProgramLabel, isTuitionEnrollment } from '@/lib/utils/program-label';
 
 // ============================================================
 // Types
@@ -89,6 +90,7 @@ export default function ParentSessionsPage() {
   const [coachName, setCoachName] = useState<string | null>(null);
   const [enrollmentType, setEnrollmentType] = useState<string | null>(null);
   const [enrollmentId, setEnrollmentId] = useState<string | null>(null);
+  const [billingModel, setBillingModel] = useState<string | null>(null);
   const [totalSessions, setTotalSessions] = useState(0);
   const [completedCount, setCompletedCount] = useState(0);
   const [showAll, setShowAll] = useState(false);
@@ -102,6 +104,7 @@ export default function ParentSessionsPage() {
         setCoachName(data.coach_name);
         setEnrollmentType(data.enrollment_type);
         setEnrollmentId(data.enrollment_id ?? null);
+        setBillingModel(data.billing_model ?? null);
         setTotalSessions(data.total_sessions || 0);
         setCompletedCount(data.completed_count || 0);
       }
@@ -130,9 +133,14 @@ export default function ParentSessionsPage() {
   const progressPercent = totalSessions > 0 ? Math.round((completedCount / totalSessions) * 100) : 0;
 
   // Renew link — tuition only (this page is mixed tuition/coaching). Constructed, not pay_url.
-  const renewUrl = (enrollmentType === 'tuition' && enrollmentId)
+  // Gate + label both key off billing_model (isTuitionEnrollment) — single signal, no split-brain.
+  const isTuition = isTuitionEnrollment({ billing_model: billingModel });
+  const renewUrl = (isTuition && enrollmentId)
     ? `/tuition/pay/${enrollmentId}?renewal=true`
     : null;
+
+  // Canonical program name (billing_model-driven): tuition → "English Classes", else "1:1 Coaching".
+  const programLabel = getProgramLabel({ billing_model: billingModel });
 
   // Sessions are returned newest-first from API. Split into upcoming and completed.
   const upcomingSessions = sessions
@@ -208,7 +216,7 @@ export default function ParentSessionsPage() {
           <div>
             <h1 className="text-xl font-medium text-gray-900">Sessions</h1>
             <p className="text-gray-500 text-sm mt-0.5">
-              {childName}&apos;s {enrollmentType === 'tuition' ? 'tuition' : 'coaching'} sessions
+              {childName}&apos;s {programLabel} sessions
             </p>
           </div>
           {renewUrl && (
