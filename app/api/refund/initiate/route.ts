@@ -168,6 +168,7 @@ export async function POST(request: NextRequest) {
       .eq('id', enrollmentId);
 
     // 11. Cancel remaining scheduled sessions
+    // SSOT-ALLOWLIST: bulk cancel — migrate to service (State-2 bulk cluster)
     await supabase
       .from('scheduled_sessions')
       .update({ status: 'cancelled', updated_at: new Date().toISOString() })

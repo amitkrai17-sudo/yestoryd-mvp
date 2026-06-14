@@ -74,6 +74,7 @@ export async function rescheduleSession(
       try { await cancelRecallBot(botId); } catch {}
     }
 
+    // SSOT-ALLOWLIST: reschedule owner (Policy F) — service delegates here
     const { error: updateError } = await supabase
       .from('scheduled_sessions')
       .update({

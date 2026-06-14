@@ -238,6 +238,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Bulk DB update — single query for all sessions
+    // SSOT-ALLOWLIST: bulk cancel — migrate to service (State-2 bulk cluster)
     const sessionIds = futureSessions.map(s => s.id);
     const { error: bulkCancelError } = await supabase
       .from('scheduled_sessions')

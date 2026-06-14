@@ -94,6 +94,7 @@ export async function POST(request: NextRequest) {
 
     // 10. Create Skill Booster session in scheduled_sessions
     const today = new Date();
+    // SSOT-ALLOWLIST: birth/attach — status at creation, not a transition
     const { data: newSession, error: sessionError } = await supabase
       .from('scheduled_sessions')
       .insert({

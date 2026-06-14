@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import * as Sentry from '@sentry/nextjs';
 import { withParamsHandler } from '@/lib/api/with-api-handler';
 import { getSiteSetting, getSiteSettingInt } from '@/lib/config/site-settings-loader';
+import { transitionSessionStatus } from '@/lib/scheduling/transition-session-status';
 
 export const dynamic = 'force-dynamic';
 
@@ -569,17 +570,21 @@ export const PATCH = withParamsHandler<{ id: string }>(async (request, { id }, {
       }
     }
 
-    const { error: updateError } = await supabase
-      .from('scheduled_sessions')
-      .update({
-        status: 'in_progress',
-        session_started_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', id);
+    // Mark in_progress via the SOLE status writer (CORE only — skipSideEffects; 'in_progress'
+    // is not terminal, so no completed_at). session_started_at rides extraSessionFields.
+    const startResult = await transitionSessionStatus({
+      sessionId: id,
+      to: 'in_progress',
+      actor: 'coach',
+      requestId,
+      opts: {
+        skipSideEffects: true,
+        extraSessionFields: { session_started_at: new Date().toISOString() },
+      },
+    });
 
-    if (updateError) {
-      console.error(JSON.stringify({ requestId, event: 'session_start_error', error: updateError.message }));
+    if (!startResult.ok && !startResult.noop) {
+      console.error(JSON.stringify({ requestId, event: 'session_start_error', error: startResult.error }));
       return NextResponse.json({ error: 'Failed to update session' }, { status: 500 });
     }
 

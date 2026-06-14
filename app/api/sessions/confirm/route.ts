@@ -236,6 +236,7 @@ export async function POST(request: NextRequest) {
         const timeStr = sessionDate.toTimeString().slice(0, 8);
 
         // UPDATE existing session with calendar details (NOT INSERT!)
+        // SSOT-ALLOWLIST: birth/attach — status at creation, not a transition
         const { error: updateError } = await supabase
           .from('scheduled_sessions')
           .update({

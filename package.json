@@ -5,11 +5,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "check:status-ssot": "node scripts/check-status-ssot.mjs",
+    "prebuild": "node scripts/check-status-ssot.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "quality": "npm run typecheck && npm run lint",
+    "quality": "npm run typecheck && npm run lint && npm run check:status-ssot",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:scheduling": "jest __tests__/scheduling"

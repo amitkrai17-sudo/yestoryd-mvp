@@ -103,6 +103,7 @@ Coach will join via Google Meet.`,
     const dateStr = startTime.toISOString().split('T')[0];
     const timeStr = startTime.toTimeString().slice(0, 8);
 
+    // SSOT-ALLOWLIST: birth/attach — status at creation, not a transition
     const { error: updateError } = await supabase
       .from('scheduled_sessions')
       .update({

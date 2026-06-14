@@ -353,6 +353,7 @@ export async function pause(
 
     if (sessions.length > 0) {
       const ids = sessions.map((s) => s.id);
+      // SSOT-ALLOWLIST: bulk pause writer — pause SSOT
       await supabase
         .from('scheduled_sessions')
         .update({ status: 'paused', updated_at: nowDate.toISOString() } as never)
