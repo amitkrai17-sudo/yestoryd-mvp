@@ -558,6 +558,35 @@ export function getCoachingCoachPercent(
 }
 
 /**
+ * Canonical {lead%, coach%, platform%} resolver from site_settings.
+ * Single source for non-payout consumers (refund settlement, email illustrations,
+ * earnings-calculator display) — they must NOT assemble their own split or read
+ * coach_groups columns directly. Base case only (decay=1.0, no coaching bonus);
+ * per-enrollment payout math with decay/bonus stays in calculateEnrollmentBreakdown.
+ * Platform = remainder, mirroring the engine.
+ */
+export function getRevenueSplitPercents(
+  coachTier: string,
+  productType: 'coaching' | 'tuition' | 'workshop',
+  referrerType: ReferrerType | 'organic',
+  config: PayoutConfig,
+): { leadPercent: number; coachPercent: number; platformPercent: number } {
+  const coachPercent =
+    productType === 'tuition'  ? getTuitionCoachPercent(coachTier, config)
+  : productType === 'workshop' ? config.workshop_default_coach_percent
+  :                              getCoachingCoachPercent(coachTier, config);
+
+  const leadPercent =
+    referrerType === 'organic' ? 0
+  : productType === 'tuition'  ? config.tuition_lead_cost_percent
+  : productType === 'workshop' ? config.workshop_lead_cost_percent
+  : (config[`lead_cost_referrer_percent_${referrerType}` as keyof PayoutConfig] as number) || 0;
+
+  const platformPercent = 100 - coachPercent - leadPercent;
+  return { leadPercent, coachPercent, platformPercent };
+}
+
+/**
  * Validate a tuition session rate against configurable guardrails.
  * Returns flag (green/amber/red) with message for UI display.
  */

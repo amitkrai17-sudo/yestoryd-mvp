@@ -22,6 +22,7 @@ import {
   calculateReenrollmentBonus,
   calculateEnrollmentBreakdown,
   getCoachingCoachPercent,
+  getRevenueSplitPercents,
   type PayoutConfig,
   type CoachGroupConfig,
   type EnrollmentType,
@@ -71,6 +72,14 @@ function makeConfig(overrides: Partial<PayoutConfig> = {}): PayoutConfig {
     coaching_coach_cost_expert: 55,
     coaching_coach_cost_master: 60,
     coaching_coach_cost_founding: 60,
+    // Tuition + workshop (needed by getRevenueSplitPercents resolver tests)
+    tuition_coach_cost_rising: 70,
+    tuition_coach_cost_expert: 75,
+    tuition_coach_cost_master: 80,
+    tuition_coach_cost_founding: 80,
+    tuition_lead_cost_percent: 10,
+    workshop_default_coach_percent: 45,
+    workshop_lead_cost_percent: 0,
     ...overrides,
   };
 }
@@ -579,5 +588,75 @@ describe('getCoachingCoachPercent', () => {
 
   it('unknown name falls back to rising (50)', () => {
     expect(getCoachingCoachPercent('nonexistent', config)).toBe(50);
+  });
+});
+
+// =============================================================================
+// CANONICAL SPLIT % RESOLVER — getRevenueSplitPercents (Track C single source)
+// =============================================================================
+
+describe('getRevenueSplitPercents', () => {
+  const config = makeConfig();
+
+  describe('coach % parity', () => {
+    it('coaching tiers → 50/55/60', () => {
+      expect(getRevenueSplitPercents('rising', 'coaching', 'organic', config).coachPercent).toBe(50);
+      expect(getRevenueSplitPercents('expert', 'coaching', 'organic', config).coachPercent).toBe(55);
+      expect(getRevenueSplitPercents('master', 'coaching', 'organic', config).coachPercent).toBe(60);
+    });
+    it('tuition tiers → 70/75/80', () => {
+      expect(getRevenueSplitPercents('rising', 'tuition', 'organic', config).coachPercent).toBe(70);
+      expect(getRevenueSplitPercents('expert', 'tuition', 'organic', config).coachPercent).toBe(75);
+      expect(getRevenueSplitPercents('master', 'tuition', 'organic', config).coachPercent).toBe(80);
+    });
+    it('workshop → workshop_default_coach_percent (45)', () => {
+      expect(getRevenueSplitPercents('rising', 'workshop', 'organic', config).coachPercent).toBe(45);
+    });
+    it('internal coaching → 0', () => {
+      expect(getRevenueSplitPercents('internal', 'coaching', 'organic', config).coachPercent).toBe(0);
+    });
+  });
+
+  describe('lead %', () => {
+    it('coaching organic → 0', () => {
+      expect(getRevenueSplitPercents('rising', 'coaching', 'organic', config).leadPercent).toBe(0);
+    });
+    it('coaching coach → 10', () => {
+      expect(getRevenueSplitPercents('rising', 'coaching', 'coach', config).leadPercent).toBe(10);
+    });
+    it('coaching parent → 10', () => {
+      expect(getRevenueSplitPercents('rising', 'coaching', 'parent', config).leadPercent).toBe(10);
+    });
+    it('tuition → tuition_lead_cost_percent (10) regardless of referrer', () => {
+      expect(getRevenueSplitPercents('rising', 'tuition', 'coach', config).leadPercent).toBe(10);
+      expect(getRevenueSplitPercents('rising', 'tuition', 'parent', config).leadPercent).toBe(10);
+    });
+    it('workshop → workshop_lead_cost_percent (0)', () => {
+      expect(getRevenueSplitPercents('rising', 'workshop', 'coach', config).leadPercent).toBe(0);
+    });
+  });
+
+  describe('platform = 100 - coach - lead', () => {
+    it('coaching rising organic → platform 50', () => {
+      expect(getRevenueSplitPercents('rising', 'coaching', 'organic', config))
+        .toEqual({ leadPercent: 0, coachPercent: 50, platformPercent: 50 });
+    });
+    it('coaching rising coach → platform 40', () => {
+      expect(getRevenueSplitPercents('rising', 'coaching', 'coach', config))
+        .toEqual({ leadPercent: 10, coachPercent: 50, platformPercent: 40 });
+    });
+  });
+
+  describe('engine-parity guard (resolver ↔ calculateEnrollmentBreakdown)', () => {
+    it('coaching rising coach % equals the full engine coach %', () => {
+      const group = makeCoachGroup({ name: 'rising' });
+      const breakdown = calculateEnrollmentBreakdown(6999, 18, 6, 'starter', 'organic', group, 0, config);
+      const resolver = getRevenueSplitPercents('rising', 'coaching', 'organic', config);
+
+      // resolver must agree with the breakdown's resolved coach %
+      expect(resolver.coachPercent).toBe(breakdown.coach_cost_percent);
+      // and with the % derived from the breakdown's actual amount
+      expect(resolver.coachPercent).toBe(Math.round((breakdown.coach_cost_amount / 6999) * 100));
+    });
   });
 });
