@@ -10,6 +10,7 @@ import { randomUUID } from 'crypto';
 import { dispatch } from '@/lib/scheduling/orchestrator';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendCommunication } from '@/lib/communication';
+import { transitionSessionStatus } from '@/lib/scheduling/transition-session-status';
 
 export const dynamic = 'force-dynamic';
 
@@ -107,20 +108,21 @@ export async function POST(
       console.error('[sessions-cancel] Orchestrator error:', orchError);
     }
 
-    // Fallback: if orchestrator didn't update status, do it directly
+    // Fallback: if orchestrator didn't update status, route the cancel through the
+    // SOLE status writer (gains POLICY-D calendar+recall teardown the old inline flip
+    // skipped). notify:false — this route sends its own parent_session_cancelled_v5 below.
     if (!orchestratorResult.success) {
-      const { error: updateError } = await supabase
-        .from('scheduled_sessions')
-        .update({
-          status: 'cancelled',
-          coach_notes: `Cancelled by ${cancelledBy}: ${reason}`,
-          updated_at: new Date().toISOString(),
-          disposition,
-        })
-        .eq('id', sessionId);
-
-      if (updateError) {
-        console.error('[sessions-cancel] Direct update failed:', updateError.message);
+      const fallback = await transitionSessionStatus({
+        sessionId,
+        to: 'cancelled',
+        actor: 'coach',
+        reason,
+        disposition,
+        requestId: randomUUID(),
+        opts: { notify: false, extraSessionFields: { coach_notes: `Cancelled by ${cancelledBy}: ${reason}` } },
+      });
+      if (!fallback.ok && !fallback.noop) {
+        console.error('[sessions-cancel] Service cancel failed:', fallback.error);
         return NextResponse.json({ error: 'Failed to cancel session' }, { status: 500 });
       }
     }

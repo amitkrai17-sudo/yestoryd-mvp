@@ -7,10 +7,11 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { SupabaseClient } from '@supabase/supabase-js';
-import { rescheduleEvent, cancelEvent, scheduleCalendarEvent } from '@/lib/googleCalendar';
-import { cancelRecallBot } from '@/lib/recall-auto-bot';
+import { rescheduleEvent, scheduleCalendarEvent } from '@/lib/googleCalendar';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { insertLearningEvent } from '@/lib/rai/learning-events';
+import { transitionSessionStatus } from '@/lib/scheduling/transition-session-status';
+import { randomUUID } from 'crypto';
 
 // ============================================================
 // CONSTANTS
@@ -475,49 +476,27 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    let calendarCancelled = false;
+    // Cancel via the SOLE status writer — owns POLICY-D calendar + recall teardown
+    // AND the status flip in one atomic place. notify:false — DELETE sends no template.
+    const cancelResult = await transitionSessionStatus({
+      sessionId,
+      to: 'cancelled',
+      actor: 'admin',
+      reason,
+      requestId: randomUUID(),
+      opts: { notify: false, extraSessionFields: { coach_notes: reason } },
+    });
 
-    // Cancel in Google Calendar (only if event exists)
-    if (typedSession.google_event_id) {
-      try {
-        await cancelEvent(typedSession.google_event_id, true);
-        calendarCancelled = true;
-        logInfo('DELETE', `Calendar event ${typedSession.google_event_id} cancelled`);
-      } catch (calError) {
-        logError('DELETE cancel calendar', calError);
-        // Continue with DB update even if calendar fails
-      }
-    } else {
-      logInfo('DELETE', `Session ${sessionId} has no google_event_id, skipping calendar cancel`);
-    }
-
-    // Cancel Recall.ai bot if present
-    if (session.recall_bot_id) {
-      try {
-        await cancelRecallBot(session.recall_bot_id);
-        logInfo('DELETE', `Recall bot ${session.recall_bot_id} cancelled`);
-      } catch (recallError) {
-        logError('DELETE cancel recall bot', recallError);
-      }
-    }
-
-    // Update database
-    const { error: updateError } = await supabase
-      .from('scheduled_sessions')
-      .update({
-        status: 'cancelled',
-        coach_notes: reason,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', sessionId);
-
-    if (updateError) {
-      logError('DELETE update session', updateError);
+    if (!cancelResult.ok && !cancelResult.noop) {
+      logError('DELETE cancel via service', cancelResult.error);
       return NextResponse.json(
         { error: 'Failed to cancel session' },
         { status: 500 }
       );
     }
+
+    // calendar_cancelled for the learning_event below now comes from the service result.
+    const calendarCancelled = cancelResult.sideEffects.calendarTorndown ?? false;
 
     logInfo('DELETE', `Session ${sessionId} cancelled. Reason: ${reason}`);
 

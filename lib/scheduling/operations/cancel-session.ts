@@ -1,100 +1,43 @@
 /**
- * Cancel a session. Cancels Calendar event and Recall bot.
+ * Cancel a session — thin WRAPPER over transitionSessionStatus (the SOLE
+ * scheduled_sessions.status writer). The cancelled branch of the service owns the
+ * status write, POLICY-D calendar + recall teardown, the audit log, and the
+ * notify('session.cancelled') send. This wrapper only adapts the legacy signature
+ * (and its SessionResult return) for existing callers (orchestrator session.cancel).
  */
 
-import { cancelEvent } from '@/lib/googleCalendar';
-import { cancelRecallBot } from '@/lib/recall-auto-bot';
-import { notify } from '../notification-manager';
-import { withCircuitBreaker } from '../circuit-breaker';
-import { createLogger } from '../logger';
-import { getSupabase, logAudit, getSessionWithRelations } from './helpers';
+import { randomUUID } from 'crypto';
+import { transitionSessionStatus, type SessionDisposition } from '../transition-session-status';
 import type { SessionResult } from './types';
-
-const logger = createLogger('session-manager');
 
 export async function cancelSession(
   sessionId: string,
   reason: string,
   cancelledBy: string = 'system',
-  // 2B.3 fault axis — merged into the SAME atomic status update below. Optional:
-  // undefined → key omitted → byte-equivalent for existing callers (e.g. cancel-request).
+  // 2B.3 fault axis — forwarded to the service, merged into the SAME atomic update.
   disposition?: string,
 ): Promise<SessionResult> {
-  const supabase = getSupabase();
-
   try {
-    const { session, error: fetchError } = await getSessionWithRelations(supabase, sessionId);
-    if (fetchError || !session) {
-      return { success: false, error: 'Session not found' };
-    }
-
-    if (session.status === 'completed') {
-      return { success: false, error: 'Cannot cancel completed session' };
-    }
-
-    if (session.status === 'cancelled') {
-      return { success: true, sessionId };
-    }
-
-    const child = session.children;
-    const coach = session.coaches;
-
-    const eventId = session.google_event_id;
-    if (eventId) {
-      try {
-        await withCircuitBreaker('google-calendar', () =>
-          cancelEvent(eventId, true)
-        );
-      } catch (calError: any) {
-        logger.error('calendar_cancel_failed', { sessionId, error: calError.message });
-      }
-    }
-
-    const botId = session.recall_bot_id;
-    if (botId) {
-      try {
-        await withCircuitBreaker('recall-ai', () =>
-          cancelRecallBot(botId)
-        );
-      } catch (recallError: any) {
-        logger.error('recall_cancel_failed', { sessionId, error: recallError.message });
-      }
-    }
-
-    const { error: updateError } = await supabase
-      .from('scheduled_sessions')
-      .update({
-        status: 'cancelled',
-        coach_notes: `Cancelled by ${cancelledBy}: ${reason}`,
-        updated_at: new Date().toISOString(),
-        ...(disposition ? { disposition } : {}),
-      })
-      .eq('id', sessionId);
-
-    if (updateError) {
-      return { success: false, error: `DB update failed: ${updateError.message}` };
-    }
-
-    await logAudit(supabase, 'session_cancelled', {
+    const result = await transitionSessionStatus({
       sessionId,
+      to: 'cancelled',
+      actor: 'system',
       reason,
-      cancelledBy,
-      date: session.scheduled_date,
+      disposition: disposition as SessionDisposition | undefined,
+      requestId: randomUUID(),
+      opts: {
+        notify: true, // cancelSession has always sent notify('session.cancelled')
+        extraSessionFields: { coach_notes: `Cancelled by ${cancelledBy}: ${reason}` },
+      },
     });
 
-    await notify('session.cancelled', {
-      sessionId,
-      childId: session.child_id,
-      childName: child?.child_name || child?.name || undefined,
-      coachName: coach?.name || undefined,
-      parentPhone: child?.parent_phone || undefined,
-      parentEmail: child?.parent_email || undefined,
-      parentName: child?.parent_name || undefined,
-      sessionDate: session.scheduled_date,
-      sessionTime: session.scheduled_time,
-      reason,
-    });
-
+    if (!result.ok) {
+      if (result.error === 'session_not_found') return { success: false, error: 'Session not found' };
+      if (result.error === 'illegal_transition' && result.from === 'completed') {
+        return { success: false, error: 'Cannot cancel completed session' };
+      }
+      return { success: false, error: result.error ? `DB update failed: ${result.error}` : 'cancel failed' };
+    }
     return { success: true, sessionId };
   } catch (error: any) {
     console.error('[SessionManager] cancelSession error:', error);

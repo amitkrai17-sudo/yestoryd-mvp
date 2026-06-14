@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminOrCoach, getServiceSupabase } from '@/lib/api-auth';
 import { dispatch } from '@/lib/scheduling/orchestrator';
+import { transitionSessionStatus } from '@/lib/scheduling/transition-session-status';
 import { randomUUID } from 'crypto';
 
 export const dynamic = 'force-dynamic';
@@ -90,11 +91,16 @@ export async function POST(
 
     if (action === 'approve') {
       if (changeRequest.change_type === 'cancel') {
-        // Cancel session
-        await supabase
-          .from('scheduled_sessions')
-          .update({ status: 'cancelled', updated_at: new Date().toISOString() })
-          .eq('id', changeRequest.session_id);
+        // Cancel via the SOLE status writer — gains POLICY-D calendar + recall teardown
+        // the old bare flip skipped. notify:false — route sends P15_reschedule_approved below.
+        await transitionSessionStatus({
+          sessionId: changeRequest.session_id,
+          to: 'cancelled',
+          actor: 'admin',
+          reason: changeRequest.reason || 'Approved cancel',
+          requestId: randomUUID(),
+          opts: { notify: false },
+        });
 
       } else if (changeRequest.change_type === 'reschedule') {
         // Reschedule: update session date/time + Calendar + Recall
