@@ -56,6 +56,11 @@ export interface PayoutConfig {
   influencer_reward_type: RewardType;
   referral_qr_enabled: boolean;
   referral_landing_page: string;
+  // Coaching (per-tier coach cost % — mirrors tuition_coach_cost_*)
+  coaching_coach_cost_rising: number;
+  coaching_coach_cost_expert: number;
+  coaching_coach_cost_master: number;
+  coaching_coach_cost_founding: number;
   // Tuition
   tuition_coach_cost_rising: number;
   tuition_coach_cost_expert: number;
@@ -178,6 +183,11 @@ const FALLBACKS: Record<string, string | number | boolean> = {
   influencer_reward_type: 'upi_transfer',
   referral_qr_enabled: true,
   referral_landing_page: '/refer',
+  // Coaching (per-tier coach cost % — parity with current coach_groups values)
+  coaching_coach_cost_rising: 50,
+  coaching_coach_cost_expert: 55,
+  coaching_coach_cost_master: 60,
+  coaching_coach_cost_founding: 60,
   // Tuition
   tuition_coach_cost_rising: 70,
   tuition_coach_cost_expert: 75,
@@ -308,6 +318,11 @@ export async function loadPayoutConfig(forceRefresh = false): Promise<PayoutConf
     influencer_reward_type: asString(get('influencer_reward_type'), fb.influencer_reward_type as string) as RewardType,
     referral_qr_enabled: asBoolean(get('referral_qr_enabled'), fb.referral_qr_enabled as boolean),
     referral_landing_page: asString(get('referral_landing_page'), fb.referral_landing_page as string),
+    // Coaching (per-tier coach cost % — mirrors tuition mappings)
+    coaching_coach_cost_rising: asNumber(get('coaching_coach_cost_rising'), fb.coaching_coach_cost_rising as number),
+    coaching_coach_cost_expert: asNumber(get('coaching_coach_cost_expert'), fb.coaching_coach_cost_expert as number),
+    coaching_coach_cost_master: asNumber(get('coaching_coach_cost_master'), fb.coaching_coach_cost_master as number),
+    coaching_coach_cost_founding: asNumber(get('coaching_coach_cost_founding'), fb.coaching_coach_cost_founding as number),
     // Tuition
     tuition_coach_cost_rising: asNumber(get('tuition_coach_cost_rising'), fb.tuition_coach_cost_rising as number),
     tuition_coach_cost_expert: asNumber(get('tuition_coach_cost_expert'), fb.tuition_coach_cost_expert as number),
@@ -404,7 +419,7 @@ export function calculatePerSessionRate(
   }
 
   // Formula: coach_cost ÷ coaching_sessions (not total)
-  const coachPercent = coachGroup?.coach_cost_percent ?? 50;
+  const coachPercent = getCoachingCoachPercent(coachGroup?.name ?? 'rising', config);
   const coachingRate = Math.round((enrollmentAmount * coachPercent / 100) / coachingSessions);
   const skillBuildingRate = Math.round(coachingRate * config.skill_building_rate_multiplier);
 
@@ -525,6 +540,24 @@ export function getTuitionCoachPercent(
 }
 
 /**
+ * Get coaching coach cost percent by tier name.
+ * Internal coaches always return 0.
+ */
+export function getCoachingCoachPercent(
+  tierName: string,
+  config: PayoutConfig,
+): number {
+  const map: Record<string, number> = {
+    rising: config.coaching_coach_cost_rising,
+    expert: config.coaching_coach_cost_expert,
+    master: config.coaching_coach_cost_master,
+    founding: config.coaching_coach_cost_founding,
+    internal: 0,
+  };
+  return map[tierName.toLowerCase()] ?? config.coaching_coach_cost_rising;
+}
+
+/**
  * Validate a tuition session rate against configurable guardrails.
  * Returns flag (green/amber/red) with message for UI display.
  */
@@ -603,7 +636,7 @@ export function calculateEnrollmentBreakdown(
     const leadCost = calculateLeadCost(enrollmentAmount, enrollmentType, referrerType, config, influencerOverride);
 
     // Coach cost
-    const coachPercent = coachGroup?.coach_cost_percent ?? 50;
+    const coachPercent = getCoachingCoachPercent(coachGroup?.name ?? 'rising', config);
     const coachCostAmount = Math.round(enrollmentAmount * coachPercent / 100);
 
     // Per-session rates (coaching_rate from coach_cost ÷ coaching sessions; SB rate = coaching_rate × 0.5)

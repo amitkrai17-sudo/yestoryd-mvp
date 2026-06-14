@@ -21,6 +21,7 @@ import {
   calculateTDS,
   calculateReenrollmentBonus,
   calculateEnrollmentBreakdown,
+  getCoachingCoachPercent,
   type PayoutConfig,
   type CoachGroupConfig,
   type EnrollmentType,
@@ -65,6 +66,11 @@ function makeConfig(overrides: Partial<PayoutConfig> = {}): PayoutConfig {
     influencer_reward_type: 'upi_transfer',
     referral_qr_enabled: true,
     referral_landing_page: '/refer',
+    // Coaching per-tier coach cost % (parity with FALLBACKS / coach_groups)
+    coaching_coach_cost_rising: 50,
+    coaching_coach_cost_expert: 55,
+    coaching_coach_cost_master: 60,
+    coaching_coach_cost_founding: 60,
     ...overrides,
   };
 }
@@ -106,7 +112,7 @@ describe('calculatePerSessionRate', () => {
   });
 
   it('Expert tier (55% coach cost) calculates higher rates', () => {
-    const group = makeCoachGroup({ coach_cost_percent: 55 });
+    const group = makeCoachGroup({ name: 'expert' }); // tier drives % via getCoachingCoachPercent (55)
     const result = calculatePerSessionRate(6999, 18, 6, group, config);
 
     // coach_cost = 6999 * 55% = 3849.45 → coaching_rate = round(3849.45 / 18) = 214
@@ -117,7 +123,7 @@ describe('calculatePerSessionRate', () => {
   });
 
   it('Master tier (60% coach cost) calculates highest rates', () => {
-    const group = makeCoachGroup({ coach_cost_percent: 60 });
+    const group = makeCoachGroup({ name: 'master' }); // tier drives % via getCoachingCoachPercent (60)
     const result = calculatePerSessionRate(6999, 18, 6, group, config);
 
     // coach_cost = 6999 * 60% = 4199.40 → coaching_rate = round(4199.40 / 18) = 233
@@ -477,7 +483,7 @@ describe('calculateEnrollmentBreakdown', () => {
   });
 
   it('referred starter with Expert tier sums correctly', () => {
-    const group = makeCoachGroup({ coach_cost_percent: 55 });
+    const group = makeCoachGroup({ name: 'expert' }); // tier drives % via getCoachingCoachPercent (55)
     const result = calculateEnrollmentBreakdown(
       6999, 18, 6, 'starter', 'parent', group, 0, config,
     );
@@ -546,5 +552,32 @@ describe('calculateEnrollmentBreakdown', () => {
       + result.coach_cost_amount
       + result.platform_fee_amount;
     expect(totalOut).toBe(1499);
+  });
+});
+
+// =============================================================================
+// COACHING COACH % RESOLVER — getCoachingCoachPercent (Track B parity)
+// =============================================================================
+
+describe('getCoachingCoachPercent', () => {
+  const config = makeConfig();
+
+  it('resolves each tier to its config % (parity with old coach_groups)', () => {
+    expect(getCoachingCoachPercent('rising', config)).toBe(50);
+    expect(getCoachingCoachPercent('expert', config)).toBe(55);
+    expect(getCoachingCoachPercent('master', config)).toBe(60);
+    expect(getCoachingCoachPercent('founding', config)).toBe(60);
+  });
+
+  it('maps internal → 0', () => {
+    expect(getCoachingCoachPercent('internal', config)).toBe(0);
+  });
+
+  it('is case-insensitive on tier name', () => {
+    expect(getCoachingCoachPercent('Expert', config)).toBe(55);
+  });
+
+  it('unknown name falls back to rising (50)', () => {
+    expect(getCoachingCoachPercent('nonexistent', config)).toBe(50);
   });
 });
