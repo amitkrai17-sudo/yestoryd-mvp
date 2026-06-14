@@ -7,10 +7,10 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { SupabaseClient } from '@supabase/supabase-js';
-import { rescheduleEvent, scheduleCalendarEvent } from '@/lib/googleCalendar';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { insertLearningEvent } from '@/lib/rai/learning-events';
 import { transitionSessionStatus } from '@/lib/scheduling/transition-session-status';
+import { rescheduleSession } from '@/lib/scheduling/operations/reschedule-session';
 import { randomUUID } from 'crypto';
 
 // ============================================================
@@ -267,101 +267,33 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    const duration = typedSession.duration_minutes || DEFAULT_DURATION_MINUTES;
-    let calendarUpdated = false;
-    let newMeetLink = typedSession.google_meet_link;
-    let newEventId = typedSession.google_event_id;
+    const newDateStr = formatDateForDB(newDate);
+    const newTimeStr = formatTimeForDB(newDate);
 
-    // Handle Google Calendar
-    if (typedSession.google_event_id) {
-      // UPDATE existing calendar event
-      const result = await rescheduleEvent(
-        typedSession.google_event_id,
-        newDate,
-        duration
-      );
+    // Reschedule via the canonical helper — it OWNS the calendar reschedule, the
+    // recall-bot cancel, the 6 reminder-flag resets, and notify('session.rescheduled').
+    // Fixes divergences #10/#11: this route previously reset NO reminder flags and
+    // cancelled NO recall bot. (The helper PATCHes the existing event; it does not
+    // create one for a session that has no event — matching the orchestrator path used
+    // everywhere else.)
+    const reResult = await rescheduleSession(sessionId, { date: newDateStr, time: newTimeStr }, 'Rescheduled');
 
-      if (!result.success) {
-        logError('PATCH reschedule calendar', result.error);
-        // Event might have been deleted - try creating new one
-        logInfo('PATCH', 'Calendar update failed, attempting to create new event');
-      } else {
-        calendarUpdated = true;
-        if (result.meetLink) {
-          newMeetLink = result.meetLink;
-        }
-      }
-    }
-
-    // CREATE new calendar event if none exists or update failed
-    if (!calendarUpdated) {
-      logInfo('PATCH', `Creating new calendar event for session ${sessionId}`);
-      
-      const childName = typedSession.children?.name || 'Student';
-      const parentEmail = typedSession.children?.parent_email || '';
-      const coachEmail = typedSession.coaches?.email || '';
-      const sessionType = typedSession.session_type || 'coaching';
-      const sessionNum = typedSession.session_number || 1;
-
-      const endTime = new Date(newDate);
-      endTime.setMinutes(endTime.getMinutes() + duration);
-
-      // Build attendees list
-      const attendees: string[] = [];
-      if (parentEmail) attendees.push(parentEmail);
-      if (coachEmail) attendees.push(coachEmail);
-
-      try {
-        const createResult = await scheduleCalendarEvent({
-          title: `Yestoryd ${sessionType} - ${childName} (Session ${sessionNum})`,
-          description: `Reading coaching session for ${childName}\nSession ${sessionNum}\n\nRescheduled session.`,
-          startTime: newDate,
-          endTime: endTime,
-          attendees,
-          sessionType: sessionType as 'coaching' | 'parent_checkin',
-        });
-
-        if (createResult.eventId) {
-          calendarUpdated = true;
-          newEventId = createResult.eventId;
-          newMeetLink = createResult.meetLink || null;
-          logInfo('PATCH', `New calendar event created: ${newEventId}`);
-        }
-      } catch (calError) {
-        logError('PATCH create calendar event', calError);
-        // Continue without calendar - still update DB
-      }
-    }
-
-    // Update database
-    const { error: updateError } = await supabase
-      .from('scheduled_sessions')
-      .update({
-        scheduled_date: formatDateForDB(newDate),
-        scheduled_time: formatTimeForDB(newDate),
-        status: 'scheduled', // Reset to scheduled
-        google_event_id: newEventId,
-        google_meet_link: newMeetLink,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', sessionId);
-
-    if (updateError) {
-      logError('PATCH update session', updateError);
-
-      // Check for double-booking constraint violation
-      if (updateError.code === '23505' && updateError.message?.includes('no_double_booking')) {
+    if (!reResult.success) {
+      logError('PATCH reschedule via helper', reResult.error);
+      if (reResult.error?.includes('no_double_booking')) {
         return NextResponse.json(
           { error: 'This time slot is already booked. Please choose a different time.' },
           { status: 409 }
         );
       }
-
       return NextResponse.json(
         { error: 'Failed to update session' },
         { status: 500 }
       );
     }
+
+    const newMeetLink = reResult.meetLink ?? null;
+    const calendarUpdated = true; // helper rescheduled the existing event (where present)
 
     logInfo('PATCH', `Session ${sessionId} rescheduled to ${newDateTime}`);
 

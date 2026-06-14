@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminOrCoach, getServiceSupabase } from '@/lib/api-auth';
 import { dispatch } from '@/lib/scheduling/orchestrator';
 import { transitionSessionStatus } from '@/lib/scheduling/transition-session-status';
+import { rescheduleSession } from '@/lib/scheduling/operations/reschedule-session';
 import { randomUUID } from 'crypto';
 
 export const dynamic = 'force-dynamic';
@@ -119,17 +120,18 @@ export async function POST(
           });
 
           if (!orchResult.success) {
-            // Fallback: update session directly
-            console.warn('[change-request-approve] Orchestrator failed, updating directly');
-            await supabase
-              .from('scheduled_sessions')
-              .update({
-                scheduled_date: newDate,
-                scheduled_time: newTime,
-                status: 'scheduled',
-                updated_at: new Date().toISOString(),
-              })
-              .eq('id', changeRequest.session_id);
+            // Fallback: orchestrator failed — call the canonical reschedule helper directly
+            // so the reschedule STILL gets reminder-reset + recall-cancel + calendar
+            // (divergence #10/#11 fix; the old bare flip skipped all three).
+            console.warn('[change-request-approve] Orchestrator failed, using reschedule helper directly');
+            const reResult = await rescheduleSession(
+              changeRequest.session_id,
+              { date: newDate, time: newTime },
+              changeRequest.reason || 'Approved reschedule',
+            );
+            if (!reResult.success) {
+              console.error('[change-request-approve] Reschedule helper failed:', reResult.error);
+            }
           }
           // Batch reschedule: move all sibling sessions at the same original datetime
           const batchId = (session as any)?.batch_id as string | null;
@@ -202,11 +204,16 @@ export async function POST(
             }
           }
         } else {
-          // No new date specified — just mark as approved (coach will schedule)
-          await supabase
-            .from('scheduled_sessions')
-            .update({ status: 'scheduled', updated_at: new Date().toISOString() })
-            .eq('id', changeRequest.session_id);
+          // No new date specified — mark approved (coach schedules later). Pure status
+          // flip, no slot move → route through the SOLE status writer (no reminder/recall
+          // churn; the from-status guard also prevents flipping a terminal session).
+          await transitionSessionStatus({
+            sessionId: changeRequest.session_id,
+            to: 'scheduled',
+            actor: 'admin',
+            reason: changeRequest.reason || 'Approved (coach to schedule)',
+            requestId: randomUUID(),
+          });
         }
 
         // Increment reschedules_used
