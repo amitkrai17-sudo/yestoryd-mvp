@@ -9,7 +9,6 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
 import Image from 'next/image';
 import {
   BookOpen, IndianRupee, CheckCircle, AlertCircle, ShieldCheck, RefreshCw, MessageSquare,
@@ -205,6 +204,12 @@ export default function TuitionPayPage() {
   // Auto-redirect to dashboard 3s after success
   const goToDashboard = useCallback(() => router.push('/parent/dashboard'), [router]);
 
+  // Logo nav: back when there's in-app history, else dashboard (direct WhatsApp/email entry has none).
+  const goBack = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) router.back();
+    else router.push('/parent/dashboard');
+  };
+
   useEffect(() => {
     if (!success) return;
     const timer = setTimeout(goToDashboard, 3000);
@@ -226,9 +231,9 @@ export default function TuitionPayPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-sm p-8 max-w-md w-full text-center">
-          <Link href="/parent/login" className="flex items-center justify-center mb-4">
+          <button type="button" onClick={goBack} className="flex items-center justify-center mb-4 cursor-pointer">
             <Image src="/images/logo.png" alt="Yestoryd" width={160} height={45} priority />
-          </Link>
+          </button>
           <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <AlertCircle className="w-8 h-8 text-amber-600" />
           </div>
@@ -259,9 +264,9 @@ export default function TuitionPayPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-sm p-8 max-w-md w-full text-center">
-          <Link href="/parent/login" className="flex items-center justify-center mb-4">
+          <button type="button" onClick={goBack} className="flex items-center justify-center mb-4 cursor-pointer">
             <Image src="/images/logo.png" alt="Yestoryd" width={160} height={45} priority />
-          </Link>
+          </button>
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
           <h1 className="font-display text-xl font-bold text-gray-900 mb-2">Something Went Wrong</h1>
           <p className="text-gray-600 mb-4">{error}</p>
@@ -288,9 +293,9 @@ export default function TuitionPayPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-sm p-8 max-w-md w-full text-center">
-          <Link href="/parent/login" className="flex items-center justify-center mb-4">
+          <button type="button" onClick={() => router.push('/parent/dashboard')} className="flex items-center justify-center mb-4 cursor-pointer">
             <Image src="/images/logo.png" alt="Yestoryd" width={160} height={45} priority />
-          </Link>
+          </button>
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckCircle className="w-8 h-8 text-green-600" />
           </div>
@@ -342,9 +347,9 @@ export default function TuitionPayPage() {
     <div className="min-h-screen bg-gray-50">
       <div className="bg-white border-b border-gray-100">
         <div className="max-w-lg mx-auto px-4 py-6">
-          <Link href="/parent/login" className="flex items-center mb-4">
+          <button type="button" onClick={goBack} className="flex items-center mb-4 cursor-pointer">
             <Image src="/images/logo.png" alt="Yestoryd" width={160} height={45} priority />
-          </Link>
+          </button>
           <div className="flex items-center gap-3 mb-1">
             <HeadingIcon className="w-6 h-6 text-[#FF0099]" />
             <h1 className="font-display text-xl font-bold text-gray-900">{heading}</h1>
