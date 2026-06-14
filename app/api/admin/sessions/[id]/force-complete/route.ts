@@ -31,6 +31,8 @@ import * as Sentry from '@sentry/nextjs';
 import { requireAdmin } from '@/lib/api-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { inferModality } from '@/lib/intelligence/modality';
+import { transitionSessionStatus } from '@/lib/scheduling/transition-session-status';
+import { randomUUID } from 'crypto';
 
 export const dynamic = 'force-dynamic';
 
@@ -157,30 +159,35 @@ export async function POST(
   }
   const syntheticCaptureId = synthCapture.id as string;
 
-  // ── 5. Step 2: UPDATE session ──
-  const { error: sessionUpdateErr } = await supabase
-    .from('scheduled_sessions')
-    .update({
-      status: 'completed',
-      completed_at: completedAt,
-      capture_id: syntheticCaptureId,
-      payout_processed: false, // monthly-payouts cron picks this up
-    })
-    .eq('id', sessionId);
+  // ── 5. Step 2: UPDATE session via the SOLE status writer — CORE only (skipSideEffects).
+  // Admin force-complete deliberately skips balance/payout/brain/notify; payout is deferred
+  // to the monthly cron via payout_processed:false. completed_at preserved via explicitCompletedAt.
+  const completeResult = await transitionSessionStatus({
+    sessionId,
+    to: 'completed',
+    actor: 'admin',
+    requestId: randomUUID(),
+    opts: {
+      supabase,
+      skipSideEffects: true,
+      explicitCompletedAt: completedAt,
+      extraSessionFields: { capture_id: syntheticCaptureId, payout_processed: false },
+    },
+  });
 
-  if (sessionUpdateErr) {
+  if (!completeResult.ok && !completeResult.noop) {
     // Best-effort rollback: delete the orphan synthetic capture so we don't
     // leave it linked to a still-scheduled session.
     await supabase.from('structured_capture_responses').delete().eq('id', syntheticCaptureId);
     console.error(JSON.stringify({
       event: 'force_complete_session_update_error',
-      sessionId, adminEmail, syntheticCaptureId, error: sessionUpdateErr.message,
+      sessionId, adminEmail, syntheticCaptureId, error: completeResult.error,
     }));
-    Sentry.captureException(sessionUpdateErr, {
+    Sentry.captureException(new Error(`force-complete transition failed: ${completeResult.error}`), {
       extra: { sessionId, adminEmail, syntheticCaptureId, rolledBack: true },
     });
     return NextResponse.json(
-      { error: `Failed to update session, rolled back: ${sessionUpdateErr.message}` },
+      { error: `Failed to update session, rolled back: ${completeResult.error}` },
       { status: 500 },
     );
   }

@@ -23,6 +23,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { getGeminiModel } from '@/lib/gemini-config';
 import { extractLastSentence } from '@/lib/utils/text';
 import { inferModality } from '@/lib/intelligence/modality';
+import { transitionSessionStatus } from '@/lib/scheduling/transition-session-status';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -290,30 +291,35 @@ async function saveReconciliationData(
       .eq('id', childId);
   }
 
-  // 2. Update scheduled_session
-  await supabase
-    .from('scheduled_sessions')
-    .update({
-      status: 'completed',
-      recall_status: 'completed',
-      completed_at: new Date().toISOString(),
-      focus_area: analysis.focus_area,
-      skills_worked_on: analysis.skills_worked_on,
-      progress_rating: analysis.progress_rating ? Number(analysis.progress_rating) : null,
-      engagement_level: analysis.engagement_level ? Number(analysis.engagement_level) : null,
-      confidence_level: analysis.confidence_level,
-      breakthrough_moment: analysis.breakthrough_moment,
-      concerns_noted: analysis.concerns_noted,
-      homework_assigned: analysis.homework_assigned,
-      homework_topic: analysis.homework_topic,
-      homework_description: analysis.homework_description,
-      ai_summary: analysis.summary,
-      transcript: transcriptText.substring(0, 10000),
-      flagged_for_attention: analysis.flagged_for_attention,
-      flag_reason: analysis.flag_reason,
-      audio_storage_path: audioStoragePath,
-    })
-    .eq('id', sessionId);
+  // 2. Update scheduled_session via the SOLE status writer — CORE only (skipSideEffects);
+  //    recall path defers balance/payout/brain to coach capture-confirm. status + completed_at +
+  //    recall_status('completed', auto-mirrored) owned by CORE; analysis cols via extraSessionFields.
+  await transitionSessionStatus({
+    sessionId,
+    to: 'completed',
+    actor: 'recall',
+    requestId: crypto.randomUUID(),
+    opts: {
+      skipSideEffects: true,
+      extraSessionFields: {
+        focus_area: analysis.focus_area,
+        skills_worked_on: analysis.skills_worked_on,
+        progress_rating: analysis.progress_rating ? Number(analysis.progress_rating) : null,
+        engagement_level: analysis.engagement_level ? Number(analysis.engagement_level) : null,
+        confidence_level: analysis.confidence_level,
+        breakthrough_moment: analysis.breakthrough_moment,
+        concerns_noted: analysis.concerns_noted,
+        homework_assigned: analysis.homework_assigned,
+        homework_topic: analysis.homework_topic,
+        homework_description: analysis.homework_description,
+        ai_summary: analysis.summary,
+        transcript: transcriptText.substring(0, 10000),
+        flagged_for_attention: analysis.flagged_for_attention,
+        flag_reason: analysis.flag_reason,
+        audio_storage_path: audioStoragePath,
+      },
+    },
+  });
 
   // 3. Create PENDING structured capture for coach review (mirrors process-session pattern)
   // Learning event is created only when coach confirms the capture via /api/intelligence/capture

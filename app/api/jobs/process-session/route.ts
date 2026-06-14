@@ -20,6 +20,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { analyzeSessionTranscript, type SessionAnalysis, type BatchContext } from '@/lib/gemini/session-prompts';
 import { extractLastSentence } from '@/lib/utils/text';
 import { inferModality } from '@/lib/intelligence/modality';
+import { transitionSessionStatus } from '@/lib/scheduling/transition-session-status';
 
 export const dynamic = 'force-dynamic';
 
@@ -220,32 +221,38 @@ async function saveSessionData(
 
   // 2. Update scheduled_session with full analysis
   if (sessionId) {
-    await supabase
-      .from('scheduled_sessions')
-      .update({
-        status: 'completed',
-        recall_status: 'completed',
-        completed_at: new Date().toISOString(),
-        focus_area: analysis.focus_area,
-        skills_worked_on: analysis.skills_worked_on,
-        progress_rating: analysis.progress_rating ? Number(analysis.progress_rating) : null,
-        engagement_level: analysis.engagement_level ? Number(analysis.engagement_level) : null,
-        confidence_level: analysis.confidence_level,
-        breakthrough_moment: analysis.breakthrough_moment,
-        concerns_noted: analysis.concerns_noted,
-        homework_assigned: analysis.homework_assigned,
-        homework_topic: analysis.homework_topic,
-        homework_description: analysis.homework_description,
-        ai_summary: analysis.summary,
-        recording_url: recordingUrl,
-        transcript: transcriptText.substring(0, 10000),
-        flagged_for_attention: analysis.flagged_for_attention,
-        flag_reason: analysis.flag_reason,
-        audio_storage_path: audioStoragePath,
-        duration_minutes: durationSeconds ? Math.round(durationSeconds / 60) : undefined,
-        attendance_count: attendance.totalParticipants,
-      })
-      .eq('id', sessionId);
+    // Recall completion via the SOLE status writer — CORE only (skipSideEffects); balance/
+    // payout/brain are deferred to coach capture-confirm. status + completed_at +
+    // recall_status('completed', auto-mirrored) owned by CORE; analysis cols via extraSessionFields.
+    await transitionSessionStatus({
+      sessionId,
+      to: 'completed',
+      actor: 'recall',
+      requestId: requestId ?? crypto.randomUUID(),
+      opts: {
+        skipSideEffects: true,
+        extraSessionFields: {
+          focus_area: analysis.focus_area,
+          skills_worked_on: analysis.skills_worked_on,
+          progress_rating: analysis.progress_rating ? Number(analysis.progress_rating) : null,
+          engagement_level: analysis.engagement_level ? Number(analysis.engagement_level) : null,
+          confidence_level: analysis.confidence_level,
+          breakthrough_moment: analysis.breakthrough_moment,
+          concerns_noted: analysis.concerns_noted,
+          homework_assigned: analysis.homework_assigned,
+          homework_topic: analysis.homework_topic,
+          homework_description: analysis.homework_description,
+          ai_summary: analysis.summary,
+          recording_url: recordingUrl,
+          transcript: transcriptText.substring(0, 10000),
+          flagged_for_attention: analysis.flagged_for_attention,
+          flag_reason: analysis.flag_reason,
+          audio_storage_path: audioStoragePath,
+          duration_minutes: durationSeconds ? Math.round(durationSeconds / 60) : undefined,
+          attendance_count: attendance.totalParticipants,
+        },
+      },
+    });
 
     console.log(JSON.stringify({
       requestId,

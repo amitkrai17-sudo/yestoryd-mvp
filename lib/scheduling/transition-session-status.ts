@@ -113,10 +113,14 @@ export interface TransitionOpts {
   explicitCompletedAt?: string;
   /** Pre-built client reused from the caller's scope; one is created if absent. */
   supabase?: AdminClient;
-  /** Path-specific columns merged into the SAME atomic update (coach_notes,
-   *  no_show_reason, capture_id, focus_area, coach_cancellation_reason, …). The 5
-   *  policy-owned fields (status/completed_at/disposition/recall_status/updated_at)
-   *  are REJECTED with 'policy_field_in_extra' — the escape hatch is NOT a bypass. */
+  /** Path-specific columns merged into the SAME atomic update. Permitted examples by
+   *  branch: cancel/missed → coach_notes, no_show_reason; completion → focus_area,
+   *  category_id, capture_id, intelligence_score, payout_processed, ai_summary,
+   *  recording_url, transcript, skills_worked_on, progress_rating, engagement_level,
+   *  confidence_level, breakthrough_moment, concerns_noted, homework_*, flagged_for_attention,
+   *  flag_reason, audio_storage_path, duration_minutes, attendance_count. The 5 policy-owned
+   *  fields (status/completed_at/disposition/recall_status/updated_at) are REJECTED with
+   *  'policy_field_in_extra' — the escape hatch is NOT a bypass. */
   extraSessionFields?: Record<string, unknown>;
   /** Fire the to-specific notification. For `cancelled` → notify('session.cancelled').
    *  Default false (callers that send their own route-level template pass false). */
@@ -161,8 +165,8 @@ export interface TransitionResult {
 
 // ── POLICY G — from → set-of-legal-to. Empty set = terminal (only same-state noop). ──
 const LEGAL_TRANSITIONS: Record<SessionStatusValue, ReadonlySet<SessionStatusValue>> = {
-  pending: new Set<SessionStatusValue>(['scheduled', 'missed', 'no_show', 'coach_no_show', 'cancelled', 'pending_scheduling']),
-  pending_scheduling: new Set<SessionStatusValue>(['scheduled', 'missed', 'no_show', 'coach_no_show', 'cancelled']),
+  pending: new Set<SessionStatusValue>(['scheduled', 'completed', 'missed', 'no_show', 'coach_no_show', 'cancelled', 'pending_scheduling']),
+  pending_scheduling: new Set<SessionStatusValue>(['scheduled', 'completed', 'missed', 'no_show', 'coach_no_show', 'cancelled']),
   scheduled: new Set<SessionStatusValue>(['in_progress', 'bot_joining', 'bot_error', 'completed', 'missed', 'no_show', 'coach_no_show', 'cancelled', 'pending_scheduling']),
   bot_joining: new Set<SessionStatusValue>(['in_progress', 'bot_error', 'completed', 'partial', 'no_show', 'coach_no_show', 'cancelled']),
   in_progress: new Set<SessionStatusValue>(['bot_error', 'completed', 'partial', 'no_show', 'coach_no_show', 'cancelled']),
@@ -208,7 +212,7 @@ export async function transitionSessionStatus(
   // ── Load current row (guard + teardown fields) ──
   const { data: session, error: sErr } = await supabase
     .from('scheduled_sessions')
-    .select('id, child_id, coach_id, enrollment_id, status, scheduled_date, scheduled_time, google_event_id, recall_bot_id')
+    .select('id, child_id, coach_id, enrollment_id, status, session_type, scheduled_date, scheduled_time, google_event_id, recall_bot_id')
     .eq('id', sessionId)
     .single();
 
@@ -339,11 +343,52 @@ export async function transitionSessionStatus(
       sideEffects.notified = 'skipped';
     }
   } else if (to === 'completed') {
-    // PHASE 2-completed: completed+tuition side-effects (deductTuitionBalance +
-    // insertPayout via closeTuitionSession, setStatus:false) and POLICY-B
-    // dispatch('session.completed') for brain are NOT wired here yet. Completion
-    // callers are migrated in their own cluster — do not route them here yet.
-    void opts.skipSideEffects;
+    // skipSideEffects → CORE only (status + completed_at). Used by force-complete and the
+    // recall paths (process-session / recall-reconciliation), which defer balance, payout
+    // and brain to a later capture-confirm / monthly cron.
+    if (!opts.skipSideEffects) {
+      // Tuition gates (the pre-existing discriminator split): deduct + summary gate on
+      // enrollment_type; payout gates on session_type. closeTuitionSession(setStatus:false)
+      // runs ONLY deduct → payout → summary (CORE already wrote status + completed_at).
+      let enrollmentType: string | null = null;
+      if (session.enrollment_id) {
+        const { data: enr } = await supabase
+          .from('enrollments')
+          .select('enrollment_type')
+          .eq('id', session.enrollment_id)
+          .single();
+        enrollmentType = enr?.enrollment_type ?? null;
+      }
+      const sessionType = session.session_type ?? null;
+      try {
+        await closeTuitionSession({
+          supabase,
+          sessionId,
+          session: { enrollment_id: session.enrollment_id, child_id: session.child_id, coach_id: session.coach_id, session_type: sessionType },
+          requestId,
+          setStatus: false, // CORE already wrote status + completed_at
+          deductBalance: enrollmentType === 'tuition',
+          insertPayout: sessionType === 'tuition' && !!session.coach_id,
+          dispatchSummary: enrollmentType === 'tuition' && !!session.child_id,
+          sessionsDelivered: opts.sessionsDelivered ?? 1,
+          deductActor: opts.actorLabel ?? input.actor,
+          appUrl: process.env.NEXT_PUBLIC_APP_URL || 'https://www.yestoryd.com',
+        });
+        sideEffects.balanceDeducted = enrollmentType === 'tuition';
+        sideEffects.payoutInserted = sessionType === 'tuition' && !!session.coach_id;
+      } catch (e) {
+        logger.error('completed_close_failed', { requestId, sessionId, error: e instanceof Error ? e.message : String(e) });
+      }
+      // POLICY B — brain via dispatch (NO inline learning_events). Dynamic import breaks
+      // the orchestrator → session-manager → cancelSession → service import cycle.
+      try {
+        const { dispatch } = await import('./orchestrator');
+        await dispatch('session.completed', { sessionId, requestId });
+        sideEffects.brainDispatched = true;
+      } catch (e) {
+        logger.error('completed_dispatch_failed', { requestId, sessionId, error: e instanceof Error ? e.message : String(e) });
+      }
+    }
   } else if (to === 'missed' || to === 'no_show' || to === 'coach_no_show') {
     // POLICY E — tuition 'missed' deducts 1 + pays the coach (parent_no_show). Coaching
     // 'missed' and the recall no_show/coach_no_show paths (1:1, not tuition) deduct nothing.

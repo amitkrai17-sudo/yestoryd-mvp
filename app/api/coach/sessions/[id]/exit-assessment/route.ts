@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminOrCoach, getServiceSupabase } from '@/lib/api-auth';
 import { completeSeason } from '@/lib/completion/complete-season';
 import { insertLearningEvent } from '@/lib/rai/learning-events';
+import { transitionSessionStatus } from '@/lib/scheduling/transition-session-status';
 import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
@@ -243,16 +244,17 @@ export async function POST(
       eventId = created!.id;
     }
 
-    // Mark session as completed
-    if (session.status !== 'completed') {
-      await supabase
-        .from('scheduled_sessions')
-        .update({
-          status: 'completed',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', sessionId);
-    }
+    // Mark session as completed via the SOLE status writer — CORE only (skipSideEffects:
+    // coaching path, no tuition deduct/payout, no brain dispatch). Adds completed_at (Policy A).
+    // The exit_assessment LE (above) + completeSeason (below) stay in the route. Service noops
+    // if already completed (replaces the prior if-guard).
+    await transitionSessionStatus({
+      sessionId,
+      to: 'completed',
+      actor: 'coach',
+      requestId,
+      opts: { skipSideEffects: true },
+    });
 
     // Trigger season completion
     let seasonResult = null;
