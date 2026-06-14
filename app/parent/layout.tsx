@@ -21,9 +21,6 @@ import { supabase } from '@/lib/supabase/client';
 import { ParentContext, ParentContextType, ParentData, ChildData } from './context';
 
 
-// Re-export for backwards compatibility
-export { useParentContext } from './context';
-
 // ==================== ROUTE CONFIGURATION ====================
 const PUBLIC_ROUTES = ['/parent/login', '/parent/book-skill-booster'];
 
