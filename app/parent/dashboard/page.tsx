@@ -31,6 +31,7 @@ interface Session {
   google_meet_link: string;
   status: string;
   title: string;
+  session_mode: string;
 }
 
 interface Enrollment {
@@ -565,7 +566,15 @@ export default function ParentDashboardPage() {
   const canJoinNext =
     !!nextSession &&
     meetLink !== '' &&
-    nextSession.scheduled_date?.slice(0, 10) === istTodayStr;
+    nextSession.scheduled_date?.slice(0, 10) === istTodayStr &&
+    nextSession.session_mode === 'online';
+
+  // In-person (offline) session today → show a quiet label instead of Join.
+  // Offline sessions retain google_meet_link (kept for re-flipping), so gate on session_mode.
+  const isInPersonToday =
+    !!nextSession &&
+    nextSession.scheduled_date?.slice(0, 10) === istTodayStr &&
+    nextSession.session_mode === 'offline';
 
   return (
     <div className="px-4 md:px-6 py-4 md:py-6 max-w-2xl mx-auto">
@@ -721,7 +730,7 @@ export default function ParentDashboardPage() {
                   </p>
                 </div>
               </div>
-              {canJoinNext && (
+              {canJoinNext ? (
                 <div className="mt-3 sm:flex sm:justify-end">
                   <a
                     href={meetLink}
@@ -732,7 +741,13 @@ export default function ParentDashboardPage() {
                     Join class
                   </a>
                 </div>
-              )}
+              ) : isInPersonToday ? (
+                <div className="mt-3 sm:flex sm:justify-end">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-600">
+                    In-person class
+                  </span>
+                </div>
+              ) : null}
             </>
           ) : (
             <div className="flex items-center gap-3">
