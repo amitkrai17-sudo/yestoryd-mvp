@@ -12,6 +12,7 @@ import { resolveSessionCreation } from '@/lib/scheduling';
 import { queueEnrollmentComplete } from '@/lib/qstash';
 import { getCoach } from '@/lib/payment/coach-assigner';
 import { addTuitionBalance } from '@/lib/tuition/add-balance';
+import { setEnrollmentSessionMode } from '@/lib/tuition/session-mode';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,6 +22,7 @@ const RecordOfflineSchema = z.object({
   sessions_purchased: z.number().int().positive('Sessions must be positive'),
   payment_method: z.enum(['cash', 'upi_manual', 'bank_transfer']),
   notes: z.string().max(500).optional(),
+  session_mode: z.enum(['online', 'offline']).optional(),
 });
 
 export const POST = withApiHandler(async (req: NextRequest, ctx) => {
@@ -151,6 +153,14 @@ export const POST = withApiHandler(async (req: NextRequest, ctx) => {
 
   // 7. Tuition revenue is realized per-session in session-closure.ts (coach_payouts at delivery);
   // no enrollment-level split is written here (calculateRevenueSplit early-returns for tuition).
+
+  // 7a-mode. Standing session mode (2B-1b): persist admin's online/offline choice
+  // BEFORE scheduling, so the scheduler births new sessions in the chosen mode (reads
+  // tuition_onboarding.default_session_mode). Only-when-differs inside the helper; it
+  // writes only the standing default, never a scheduled_sessions row.
+  if (body.session_mode) {
+    await setEnrollmentSessionMode(body.enrollment_id, body.session_mode, supabase as any);
+  }
 
   // 7b. Auto-schedule tuition sessions — ALL payments (first + renewal/top-up) via
   // the canonical creation decision. First payment starts from program_start;

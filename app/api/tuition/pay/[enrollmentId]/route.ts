@@ -71,6 +71,13 @@ export async function GET(
     ? await supabase.from('coaches').select('name').eq('id', enrollment.coach_id).single()
     : { data: null };
 
+  // Standing session mode (2B-1b) — lets the renewal toggle pre-select the current mode.
+  const { data: onboarding } = await supabase
+    .from('tuition_onboarding')
+    .select('default_session_mode')
+    .eq('enrollment_id', enrollmentId)
+    .maybeSingle();
+
   const sessionRate = enrollment.session_rate || 0;
   const sessionsPurchased = enrollment.sessions_purchased || 0;
   const totalAmountRupees = (sessionRate * sessionsPurchased) / 100;
@@ -93,5 +100,6 @@ export async function GET(
     status: enrollment.status,
     isRenewal,
     sessionsRemaining: enrollment.sessions_remaining ?? 0,
+    currentSessionMode: onboarding?.default_session_mode ?? 'offline',
   });
 }

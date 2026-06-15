@@ -10,6 +10,7 @@ import { phoneSchemaOptional, normalizePhone } from '@/lib/utils/phone';
 import crypto from 'crypto';
 import { loadPaymentConfig } from '@/lib/config/loader';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { setEnrollmentSessionMode } from '@/lib/tuition/session-mode';
 
 import {
   getProductBySlug,
@@ -54,6 +55,7 @@ const CreateOrderSchema = z.object({
   leadSource: z.enum(['yestoryd', 'coach']).default('yestoryd'),
   leadSourceCoachId: z.string().uuid().optional().nullable(),
   requestedStartDate: z.string().optional().nullable(),
+  sessionMode: z.enum(['online', 'offline']).optional(),
 });
 
 // --- PARENT/CHILD HELPERS (create-specific, simpler than verify route) ---
@@ -219,6 +221,15 @@ export async function POST(request: NextRequest) {
         })
         .select('id')
         .single();
+
+      // Standing session mode (2B-1b): persist the parent's online/offline choice for
+      // this renewal BEFORE returning the order, so verify/webhook later schedule in the
+      // chosen mode (the scheduler reads tuition_onboarding.default_session_mode). The
+      // helper is only-when-differs and writes only the standing default — not any
+      // scheduled_sessions row.
+      if (body.sessionMode) {
+        await setEnrollmentSessionMode(body.enrollmentId, body.sessionMode, supabase);
+      }
 
       console.log(JSON.stringify({ requestId, event: 'tuition_order_created', orderId: order.id, amount: tuitionAmountRupees }));
 
