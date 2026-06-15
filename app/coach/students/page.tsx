@@ -482,6 +482,7 @@ export default function CoachStudentsPage() {
           session_rate: paymentTarget.session_rate || 0,
           sessions_remaining: paymentTarget.sessions_remaining ?? 0,
           parent_name: paymentTarget.parent_name,
+          session_mode: paymentTarget.default_session_mode === 'online' ? 'online' : 'offline',
         } : null}
         onClose={() => setPaymentTarget(null)}
         onSuccess={() => { setPaymentTarget(null); loadStudents(); }}

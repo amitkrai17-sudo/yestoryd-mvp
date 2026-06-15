@@ -8,6 +8,8 @@ import {
   Building2,
   Check,
   IndianRupee,
+  Video,
+  MapPin,
 } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 
@@ -20,6 +22,7 @@ interface RecordPaymentSheetProps {
     session_rate: number; // paise
     sessions_remaining: number;
     parent_name: string | null;
+    session_mode?: 'online' | 'offline';
   } | null;
   onClose: () => void;
   onSuccess: () => void;
@@ -33,6 +36,7 @@ const METHODS: { value: PaymentMethod; label: string; icon: typeof Banknote }[] 
 
 export default function RecordPaymentSheet({ enrollment, onClose, onSuccess }: RecordPaymentSheetProps) {
   const [method, setMethod] = useState<PaymentMethod>('cash');
+  const [sessionMode, setSessionMode] = useState<'online' | 'offline'>('offline');
   const [amount, setAmount] = useState('');
   const [sessions, setSessions] = useState('');
   const [notes, setNotes] = useState('');
@@ -60,6 +64,7 @@ export default function RecordPaymentSheet({ enrollment, onClose, onSuccess }: R
   useEffect(() => {
     if (enrollment) {
       setMethod('cash');
+      setSessionMode(enrollment.session_mode ?? 'offline'); // pre-select current mode
       setAmount('');
       setSessions('');
       setNotes('');
@@ -96,6 +101,7 @@ export default function RecordPaymentSheet({ enrollment, onClose, onSuccess }: R
           amount: parsedAmount,
           sessions_purchased: parsedSessions,
           payment_method: method,
+          session_mode: sessionMode,
           notes: notes.trim() || undefined,
         }),
       });
@@ -188,6 +194,30 @@ export default function RecordPaymentSheet({ enrollment, onClose, onSuccess }: R
                     >
                       <m.icon className="w-4 h-4" />
                       {m.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Session mode toggle — governs the NEW sessions this payment adds */}
+              <div>
+                <label className="text-xs text-gray-400 mb-1.5 block">Session Mode</label>
+                <div className="flex gap-2">
+                  {([
+                    { value: 'online' as const, label: 'Online', icon: Video },
+                    { value: 'offline' as const, label: 'In-person', icon: MapPin },
+                  ]).map(opt => (
+                    <button
+                      key={opt.value}
+                      onClick={() => { setSessionMode(opt.value); setConfirmStep(false); }}
+                      className={`flex-1 flex items-center justify-center gap-1.5 h-10 rounded-xl text-xs font-medium transition-colors ${
+                        sessionMode === opt.value
+                          ? 'bg-[#00ABFF]/20 text-[#00ABFF] border border-[#00ABFF]/30'
+                          : 'bg-gray-800 text-gray-400 border border-gray-700 hover:border-gray-600'
+                      }`}
+                    >
+                      <opt.icon className="w-4 h-4" />
+                      {opt.label}
                     </button>
                   ))}
                 </div>

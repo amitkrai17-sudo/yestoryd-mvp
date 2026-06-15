@@ -12,6 +12,7 @@ import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import {
   BookOpen, IndianRupee, CheckCircle, AlertCircle, ShieldCheck, RefreshCw, MessageSquare,
+  Video, MapPin,
 } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
@@ -40,6 +41,7 @@ interface EnrollmentData {
   status: string;
   isRenewal: boolean;
   sessionsRemaining: number;
+  currentSessionMode: 'online' | 'offline';
 }
 
 export default function TuitionPayPage() {
@@ -56,6 +58,8 @@ export default function TuitionPayPage() {
   const [success, setSuccess] = useState(false);
   const [linkState, setLinkState] = useState<'voided' | 'expired' | null>(null);
   const [razorpayLoaded, setRazorpayLoaded] = useState(false);
+  // Class format for the NEW sessions this payment adds — pre-selects current mode (2B-3).
+  const [sessionMode, setSessionMode] = useState<'online' | 'offline'>('offline');
 
   // Load Razorpay script
   useEffect(() => {
@@ -87,7 +91,9 @@ export default function TuitionPayPage() {
           setError(json.error || 'Failed to load enrollment');
           return;
         }
-        setData(await res.json());
+        const json = await res.json();
+        setData(json);
+        setSessionMode(json.currentSessionMode ?? 'offline');
       } catch {
         if (!successParam) setError('Network error. Please try again.');
       } finally {
@@ -119,6 +125,7 @@ export default function TuitionPayPage() {
           coachId: data.coachId,
           enrollmentId: data.id,
           leadSource: 'yestoryd',
+          sessionMode,
         }),
       });
 
@@ -370,6 +377,36 @@ export default function TuitionPayPage() {
             </p>
           </div>
         )}
+
+        {/* Class format — governs the NEW sessions this payment adds (not existing upcoming) */}
+        <div className="bg-white rounded-2xl shadow-sm p-5">
+          <h2 className="font-display font-semibold text-gray-900 mb-1">Class Format</h2>
+          <p className="text-gray-500 text-sm mb-4">Applies to the new sessions you&apos;re adding now.</p>
+          <div className="grid grid-cols-2 gap-2">
+            {([
+              { value: 'online' as const, label: 'Online', icon: Video },
+              { value: 'offline' as const, label: 'In-person', icon: MapPin },
+            ]).map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setSessionMode(opt.value)}
+                aria-pressed={sessionMode === opt.value}
+                className={`flex items-center justify-center gap-2 h-11 rounded-xl text-sm font-medium transition-colors ${
+                  sessionMode === opt.value
+                    ? 'bg-[#FF0099] text-white'
+                    : 'bg-white text-gray-700 border border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <opt.icon className="w-4 h-4" />
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          <p className="text-gray-400 text-xs mt-3">
+            Your new classes will be {sessionMode === 'online' ? 'online' : 'in person'}.
+          </p>
+        </div>
 
         {/* Order summary */}
         <div className="bg-white rounded-2xl shadow-sm p-5">

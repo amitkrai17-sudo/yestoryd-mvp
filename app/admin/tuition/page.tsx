@@ -48,6 +48,7 @@ interface Onboarding {
   enrollment_status: string | null;
   enrollment_sessions_remaining: number | null;
   batch_id: string | null;
+  default_session_mode: string | null;
   // UI-1.1 read-only enrichments (consumed by UI-1.3):
   lifetime_credited: number | null; // SUM(positive ledger deltas) — balance denominator "Y"
   last_wa: {
@@ -1280,6 +1281,7 @@ export default function AdminTuitionPage() {
           session_rate: paymentTarget.session_rate || 0,
           sessions_remaining: paymentTarget.enrollment_sessions_remaining ?? 0,
           parent_name: paymentTarget.parent_name_hint,
+          session_mode: paymentTarget.default_session_mode === 'online' ? 'online' : 'offline',
         } : null}
         onClose={() => setPaymentTarget(null)}
         onSuccess={() => { setPaymentTarget(null); fetchData(); }}
