@@ -30,6 +30,7 @@ import {
 } from './session-engine';
 import { resolveOnlineLink } from './session-mode-service';
 import { resolveSessionTime, dayNumToKey, type SchedulePreference } from './schedule-time';
+import { formatDateISO } from '@/lib/utils/date-format';
 
 // ============================================================================
 // TYPES
@@ -951,15 +952,22 @@ export async function scheduleTuitionSessions(
     // Sort days for consistent ordering
     preferredDays.sort((a, b) => a - b);
 
-    // 4. Determine start date
+    // 4. Determine start date — single noon-IST calendar-date anchor for ALL branches
+    // (2B-2a), matching the codebase convention (lib/whatsapp/agent/slots.ts): anchor
+    // `${dateStr}T12:00:00+05:30` and use getUTC* accessors so adding a day / deriving the
+    // weekday never crosses a date boundary. The previous IST-offset parse mixed with
+    // local getDate/setDate skewed the day-after bump, so a renewal re-landed on the last
+    // session's date. YYYY-MM-DD output uses formatDateISO (IST), never toISOString.
     let startDate: Date;
     if (startAfterDate) {
-      startDate = new Date(startAfterDate + 'T00:00:00+05:30');
-      startDate.setDate(startDate.getDate() + 1); // Day after last existing session
+      // startAfterDate is a YYYY-MM-DD date-column value; anchor at noon IST, then +1 day.
+      startDate = new Date(`${startAfterDate}T12:00:00+05:30`);
+      startDate.setUTCDate(startDate.getUTCDate() + 1); // Day after last existing session
     } else if (enrollment.program_start) {
-      startDate = new Date(enrollment.program_start);
+      // Anchor on program_start's IST calendar date (not its raw UTC instant), noon IST.
+      startDate = new Date(`${formatDateISO(enrollment.program_start)}T12:00:00+05:30`);
     } else {
-      startDate = new Date();
+      startDate = new Date(`${formatDateISO(new Date())}T12:00:00+05:30`);
     }
 
     // 5. Get existing session count for numbering
@@ -969,6 +977,18 @@ export async function scheduleTuitionSessions(
       .eq('enrollment_id', enrollmentId);
 
     let sessionNumber = (existingCount || 0) + 1;
+
+    // Occupancy guard (2B-2a): dates already held by non-cancelled sessions for this
+    // enrollment. Never place on an occupied date, and never let two NEW sessions share
+    // a date. Because the last session's own date is occupied, strictly-after is implied.
+    const { data: occupiedRows } = await supabase
+      .from('scheduled_sessions')
+      .select('scheduled_date')
+      .eq('enrollment_id', enrollmentId)
+      .neq('status', 'cancelled');
+    const occupiedDates = new Set<string>(
+      ((occupiedRows || []).map((r) => r.scheduled_date).filter(Boolean)) as string[],
+    );
 
     // 6. Generate sessions — distribute across preferred days
     const sessionsToCreate: ScheduledSession[] = [];
@@ -980,11 +1000,13 @@ export async function scheduleTuitionSessions(
       let found = false;
       for (let daysAhead = 0; daysAhead < 14; daysAhead++) {
         const candidate = new Date(cursor);
-        candidate.setDate(candidate.getDate() + daysAhead);
-        const candidateDay = candidate.getDay();
+        candidate.setUTCDate(candidate.getUTCDate() + daysAhead);
+        const candidateDay = candidate.getUTCDay();
 
         if (preferredDays.includes(candidateDay)) {
-          const dateStr = candidate.toISOString().split('T')[0];
+          const dateStr = formatDateISO(candidate); // YYYY-MM-DD in IST (no toISOString)
+          // Occupancy guard (2B-2a): skip dates already taken — keep scanning daysAhead.
+          if (occupiedDates.has(dateStr)) continue;
           // Per-day time via the SSOT reader (times[day] → defaultTime → bucket → 16:00).
           const scheduledTime = resolveSessionTime(schedulePref, candidateDay);
 
@@ -1026,12 +1048,13 @@ export async function scheduleTuitionSessions(
           }
 
           sessionsToCreate.push(sessionData as ScheduledSession);
+          occupiedDates.add(dateStr); // two NEW sessions can't collide either
 
           sessionNumber++;
 
           // Move cursor to day after this one
           cursor.setTime(candidate.getTime());
-          cursor.setDate(cursor.getDate() + 1);
+          cursor.setUTCDate(cursor.getUTCDate() + 1);
           found = true;
 
           // Track week boundaries (every 7 days from start)
@@ -1045,9 +1068,9 @@ export async function scheduleTuitionSessions(
       }
 
       if (!found) {
-        // Safety: no preferred day found in 14 days — force next day
-        cursor.setDate(cursor.getDate() + 1);
-        errors.push(`Could not find preferred day near ${cursor.toISOString().split('T')[0]}`);
+        // Safety: no preferred (free) day found in 14 days — force next day
+        cursor.setUTCDate(cursor.getUTCDate() + 1);
+        errors.push(`Could not find preferred day near ${formatDateISO(cursor)}`);
         // Prevent infinite loops
         if (errors.length > sessionsToSchedule + 10) break;
       }

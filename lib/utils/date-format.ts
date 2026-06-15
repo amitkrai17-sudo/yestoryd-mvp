@@ -86,6 +86,20 @@ export function startOfTodayIST(): Date {
   return new Date(istNow.getTime() - IST_OFFSET_MS);
 }
 
+/**
+ * "2026-03-07" — ISO calendar date (YYYY-MM-DD) in IST (Asia/Kolkata).
+ * For date-grid math and DB `date` columns where a YYYY-MM-DD string is required.
+ * en-CA yields the ISO ordering; the Asia/Kolkata timeZone fixes the calendar day.
+ */
+export function formatDateISO(date: string | Date): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    timeZone: TIMEZONE,
+  }).format(new Date(date));
+}
+
 /** "Today" / "Tomorrow" / "Mon, 7 Mar" — relative-aware short format */
 export function formatDateRelative(dateStr: string): string {
   const date = new Date(dateStr + 'T00:00:00');
