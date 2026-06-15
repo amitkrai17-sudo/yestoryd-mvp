@@ -36,7 +36,6 @@ export async function GET(request: NextRequest) {
         session_rate,
         sessions_purchased,
         sessions_remaining,
-        sessions_scheduled,
         sessions_completed,
         total_sessions,
         age_band,
@@ -138,6 +137,23 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // 6b. Batch: scheduled-session DISPLAY TOTAL per enrollment (replaces the dropped
+    // enrollments.sessions_scheduled column). Display total keeps completed + missed —
+    // everything except cancelled — so count status <> 'cancelled'. Grouped client-side
+    // from one query (no N+1), same pattern as completedMap.
+    const { data: scheduledRows } = await supabase
+      .from('scheduled_sessions')
+      .select('enrollment_id')
+      .in('enrollment_id', enrollmentIds)
+      .neq('status', 'cancelled');
+
+    const scheduledTotalMap = new Map<string, number>();
+    for (const s of scheduledRows || []) {
+      if (s.enrollment_id) {
+        scheduledTotalMap.set(s.enrollment_id, (scheduledTotalMap.get(s.enrollment_id) || 0) + 1);
+      }
+    }
+
     // 7. Batch: tuition_onboarding for tuition enrollments
     const tuitionEnrollmentIds = enrollments
       .filter(e => e.enrollment_type === 'tuition')
@@ -180,7 +196,7 @@ export async function GET(request: NextRequest) {
         const bandSessions = ageBand ? bandMap.get(ageBand) : undefined;
         const totalSessions = isTuition
           ? (enrollment.sessions_purchased || 0)
-          : (enrollment.total_sessions || enrollment.sessions_scheduled || bandSessions || 0);
+          : (enrollment.total_sessions || scheduledTotalMap.get(enrollment.id) || bandSessions || 0);
 
         const profile = child.learning_profile;
         const lastSession = lastSessionMap.get(enrollment.id);

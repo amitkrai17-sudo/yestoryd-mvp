@@ -553,7 +553,6 @@ export async function POST(request: NextRequest) {
       program_start: programStart.toISOString(),
       program_end: programEnd.toISOString(),
       schedule_confirmed: false,
-      sessions_scheduled: 0,
       lead_source: body.leadSource,
       lead_source_coach_id: body.leadSourceCoachId || null,
       referral_code_used: couponUsed,

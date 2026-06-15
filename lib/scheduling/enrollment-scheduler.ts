@@ -614,7 +614,6 @@ async function assignTemplatesAndUpdateEnrollment(
     .from('enrollments')
     .update({
       schedule_confirmed: true,
-      sessions_scheduled: sessionsToCreate.length,
       updated_at: new Date().toISOString(),
     })
     .eq('id', enrollmentId);
@@ -1080,13 +1079,12 @@ export async function scheduleTuitionSessions(
       skipRecall: true,
       skipNotifications: true,
       onInsertComplete: async () => {
-        // 8. Update enrollment (cumulative formula — preserves prior behavior).
-        const totalScheduled = (existingCount || 0) + sessionsToCreate.length;
+        // 8. Mark schedule confirmed. (sessions_scheduled removed — derived on read
+        // from scheduled_sessions; see coach/students count.)
         await supabase
           .from('enrollments')
           .update({
             schedule_confirmed: true,
-            sessions_scheduled: totalScheduled,
             updated_at: new Date().toISOString(),
           })
           .eq('id', enrollmentId);

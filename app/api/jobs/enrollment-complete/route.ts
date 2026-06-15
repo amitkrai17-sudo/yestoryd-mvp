@@ -143,7 +143,7 @@ export async function POST(request: NextRequest) {
     // 4. Get enrollment details (include V2 fields + tuition + program label)
     const { data: enrollment, error: enrollmentError } = await supabase
       .from('enrollments')
-      .select('id, schedule_confirmed, sessions_scheduled, program_start, preference_start_date, session_duration_minutes, total_sessions, age_band, enrollment_type, billing_model, program_description, sessions_remaining')
+      .select('id, schedule_confirmed, program_start, preference_start_date, session_duration_minutes, total_sessions, age_band, enrollment_type, billing_model, program_description, sessions_remaining')
       .eq('id', data.enrollmentId)
       .single();
 

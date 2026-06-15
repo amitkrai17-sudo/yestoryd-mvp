@@ -533,7 +533,6 @@ async function processPaymentCaptured(
     program_start: programStart.toISOString(),
     program_end: programEnd.toISOString(),
     schedule_confirmed: false,
-    sessions_scheduled: 0,
     lead_source: bookingData.lead_source,
     lead_source_coach_id: bookingData.lead_source === 'coach' ? bookingData.lead_source_coach_id : null,
     referral_code_used: bookingData.coupon_code,
