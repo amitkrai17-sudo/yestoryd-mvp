@@ -13,7 +13,7 @@ import { queueEnrollmentComplete } from '@/lib/qstash';
 import {
   scheduleEnrollmentSessions,
   createSessionsSimple,
-  scheduleTuitionSessions,
+  resolveSessionCreation,
   type TimePreference,
 } from '@/lib/scheduling';
 import { loadPaymentConfig } from '@/lib/config/loader';
@@ -281,35 +281,33 @@ export async function POST(request: NextRequest) {
       // Tuition revenue is realized per-session in session-closure.ts (coach_payouts at delivery);
       // no enrollment-level split is written here (calculateRevenueSplit early-returns for tuition).
 
-      // Auto-schedule tuition sessions — INITIAL ACTIVATION ONLY (OFFLINE-PAY.1).
-      // Renewals/top-ups must NOT re-run full-pack scheduling: the scheduler schedules
-      // (sessions_remaining - unfinished_scheduled), which on a top-up re-creates the
-      // already-delivered pack as back-dated sessions. Balance is credited via
-      // addTuitionBalance above; the coach schedules extra sessions via /api/tuition/schedule.
+      // Auto-schedule tuition sessions — ALL payments (first + renewal/top-up) via
+      // the canonical creation decision. First payment starts from program_start;
+      // renewal appends after the last scheduled session. The idempotent delta guard
+      // inside the scheduler creates only the newly-credited sessions, so a top-up
+      // does NOT back-date the already-delivered pack.
       let tuitionSessionsCreated = 0;
-      if (isFirstPayment) {
-        try {
-          const schedResult = await scheduleTuitionSessions(
-            tuitionEnrollmentId, undefined, supabase as any
-          );
-          tuitionSessionsCreated = schedResult.sessionsCreated;
+      try {
+        const schedResult = await resolveSessionCreation(
+          tuitionEnrollmentId, isFirstPayment, supabase as any
+        );
+        tuitionSessionsCreated = schedResult.sessionsCreated;
 
-          console.log(JSON.stringify({
-            requestId,
-            event: 'tuition_sessions_auto_scheduled',
-            enrollmentId: tuitionEnrollmentId,
-            sessionsCreated: schedResult.sessionsCreated,
-            isFirstPayment,
-            errors: schedResult.errors,
-          }));
-        } catch (schedErr: unknown) {
-          console.error(JSON.stringify({
-            requestId,
-            event: 'tuition_auto_schedule_error',
-            error: schedErr instanceof Error ? schedErr.message : String(schedErr),
-          }));
-          // Non-fatal: coach can manually schedule as fallback
-        }
+        console.log(JSON.stringify({
+          requestId,
+          event: 'tuition_sessions_auto_scheduled',
+          enrollmentId: tuitionEnrollmentId,
+          sessionsCreated: schedResult.sessionsCreated,
+          isFirstPayment,
+          errors: schedResult.errors,
+        }));
+      } catch (schedErr: unknown) {
+        console.error(JSON.stringify({
+          requestId,
+          event: 'tuition_auto_schedule_error',
+          error: schedErr instanceof Error ? schedErr.message : String(schedErr),
+        }));
+        // Non-fatal: coach can manually schedule as fallback
       }
 
       // Queue enrollment-complete for calendar scheduling (all payments — new sessions need Calendar events)

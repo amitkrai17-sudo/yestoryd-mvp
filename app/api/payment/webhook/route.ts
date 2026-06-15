@@ -25,7 +25,7 @@ import { getCoach } from '@/lib/payment/coach-assigner';
 import { calculateRevenueSplit } from '@/lib/payment/post-payment-notifications';
 import { addTuitionBalance } from '@/lib/tuition/add-balance';
 import { logOpsEvent, generateCorrelationId } from '@/lib/backops';
-import { scheduleTuitionSessions } from '@/lib/scheduling';
+import { resolveSessionCreation } from '@/lib/scheduling';
 import type { Json } from '@/lib/supabase/database.types';
 
 const supabase = createAdminClient();
@@ -294,22 +294,12 @@ async function processPaymentCaptured(
     // Tuition revenue is realized per-session in session-closure.ts (coach_payouts at delivery);
     // no enrollment-level split is written here (calculateRevenueSplit early-returns for tuition).
 
-    // Auto-schedule tuition sessions
+    // Auto-schedule tuition sessions — canonical creation decision (shared with
+    // verify + record-offline). First payment starts from program_start; renewal
+    // appends after the last scheduled session.
     try {
-      let startAfter: string | undefined;
-      if (!isFirstPayment) {
-        const { data: lastSession } = await supabase
-          .from('scheduled_sessions')
-          .select('scheduled_date')
-          .eq('enrollment_id', tuitionEnrollmentId)
-          .order('scheduled_date', { ascending: false })
-          .limit(1)
-          .single();
-        startAfter = lastSession?.scheduled_date || undefined;
-      }
-
-      const schedResult = await scheduleTuitionSessions(
-        tuitionEnrollmentId, startAfter, supabase as any
+      const schedResult = await resolveSessionCreation(
+        tuitionEnrollmentId, isFirstPayment, supabase as any
       );
       console.log(JSON.stringify({
         requestId, event: 'tuition_webhook_sessions_scheduled',

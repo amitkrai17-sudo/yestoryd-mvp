@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withApiHandler } from '@/lib/api/with-api-handler';
 import { loadPaymentConfig } from '@/lib/config/loader';
-import { scheduleTuitionSessions } from '@/lib/scheduling';
+import { resolveSessionCreation } from '@/lib/scheduling';
 import { queueEnrollmentComplete } from '@/lib/qstash';
 import { getCoach } from '@/lib/payment/coach-assigner';
 import { addTuitionBalance } from '@/lib/tuition/add-balance';
@@ -152,28 +152,25 @@ export const POST = withApiHandler(async (req: NextRequest, ctx) => {
   // 7. Tuition revenue is realized per-session in session-closure.ts (coach_payouts at delivery);
   // no enrollment-level split is written here (calculateRevenueSplit early-returns for tuition).
 
-  // 7b. Auto-schedule tuition sessions — INITIAL ACTIVATION ONLY (OFFLINE-PAY.1).
-  // Top-ups must NOT re-run full-pack scheduling: scheduleTuitionSessions schedules
-  // (sessions_remaining - unfinished_scheduled), which on a top-up re-creates the
-  // already-delivered pack as back-dated sessions. Balance is credited via
-  // addTuitionBalance('top_up') above; the coach schedules the extra sessions
-  // through the /api/tuition/schedule flow.
-  if (isFirstPayment) {
-    try {
-      const schedResult = await scheduleTuitionSessions(
-        body.enrollment_id, undefined, supabase as any
-      );
-      console.log(JSON.stringify({
-        requestId, event: 'offline_tuition_sessions_scheduled',
-        sessionsCreated: schedResult.sessionsCreated,
-        errors: schedResult.errors,
-      }));
-    } catch (schedErr: unknown) {
-      console.error(JSON.stringify({
-        requestId, event: 'offline_tuition_schedule_error',
-        error: schedErr instanceof Error ? schedErr.message : String(schedErr),
-      }));
-    }
+  // 7b. Auto-schedule tuition sessions — ALL payments (first + renewal/top-up) via
+  // the canonical creation decision. First payment starts from program_start;
+  // renewal appends after the last scheduled session. The idempotent delta guard
+  // inside the scheduler creates only the newly-credited sessions, so a top-up does
+  // NOT back-date the already-delivered pack.
+  try {
+    const schedResult = await resolveSessionCreation(
+      body.enrollment_id, isFirstPayment, supabase as any
+    );
+    console.log(JSON.stringify({
+      requestId, event: 'offline_tuition_sessions_scheduled',
+      sessionsCreated: schedResult.sessionsCreated,
+      errors: schedResult.errors,
+    }));
+  } catch (schedErr: unknown) {
+    console.error(JSON.stringify({
+      requestId, event: 'offline_tuition_schedule_error',
+      error: schedErr instanceof Error ? schedErr.message : String(schedErr),
+    }));
   }
 
   // 7c. Queue enrollment-complete for calendar scheduling

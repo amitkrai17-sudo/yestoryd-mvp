@@ -55,6 +55,9 @@ export {
   scheduleTuitionSessions,
 } from './enrollment-scheduler';
 
+// Canonical paid-path creation decision (verify + record-offline + webhook)
+export { resolveSessionCreation } from './resolve-session-creation';
+
 // Config Provider
 export {
   type WorkingHours,
