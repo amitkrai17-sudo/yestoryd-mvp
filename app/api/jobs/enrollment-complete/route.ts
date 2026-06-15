@@ -194,7 +194,9 @@ export async function POST(request: NextRequest) {
         const defaultMode = onboarding?.default_session_mode || 'offline';
 
         if (defaultMode === 'offline') {
-          // Set all sessions to offline mode
+          // Set non-terminal sessions to offline mode. Status guard (2B-1a): never
+          // rewrite history — a mode flip must not relabel completed/cancelled/missed
+          // online sessions. Mirrors enrollment-scheduler.ts:885.
           await supabase
             .from('scheduled_sessions')
             .update({
@@ -202,7 +204,8 @@ export async function POST(request: NextRequest) {
               updated_at: new Date().toISOString(),
             })
             .eq('enrollment_id', data.enrollmentId)
-            .eq('session_mode', 'online');
+            .eq('session_mode', 'online')
+            .not('status', 'in', '("completed","cancelled","missed")');
 
           console.log(JSON.stringify({
             requestId,
