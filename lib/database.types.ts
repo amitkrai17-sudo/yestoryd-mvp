@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "13.0.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       ab_test_events: {
@@ -6740,6 +6715,8 @@ export type Database = {
           pause_reason: string | null
           pause_start_date: string | null
           paused_at: string | null
+          pay_link_expires_at: string | null
+          pay_link_voided_at: string | null
           payment_id: string | null
           platform_settlement: number | null
           preference_days: Json | null
@@ -6752,8 +6729,6 @@ export type Database = {
           product_id: string | null
           program_description: string | null
           program_end: string | null
-          pay_link_expires_at: string | null
-          pay_link_voided_at: string | null
           program_start: string | null
           reenrollment_bonus_paid: boolean | null
           referral_code_used: string | null
@@ -6783,7 +6758,6 @@ export type Database = {
           sessions_purchased: number | null
           sessions_remaining: number | null
           sessions_rescheduled_count: number | null
-          sessions_scheduled: number | null
           starter_completed_at: string | null
           starter_enrollment_id: string | null
           status: string | null
@@ -6849,6 +6823,8 @@ export type Database = {
           pause_reason?: string | null
           pause_start_date?: string | null
           paused_at?: string | null
+          pay_link_expires_at?: string | null
+          pay_link_voided_at?: string | null
           payment_id?: string | null
           platform_settlement?: number | null
           preference_days?: Json | null
@@ -6861,8 +6837,6 @@ export type Database = {
           product_id?: string | null
           program_description?: string | null
           program_end?: string | null
-          pay_link_expires_at?: string | null
-          pay_link_voided_at?: string | null
           program_start?: string | null
           reenrollment_bonus_paid?: boolean | null
           referral_code_used?: string | null
@@ -6892,7 +6866,6 @@ export type Database = {
           sessions_purchased?: number | null
           sessions_remaining?: number | null
           sessions_rescheduled_count?: number | null
-          sessions_scheduled?: number | null
           starter_completed_at?: string | null
           starter_enrollment_id?: string | null
           status?: string | null
@@ -6958,6 +6931,8 @@ export type Database = {
           pause_reason?: string | null
           pause_start_date?: string | null
           paused_at?: string | null
+          pay_link_expires_at?: string | null
+          pay_link_voided_at?: string | null
           payment_id?: string | null
           platform_settlement?: number | null
           preference_days?: Json | null
@@ -6970,8 +6945,6 @@ export type Database = {
           product_id?: string | null
           program_description?: string | null
           program_end?: string | null
-          pay_link_expires_at?: string | null
-          pay_link_voided_at?: string | null
           program_start?: string | null
           reenrollment_bonus_paid?: boolean | null
           referral_code_used?: string | null
@@ -7001,7 +6974,6 @@ export type Database = {
           sessions_purchased?: number | null
           sessions_remaining?: number | null
           sessions_rescheduled_count?: number | null
-          sessions_scheduled?: number | null
           starter_completed_at?: string | null
           starter_enrollment_id?: string | null
           status?: string | null
@@ -15736,14 +15708,14 @@ export type Database = {
       get_admin_tuition_enrichments: {
         Args: { p_enrollment_ids: string[]; p_phones: string[] }
         Returns: {
-          enrollment_id: string | null
-          lifetime_credited: number | null
-          match_last10: string | null
-          template_code: string | null
-          sent_at: string | null
-          wa_sent: boolean | null
-          error_message: string | null
-          channel: string | null
+          channel: string
+          enrollment_id: string
+          error_message: string
+          lifetime_credited: number
+          match_last10: string
+          sent_at: string
+          template_code: string
+          wa_sent: boolean
         }[]
       }
       get_age_band_config: {
@@ -15972,6 +15944,21 @@ export type Database = {
         }
         Returns: Json
       }
+      reconcile_tuition_counters: {
+        Args: { p_apply?: boolean; p_enrollment_id: string }
+        Returns: {
+          apply_skipped_reason: string
+          billed: number
+          delivered: number
+          delivered_minus_billed: number
+          enrollment_id: string
+          new_completed: number
+          new_remaining: number
+          old_completed: number
+          old_remaining: number
+          overdue_open: number
+        }[]
+      }
       refresh_leaderboard: { Args: never; Returns: undefined }
       release_expired_holds: { Args: never; Returns: number }
       search_content_items: {
@@ -16179,9 +16166,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {},
   },
