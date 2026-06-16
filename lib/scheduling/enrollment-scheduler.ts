@@ -30,6 +30,7 @@ import {
 } from './session-engine';
 import { resolveOnlineLink } from './session-mode-service';
 import { resolveSessionTime, dayNumToKey, type SchedulePreference } from './schedule-time';
+import { planSessions } from './plan-sessions';
 import { formatDateISO } from '@/lib/utils/date-format';
 
 // ============================================================================
@@ -949,6 +950,11 @@ export async function scheduleTuitionSessions(
       errors.push('No schedule_preference days found — using defaults');
     }
 
+    // RC-5 (2C): capture pool in days-order BEFORE the sort — the planner's spw==1
+    // anchor tiebreak is days-order (poolDays[0]). Captured after the fallback so it
+    // is never empty.
+    const poolDaysOrdered = [...preferredDays];
+
     // Sort days for consistent ordering
     preferredDays.sort((a, b) => a - b);
 
@@ -990,90 +996,168 @@ export async function scheduleTuitionSessions(
       ((occupiedRows || []).map((r) => r.scheduled_date).filter(Boolean)) as string[],
     );
 
-    // 6. Generate sessions — distribute across preferred days
-    const sessionsToCreate: ScheduledSession[] = [];
-    const cursor = new Date(startDate);
-    let weekNumber = 1;
+    // ── RC-5 (2B): read-only skip-set loaders for the placement planner (consumed
+    // in 2C). SELECTs ONLY — zero writes. Builds { existingDays, dayUnavailable,
+    // slotTaken } at the SAME conventions the planner uses (formatDateISO en-CA
+    // Asia/Kolkata, resolveSessionTime "HH:MM:SS", noon-IST day stepping — never
+    // bare new Date(dateStr)).
+    const lookaheadWeeks = 26; // == planSessions default maxWeeksLookahead
+    const windowFrom = formatDateISO(startDate);
+    const windowToDate = new Date(startDate.getTime());
+    windowToDate.setUTCDate(windowToDate.getUTCDate() + lookaheadWeeks * 7);
+    const windowTo = formatDateISO(windowToDate);
+    const coachId = enrollment.coach_id!;
 
-    while (sessionsToCreate.length < sessionsToSchedule) {
-      // Find next occurrence of a preferred day
-      let found = false;
-      for (let daysAhead = 0; daysAhead < 14; daysAhead++) {
-        const candidate = new Date(cursor);
-        candidate.setUTCDate(candidate.getUTCDate() + daysAhead);
-        const candidateDay = candidate.getUTCDay();
+    // 1. existingDays — weekday (getUTCDay) of every existing non-cancelled session
+    //    of THIS enrollment. Frequency matters (renewal anchor) so NOT deduped.
+    const existingDays: number[] = (
+      (occupiedRows || []).map((r) => r.scheduled_date).filter(Boolean) as string[]
+    ).map((d) => new Date(`${d}T12:00:00+05:30`).getUTCDay());
 
-        if (preferredDays.includes(candidateDay)) {
-          const dateStr = formatDateISO(candidate); // YYYY-MM-DD in IST (no toISOString)
-          // Occupancy guard (2B-2a): skip dates already taken — keep scanning daysAhead.
-          if (occupiedDates.has(dateStr)) continue;
-          // Per-day time via the SSOT reader (times[day] → defaultTime → bucket → 16:00).
-          const scheduledTime = resolveSessionTime(schedulePref, candidateDay);
+    // 2. dayUnavailable — whole-day blocks (DATE keys "YYYY-MM-DD"):
+    //    (a) this enrollment's own occupied dates (reuse occupiedDates), plus
+    //    (b) coach LEAVE rows (type unavailable|vacation; 'reduced_capacity' excluded
+    //        — no quantity column to enforce, documented gap), expanded day-by-day,
+    //        clamped to the window.
+    const dayUnavailable = new Set<string>(occupiedDates);
+    const { data: leaveRows } = await supabase
+      .from('coach_availability')
+      .select('start_date, end_date')
+      .eq('coach_id', coachId)
+      .in('type', ['unavailable', 'vacation'])
+      .or('status.neq.cancelled,status.is.null') // COALESCE(status,'') <> 'cancelled'
+      .lte('start_date', windowTo)
+      .gte('end_date', windowFrom);
+    for (const lv of leaveRows || []) {
+      if (!lv.start_date || !lv.end_date) continue;
+      const lvStart = lv.start_date < windowFrom ? windowFrom : lv.start_date;
+      const lvEnd = lv.end_date > windowTo ? windowTo : lv.end_date;
+      const dayCursor = new Date(`${lvStart}T12:00:00+05:30`);
+      const lvEndMs = new Date(`${lvEnd}T12:00:00+05:30`).getTime();
+      while (dayCursor.getTime() <= lvEndMs) {
+        dayUnavailable.add(formatDateISO(dayCursor));
+        dayCursor.setUTCDate(dayCursor.getUTCDate() + 1);
+      }
+    }
 
-          const sessionData: ScheduledSession & Record<string, unknown> = {
-            enrollment_id: enrollmentId,
-            child_id: enrollment.child_id!,
-            coach_id: enrollment.coach_id!,
-            session_number: sessionNumber,
-            session_type: 'tuition',
-            session_title: `English Classes Session #${sessionNumber}`,
-            week_number: weekNumber,
-            scheduled_date: dateStr,
-            scheduled_time: scheduledTime,
-            status: 'scheduled',
-            duration_minutes: durationMinutes,
-            session_mode: defaultMode,
-          };
-          // Set batch_id from tuition_onboarding
-          if (batchId) sessionData.batch_id = batchId;
-          // Born-online link parity via the sole resolver — room/explicit/existing ONLY
-          // (noGenerate: never create a calendar event per session in this loop). An
-          // online pack with no room link is born link-less (online-pending); a later
-          // switch/reminder resolves it lazily. Offline packs get no link.
-          if (defaultMode === 'online') {
-            const resolved = await resolveOnlineLink(
-              {
-                id: '',
-                session_type: 'tuition',
-                session_number: sessionNumber,
-                google_meet_link: null,
-                google_event_id: null,
-                scheduled_date: dateStr,
-                scheduled_time: scheduledTime,
-                duration_minutes: durationMinutes,
-              },
-              { roomLink: batchMeetLink, noGenerate: true },
-            );
-            if (resolved.link) sessionData.google_meet_link = resolved.link;
+    // 3. slotTaken — slot-level blocks ("YYYY-MM-DD HH:MM:SS" keys):
+    //    (a) coach's cross-enrollment bookings at their exact slot, plus
+    //    (b) is_available=false break windows folded onto the candidate time of each
+    //        pool-day date in the window (recurring day_of_week OR specific_date).
+    //        max_bookings_per_slot / positive availability NOT consumed (no live
+    //        capacity data) — only breaks honored. Documented Step-1 scope.
+    const slotTaken = new Set<string>();
+    const { data: coachBookings } = await supabase
+      .from('scheduled_sessions')
+      .select('scheduled_date, scheduled_time')
+      .eq('coach_id', coachId)
+      .neq('status', 'cancelled')
+      .gte('scheduled_date', windowFrom)
+      .lte('scheduled_date', windowTo);
+    for (const b of coachBookings || []) {
+      if (b.scheduled_date && b.scheduled_time) {
+        slotTaken.add(`${b.scheduled_date} ${b.scheduled_time}`);
+      }
+    }
+
+    const { data: breakRows } = await supabase
+      .from('coach_availability_slots')
+      .select('day_of_week, specific_date, start_time, end_time')
+      .eq('coach_id', coachId)
+      .eq('is_available', false);
+    if (breakRows && breakRows.length > 0) {
+      const poolSet = new Set<number>(preferredDays); // a session can only land on a pool weekday
+      const dateCursor = new Date(startDate.getTime());
+      const windowEndMs = windowToDate.getTime();
+      while (dateCursor.getTime() <= windowEndMs) {
+        const wd = dateCursor.getUTCDay();
+        if (poolSet.has(wd)) {
+          const dateStr = formatDateISO(dateCursor);
+          const candTime = resolveSessionTime(schedulePref, wd); // "HH:MM:SS"
+          for (const br of breakRows) {
+            const matchesDate = br.specific_date
+              ? br.specific_date === dateStr
+              : br.day_of_week === wd;
+            if (
+              matchesDate &&
+              br.start_time && br.end_time &&
+              candTime >= br.start_time && candTime < br.end_time
+            ) {
+              slotTaken.add(`${dateStr} ${candTime}`);
+              break; // one matching break suffices for this slot
+            }
           }
-
-          sessionsToCreate.push(sessionData as ScheduledSession);
-          occupiedDates.add(dateStr); // two NEW sessions can't collide either
-
-          sessionNumber++;
-
-          // Move cursor to day after this one
-          cursor.setTime(candidate.getTime());
-          cursor.setUTCDate(cursor.getUTCDate() + 1);
-          found = true;
-
-          // Track week boundaries (every 7 days from start)
-          const daysSinceStart = Math.floor(
-            (candidate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
-          );
-          weekNumber = Math.floor(daysSinceStart / 7) + 1;
-
-          break;
         }
+        dateCursor.setUTCDate(dateCursor.getUTCDate() + 1);
+      }
+    }
+    // NOTE (2C): { existingDays, dayUnavailable, slotTaken } feed planSessions next.
+
+    // 6. Generate sessions — PLACEMENT is decided by the pure planner (RC-5). The
+    //    planner owns date/time/week selection + all skip-set avoidance (pool-vs-rate,
+    //    anchored-fallback, occupancy/coach-leave/slot collisions). This loop only
+    //    builds the INSERT rows — every column/value identical to before EXCEPT
+    //    scheduled_date / scheduled_time / week_number, which come from the placement.
+    const sessionsToCreate: ScheduledSession[] = [];
+
+    const { placements, warnings } = planSessions({
+      sessionsPerWeek,
+      poolDays: poolDaysOrdered,
+      count: sessionsToSchedule,
+      startDate: formatDateISO(startDate),
+      resolveTime: (wd: number) => resolveSessionTime(schedulePref, wd),
+      existingDays,
+      skip: { dayUnavailable, slotTaken },
+      // maxWeeksLookahead omitted → planner default 26
+    });
+
+    // Planner warnings surface through the existing errors[] channel (replaces the
+    // old spw log + the "could not find preferred day" pushes).
+    for (const w of warnings) errors.push(w);
+    if (placements.length < sessionsToSchedule) {
+      errors.push(`planner placed ${placements.length} of ${sessionsToSchedule} sessions (window/pool constraints)`);
+    }
+
+    for (const placement of placements) {
+      const sessionData: ScheduledSession & Record<string, unknown> = {
+        enrollment_id: enrollmentId,
+        child_id: enrollment.child_id!,
+        coach_id: enrollment.coach_id!,
+        session_number: sessionNumber,
+        session_type: 'tuition',
+        session_title: `English Classes Session #${sessionNumber}`,
+        week_number: placement.weekNumber,
+        scheduled_date: placement.scheduledDate,
+        scheduled_time: placement.scheduledTime,
+        status: 'scheduled',
+        duration_minutes: durationMinutes,
+        session_mode: defaultMode,
+      };
+      // Set batch_id from tuition_onboarding
+      if (batchId) sessionData.batch_id = batchId;
+      // Born-online link parity via the sole resolver — room/explicit/existing ONLY
+      // (noGenerate: never create a calendar event per session in this loop). An
+      // online pack with no room link is born link-less (online-pending); a later
+      // switch/reminder resolves it lazily. Offline packs get no link.
+      if (defaultMode === 'online') {
+        const resolved = await resolveOnlineLink(
+          {
+            id: '',
+            session_type: 'tuition',
+            session_number: sessionNumber,
+            google_meet_link: null,
+            google_event_id: null,
+            scheduled_date: placement.scheduledDate,
+            scheduled_time: placement.scheduledTime,
+            duration_minutes: durationMinutes,
+          },
+          { roomLink: batchMeetLink, noGenerate: true },
+        );
+        if (resolved.link) sessionData.google_meet_link = resolved.link;
       }
 
-      if (!found) {
-        // Safety: no preferred (free) day found in 14 days — force next day
-        cursor.setUTCDate(cursor.getUTCDate() + 1);
-        errors.push(`Could not find preferred day near ${formatDateISO(cursor)}`);
-        // Prevent infinite loops
-        if (errors.length > sessionsToSchedule + 10) break;
-      }
+      sessionsToCreate.push(sessionData as ScheduledSession);
+      sessionNumber++;
     }
 
     if (sessionsToCreate.length === 0) {
