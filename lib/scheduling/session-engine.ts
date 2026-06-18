@@ -24,7 +24,7 @@
 import { scheduleCalendarEvent, cancelEvent } from '@/lib/calendar';
 import { createRecallBot, cancelRecallBot } from '@/lib/recall-auto-bot';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { attachCalendarLink } from './calendar-link';
+import { attachCalendarLink, attachCalendarLinkToSet } from './calendar-link';
 import { withCircuitBreaker } from './circuit-breaker';
 import { executeWithCompensation, type TransactionStep } from './transaction-manager';
 import { enqueue as retryEnqueue } from './retry-queue';
@@ -608,13 +608,9 @@ async function syncSharedCalendarEvent(
       }),
     );
 
-    await supabase
-      .from('scheduled_sessions')
-      .update({
-        google_event_id: calResult.eventId,
-        google_meet_link: calResult.meetLink,
-      })
-      .in('id', sessionIds);
+    // 2A: route the shared-cohort calendar write through the sole set-writer.
+    // Same columns, same values, same row scope (.in('id', sessionIds)).
+    await attachCalendarLinkToSet(supabase, sessionIds, calResult.eventId, calResult.meetLink);
 
     logger.info('batch_shared_calendar_created', {
       requestId,

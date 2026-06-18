@@ -29,6 +29,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import { getProgramContext, type ProgramContext } from '@/lib/utils/program-label';
 import { resolveSessionTime, dayKeyToNum, DAY_KEYS, type SchedulePreference, type DayKey } from '@/lib/scheduling/schedule-time';
+import { attachCalendarLinkToSet } from '@/lib/scheduling/calendar-link';
 
 export const dynamic = 'force-dynamic';
 
@@ -708,20 +709,40 @@ async function scheduleCalendarForExistingSessions(
       }
 
       // Apply batch meet_link to ALL sessions in this enrollment
-      // Batch sessions share one Calendar event + one Meet link — always sync to latest
+      // Batch sessions share one Calendar event + one Meet link — always sync to latest.
+      // 2A: calendar columns now go through the sole set-writer (attachCalendarLinkToSet).
+      // The status flip is a non-calendar write and stays direct. A null batch value must
+      // preserve each row's existing value (offline batch has batchMeetLink=''), so group
+      // by the effective (eventId, meetLink) pair — mirrors the old conditional `if`s.
       if (batchMeetLink || batchCalendarEventId) {
-        const updateFields: Record<string, unknown> = {
-          status: 'scheduled',
-          updated_at: new Date().toISOString(),
-        };
-        if (batchMeetLink) updateFields.google_meet_link = batchMeetLink;
-        if (batchCalendarEventId) updateFields.google_event_id = batchCalendarEventId;
-
-        await supabase
+        // SELECT the exact row set under the IDENTICAL WHERE + current calendar values.
+        const { data: batchRows } = await supabase
           .from('scheduled_sessions')
-          .update(updateFields)
+          .select('id, google_event_id, google_meet_link')
           .eq('enrollment_id', enrollmentId)
           .in('status', ['pending', 'scheduled']);
+
+        // status flip (non-calendar column) — same WHERE as before.
+        await supabase
+          .from('scheduled_sessions')
+          .update({ status: 'scheduled', updated_at: new Date().toISOString() })
+          .eq('enrollment_id', enrollmentId)
+          .in('status', ['pending', 'scheduled']);
+
+        // calendar columns via the set-writer, grouped by effective value so an absent
+        // batch value leaves each row's existing event_id / meet_link untouched.
+        const groups = new Map<string, { eventId: string | null; meetLink: string | null; ids: string[] }>();
+        for (const r of batchRows ?? []) {
+          const eventId = batchCalendarEventId || r.google_event_id || null;
+          const meetLink = batchMeetLink || r.google_meet_link || null;
+          const key = `${eventId ?? ''}|${meetLink ?? ''}`;
+          const g = groups.get(key) ?? { eventId, meetLink, ids: [] };
+          g.ids.push(r.id);
+          groups.set(key, g);
+        }
+        for (const g of Array.from(groups.values())) {
+          await attachCalendarLinkToSet(supabase, g.ids, g.eventId, g.meetLink);
+        }
 
         console.log(JSON.stringify({
           requestId,

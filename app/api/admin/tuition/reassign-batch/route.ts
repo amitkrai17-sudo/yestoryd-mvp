@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { google } from 'googleapis';
 import { withApiHandler } from '@/lib/api/with-api-handler';
+import { attachCalendarLinkToSet } from '@/lib/scheduling/calendar-link';
 
 export const dynamic = 'force-dynamic';
 
@@ -97,19 +98,42 @@ export const POST = withApiHandler(async (req: NextRequest, { supabase, requestI
   // 5. Update all FUTURE scheduled_sessions for this enrollment
   const today = new Date().toISOString().split('T')[0];
   if (onboarding.enrollment_id) {
-    const updateFields: Record<string, unknown> = {
-      batch_id: newBatchId,
-      updated_at: new Date().toISOString(),
-    };
-    // Copy persistent classroom link to session (tuition_onboarding.meet_link → scheduled_sessions.google_meet_link)
-    if (newMeetLink) updateFields.google_meet_link = newMeetLink;
+    // 2A: batch_id is a non-calendar column and stays a direct write. The classroom
+    // meet_link goes through the sole set-writer (attachCalendarLinkToSet). As today,
+    // google_event_id is NOT changed here — each row's existing event_id is preserved
+    // (group by it), so we never null an event_id that was previously set.
+    const statuses = ['scheduled', 'pending_scheduling', 'pending', 'confirmed'];
 
-    await supabase
+    // SELECT the exact row set under the IDENTICAL WHERE + existing event_id to preserve.
+    const { data: futureRows } = await supabase
       .from('scheduled_sessions')
-      .update(updateFields)
+      .select('id, google_event_id')
       .eq('enrollment_id', onboarding.enrollment_id)
       .gte('scheduled_date', today)
-      .in('status', ['scheduled', 'pending_scheduling', 'pending', 'confirmed']);
+      .in('status', statuses);
+
+    // batch_id (non-calendar column) — same WHERE as before.
+    await supabase
+      .from('scheduled_sessions')
+      .update({ batch_id: newBatchId, updated_at: new Date().toISOString() })
+      .eq('enrollment_id', onboarding.enrollment_id)
+      .gte('scheduled_date', today)
+      .in('status', statuses);
+
+    // Copy persistent classroom link → google_meet_link via the set-writer, only when
+    // present (mirrors old `if (newMeetLink)`), preserving each row's existing event_id.
+    if (newMeetLink && (futureRows ?? []).length > 0) {
+      const byEvent = new Map<string | null, string[]>();
+      for (const r of futureRows ?? []) {
+        const k = r.google_event_id ?? null;
+        const arr = byEvent.get(k) ?? [];
+        arr.push(r.id);
+        byEvent.set(k, arr);
+      }
+      for (const [evId, ids] of Array.from(byEvent.entries())) {
+        await attachCalendarLinkToSet(supabase, ids, evId, newMeetLink);
+      }
+    }
   }
 
   // 6. Calendar attendee management (non-blocking — DB changes already committed)

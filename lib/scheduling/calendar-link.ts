@@ -36,3 +36,32 @@ export async function attachCalendarLink(
   if (error) return { ok: false, error: error.message };
   return { ok: true };
 }
+
+/**
+ * Set-variant of attachCalendarLink: persist the SAME event id + Meet link onto a
+ * SET of sessions in ONE write (`.in('id', sessionIds)`). Mirrors attachCalendarLink's
+ * shape/error handling exactly and likewise bumps updated_at. No-op safe on an empty
+ * array (returns ok without a DB call). Like the single-row variant it WRITES whatever
+ * it is given (including null) — a caller preserving a column must pass that column's
+ * existing value.
+ */
+export async function attachCalendarLinkToSet(
+  supabase: AdminClient,
+  sessionIds: string[],
+  eventId: string | null,
+  meetLink: string | null,
+): Promise<{ ok: boolean; error?: string }> {
+  if (sessionIds.length === 0) return { ok: true };
+
+  const { error } = await supabase
+    .from('scheduled_sessions')
+    .update({
+      google_event_id: eventId,
+      google_meet_link: meetLink,
+      updated_at: new Date().toISOString(),
+    })
+    .in('id', sessionIds);
+
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
