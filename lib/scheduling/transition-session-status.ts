@@ -92,7 +92,9 @@ export type SessionStatusValue =
   | 'missed'
   | 'no_show'
   | 'coach_no_show'
-  | 'cancelled';
+  | 'cancelled'
+  | 'paused'
+  | 'pending_booking';
 
 /** WHO initiated the transition (audit). */
 export type TransitionActor = 'coach' | 'admin' | 'parent' | 'system' | 'recall' | 'cron';
@@ -166,9 +168,9 @@ export interface TransitionResult {
 
 // ── POLICY G — from → set-of-legal-to. Empty set = terminal (only same-state noop). ──
 const LEGAL_TRANSITIONS: Record<SessionStatusValue, ReadonlySet<SessionStatusValue>> = {
-  pending: new Set<SessionStatusValue>(['scheduled', 'completed', 'missed', 'no_show', 'coach_no_show', 'cancelled', 'pending_scheduling']),
-  pending_scheduling: new Set<SessionStatusValue>(['scheduled', 'completed', 'missed', 'no_show', 'coach_no_show', 'cancelled']),
-  scheduled: new Set<SessionStatusValue>(['in_progress', 'bot_joining', 'bot_error', 'completed', 'missed', 'no_show', 'coach_no_show', 'cancelled', 'pending_scheduling']),
+  pending: new Set<SessionStatusValue>(['scheduled', 'completed', 'missed', 'no_show', 'coach_no_show', 'cancelled', 'pending_scheduling', 'paused']),
+  pending_scheduling: new Set<SessionStatusValue>(['scheduled', 'completed', 'missed', 'no_show', 'coach_no_show', 'cancelled', 'paused']),
+  scheduled: new Set<SessionStatusValue>(['in_progress', 'bot_joining', 'bot_error', 'completed', 'missed', 'no_show', 'coach_no_show', 'cancelled', 'pending_scheduling', 'paused']),
   bot_joining: new Set<SessionStatusValue>(['in_progress', 'bot_error', 'completed', 'partial', 'no_show', 'coach_no_show', 'cancelled']),
   in_progress: new Set<SessionStatusValue>(['bot_error', 'completed', 'partial', 'no_show', 'coach_no_show', 'cancelled']),
   bot_error: new Set<SessionStatusValue>([]),
@@ -178,6 +180,11 @@ const LEGAL_TRANSITIONS: Record<SessionStatusValue, ReadonlySet<SessionStatusVal
   no_show: new Set<SessionStatusValue>([]),
   coach_no_show: new Set<SessionStatusValue>([]),
   cancelled: new Set<SessionStatusValue>([]),
+  // Non-terminal holding states: a paused/awaiting-booking session must resume to
+  // `scheduled` before it can be delivered. Neither may go straight to completed/
+  // missed/no_show/in_progress — POLICY G rejects those as illegal.
+  paused: new Set<SessionStatusValue>(['scheduled', 'cancelled']),
+  pending_booking: new Set<SessionStatusValue>(['scheduled', 'cancelled']),
 };
 
 const COMPLETED_AT_STATES: ReadonlySet<SessionStatusValue> = new Set<SessionStatusValue>([
@@ -463,7 +470,10 @@ export async function transitionSessionStatus(
     }
   }
   // Other `to` values (scheduled, in_progress, bot_joining, bot_error, partial,
-  // pending_scheduling) are CORE-only by design — no side-effects.
+  // pending_scheduling, paused, pending_booking) are CORE-only by design — no
+  // side-effects. In particular `paused` runs NO teardown: calendar + recall are
+  // deliberately kept alive so a paused→scheduled resume needs no recreation (POLICY F
+  // keeps any recreate in the reschedule wrapper, which a pure status flip never enters).
 
   return { ok: true, from, to, sideEffects };
 }
