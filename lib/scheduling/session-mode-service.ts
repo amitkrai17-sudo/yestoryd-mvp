@@ -148,20 +148,36 @@ export interface SetSessionModeOpts {
   /** Skip the COACH notification (parent still notified). Used for batch siblings
    *  so the single coach gets exactly one message, not one per child. */
   suppressCoachNotify?: boolean;
+  /** When true, setSessionMode does NOT send its parent_offline_notification_v3 on an
+   *  OFFLINE flip — the CALLER owns the parent notification. (Used by the funneled
+   *  offline routes that send their own richer notification.) */
+  suppressOfflineNotify?: boolean;
+  /** Location passed to the Google event strip (updateCalendarEventForMode) on an
+   *  OFFLINE flip, matching the routes' location-aware strip. Does NOT itself write the
+   *  offline_location DB column — use approval.location for that. */
+  offlineLocation?: string;
   /** Optional offline-approval metadata, written ATOMICALLY with an OFFLINE flip
    *  (the SAME single-row update as session_mode). Consumed ONLY on mode==='offline'.
    *  Absent → the offline update is byte-for-byte today's (session_mode + updated_at).
-   *  Lets the offline-decision / request-offline / tuition-schedule callers funnel
-   *  through setSessionMode in 3B instead of writing session_mode directly. */
+   *  Each field is written ONLY when explicitly provided (no implicit defaults), so a
+   *  caller that sets just requestStatus does NOT incur an offline_approved_at write. */
   approval?: {
     /** offline_request_status — e.g. 'auto_approved' | 'approved'. */
     requestStatus?: string;
     /** offline_approved_by. */
     approvedBy?: string;
-    /** offline_approved_at (ISO). Defaults to now() when requestStatus is set but this is omitted. */
+    /** offline_approved_at (ISO). Written only when provided — no implicit now() default. */
     approvedAt?: string;
     /** report_deadline (ISO). */
     reportDeadline?: string;
+    /** offline_request_reason. */
+    requestReason?: string;
+    /** offline_reason_detail (pass null to write null). */
+    reasonDetail?: string | null;
+    /** offline_location (pass null to write null). */
+    location?: string | null;
+    /** offline_location_type (pass null to write null). */
+    locationType?: string | null;
   };
 }
 
@@ -220,11 +236,16 @@ export async function setSessionMode(
     const update: Record<string, unknown> = { session_mode: 'offline', updated_at: new Date().toISOString() };
     if (opts.approval) {
       const a = opts.approval;
+      // Each column written ONLY when its field is explicitly provided — no implicit
+      // defaults, so a caller passing just requestStatus writes exactly that column set.
       if (a.requestStatus !== undefined) update.offline_request_status = a.requestStatus;
       if (a.approvedBy !== undefined) update.offline_approved_by = a.approvedBy;
       if (a.approvedAt !== undefined) update.offline_approved_at = a.approvedAt;
-      else if (a.requestStatus !== undefined) update.offline_approved_at = new Date().toISOString();
       if (a.reportDeadline !== undefined) update.report_deadline = a.reportDeadline;
+      if (a.requestReason !== undefined) update.offline_request_reason = a.requestReason;
+      if (a.reasonDetail !== undefined) update.offline_reason_detail = a.reasonDetail;
+      if (a.location !== undefined) update.offline_location = a.location;
+      if (a.locationType !== undefined) update.offline_location_type = a.locationType;
     }
 
     const { error: uErr } = await supabase
@@ -262,7 +283,7 @@ export async function setSessionMode(
               coachEmail = coach?.email ?? null;
             }
             if (coachEmail) {
-              await updateCalendarEventForMode(eventId, coachEmail, 'offline');
+              await updateCalendarEventForMode(eventId, coachEmail, 'offline', opts.offlineLocation);
             } else {
               console.warn(JSON.stringify({ requestId, event: 'offline_meet_strip_no_coach_email', sessionId, eventId }));
             }
@@ -289,9 +310,9 @@ export async function setSessionMode(
     // Required vars (DB-verified): parent_first, child_first, session_date.
     // Comms failure must NOT break the committed mode write. No coach offline
     // template exists, so the coach is not notified on offline flips.
-    let parentNotified = 'skipped';
+    let parentNotified = opts.suppressOfflineNotify ? 'suppressed' : 'skipped';
     try {
-      const { data: child } = session.child_id
+      const { data: child } = (!opts.suppressOfflineNotify && session.child_id)
         ? await supabase.from('children').select('child_name, parent_name, parent_phone').eq('id', session.child_id).single()
         : { data: null };
       if (child?.parent_phone) {
