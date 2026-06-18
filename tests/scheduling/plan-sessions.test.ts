@@ -187,4 +187,28 @@ describe('planSessions — anchored-fallback placement (RC-5)', () => {
     expect(placements.every((p) => weekdayOf(p.scheduledDate) === 6)).toBe(true); // Saturdays
     expect(placements.some((p) => weekdayOf(p.scheduledDate) === 0)).toBe(false); // never Sunday
   });
+
+  // T10 — perfect Sat/Sun tie must resolve to poolDays[0]=Sat (Ira renewal case).
+  // existingDays is a 3-Sat/3-Sun perfect tie; spw=1, pool=[Sat,Sun] in days-order.
+  // All 4 placements must be Saturdays (zero Sundays), one per week from a Thursday start.
+  it('T10 perfect Sat/Sun tie resolves to poolDays[0]=Sat (Ira renewal)', () => {
+    const { placements } = planSessions(
+      makeInput({
+        sessionsPerWeek: 1,
+        poolDays: [6, 0], // [Sat, Sun] in schedule_preference days-order
+        count: 4,
+        startDate: '2026-07-02', // Thursday
+        existingDays: [6, 0, 6, 0, 6, 0], // 3 Sat + 3 Sun — a perfect tie
+      }),
+    );
+    expect(placements.map((p) => p.scheduledDate)).toEqual([
+      '2026-07-04',
+      '2026-07-11',
+      '2026-07-18',
+      '2026-07-25',
+    ]);
+    expect(placements.every((p) => weekdayOf(p.scheduledDate) === 6)).toBe(true); // all Saturdays
+    expect(placements.some((p) => weekdayOf(p.scheduledDate) === 0)).toBe(false); // zero Sundays
+    expect(placements.map((p) => p.weekNumber)).toEqual([1, 2, 3, 4]); // 1/week
+  });
 });

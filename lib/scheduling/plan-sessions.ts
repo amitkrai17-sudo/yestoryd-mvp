@@ -127,13 +127,22 @@ function chooseSubset(pool: number[], k: number, seed: number[]): number[] {
   return best;
 }
 
-/** Distinct weekdays ranked by frequency desc, tiebreak weekday asc. */
-function rankByFrequency(days: number[]): number[] {
+/** Distinct weekdays ranked by frequency desc, tiebreak by poolDays ORDER
+ *  (days-order = parent's stated first preference — the SAME tie rule the
+ *  first-schedule path uses via chooseSubset). Tied weekdays absent from the
+ *  pool rank after those present (defensive; existingDays should be a pool subset).
+ */
+function rankByFrequency(days: number[], poolOrder: number[]): number[] {
   const freq = new Map<number, number>();
   for (const d of days) freq.set(d, (freq.get(d) ?? 0) + 1);
+  const poolIndex = (d: number): number => {
+    const i = poolOrder.indexOf(d);
+    return i === -1 ? Number.POSITIVE_INFINITY : i;
+  };
   return Array.from(freq.keys()).sort((a, b) => {
     const fd = (freq.get(b) as number) - (freq.get(a) as number);
-    return fd !== 0 ? fd : a - b;
+    if (fd !== 0) return fd;                       // PRIMARY: more-frequent wins outright
+    return (poolIndex(a) - poolIndex(b)) || (a - b); // TIE: lower pool index wins; NaN (both absent) → weekday asc
   });
 }
 
@@ -141,7 +150,7 @@ function rankByFrequency(days: number[]): number[] {
 function selectAnchors(distinctPool: number[], k: number, existingDays: number[]): number[] {
   if (k <= 0) return [];
   if (existingDays.length > 0) {
-    const fromHistory = rankByFrequency(existingDays).slice(0, k);
+    const fromHistory = rankByFrequency(existingDays, distinctPool).slice(0, k);
     if (fromHistory.length >= k) return fromHistory;
     // History has fewer distinct days than spw — fill from unused pool, max-spacing.
     const need = k - fromHistory.length;
