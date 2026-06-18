@@ -10,6 +10,7 @@
 // ============================================================
 
 import { scheduleCalendarEvent, updateCalendarEventForMode, getEventDetails } from '@/lib/calendar/events';
+import { attachCalendarLink } from './calendar-link';
 import { getServiceSupabase } from '@/lib/api-auth';
 import { sendNotification, type NotifyResult } from '@/lib/communication/notify';
 import { formatDateShort, formatTime12 } from '@/lib/utils/date-format';
@@ -147,6 +148,21 @@ export interface SetSessionModeOpts {
   /** Skip the COACH notification (parent still notified). Used for batch siblings
    *  so the single coach gets exactly one message, not one per child. */
   suppressCoachNotify?: boolean;
+  /** Optional offline-approval metadata, written ATOMICALLY with an OFFLINE flip
+   *  (the SAME single-row update as session_mode). Consumed ONLY on mode==='offline'.
+   *  Absent → the offline update is byte-for-byte today's (session_mode + updated_at).
+   *  Lets the offline-decision / request-offline / tuition-schedule callers funnel
+   *  through setSessionMode in 3B instead of writing session_mode directly. */
+  approval?: {
+    /** offline_request_status — e.g. 'auto_approved' | 'approved'. */
+    requestStatus?: string;
+    /** offline_approved_by. */
+    approvedBy?: string;
+    /** offline_approved_at (ISO). Defaults to now() when requestStatus is set but this is omitted. */
+    approvedAt?: string;
+    /** report_deadline (ISO). */
+    reportDeadline?: string;
+  };
 }
 
 export interface SetSessionModeResult {
@@ -197,12 +213,75 @@ export async function setSessionMode(
 
   // ── OFFLINE ──
   if (mode === 'offline') {
+    // Mode + (optional) offline-approval metadata in ONE atomic single-row update.
+    // When opts.approval is absent the column set is byte-for-byte today's
+    // (session_mode + updated_at) — existing callers unaffected. google_meet_link is
+    // NEVER written here (Step 2 invariant) — it is released below via attachCalendarLink.
+    const update: Record<string, unknown> = { session_mode: 'offline', updated_at: new Date().toISOString() };
+    if (opts.approval) {
+      const a = opts.approval;
+      if (a.requestStatus !== undefined) update.offline_request_status = a.requestStatus;
+      if (a.approvedBy !== undefined) update.offline_approved_by = a.approvedBy;
+      if (a.approvedAt !== undefined) update.offline_approved_at = a.approvedAt;
+      else if (a.requestStatus !== undefined) update.offline_approved_at = new Date().toISOString();
+      if (a.reportDeadline !== undefined) update.report_deadline = a.reportDeadline;
+    }
+
     const { error: uErr } = await supabase
       .from('scheduled_sessions')
-      .update({ session_mode: 'offline', updated_at: new Date().toISOString() })
+      .update(update)
       .eq('id', sessionId);
     if (uErr) {
       return { ok: false, mode, link: session.google_meet_link ?? null, notified: { parent: 'skipped', coach: 'skipped' }, error: 'update_failed' };
+    }
+
+    // Step 2/3 seam — release the dangling online Meet link when flipping to offline.
+    // Decision (ii): STRIP the Meet marker off the Google event, never DELETE it — a
+    // shared / room / recurring event may still serve LIVE (or online) siblings (same
+    // landmine as 2B/2C). Sibling-guarded. All column writes go via attachCalendarLink
+    // (sole writer); calendar API is best-effort and never fails the committed mode flip.
+    if (session.google_meet_link) {
+      const eventId = session.google_event_id; // const → narrowing survives the awaits below
+
+      if (eventId) {
+        // Sibling check (same shape as 2B/2C): other LIVE sessions sharing this event?
+        const { count: siblingCount } = await supabase
+          .from('scheduled_sessions')
+          .select('id', { count: 'exact', head: true })
+          .eq('google_event_id', eventId)
+          .neq('id', sessionId)
+          .not('status', 'in', '(cancelled,completed,missed)');
+        const isShared = (siblingCount ?? 0) > 0;
+
+        if (!isShared) {
+          // SOLE owner — strip the Meet marker off the Google event itself (keep the event).
+          try {
+            let coachEmail: string | null = null;
+            if (session.coach_id) {
+              const { data: coach } = await supabase.from('coaches').select('email').eq('id', session.coach_id).single();
+              coachEmail = coach?.email ?? null;
+            }
+            if (coachEmail) {
+              await updateCalendarEventForMode(eventId, coachEmail, 'offline');
+            } else {
+              console.warn(JSON.stringify({ requestId, event: 'offline_meet_strip_no_coach_email', sessionId, eventId }));
+            }
+          } catch (e) {
+            console.warn(JSON.stringify({ requestId, event: 'offline_meet_strip_error', sessionId, error: e instanceof Error ? e.message : String(e) }));
+          }
+        } else {
+          // SHARED — do NOT touch the Google event (siblings may still use it / be online on it).
+          console.warn(JSON.stringify({ requestId, event: 'offline_meet_strip_skipped_shared', sessionId, eventId, siblingCount: siblingCount ?? 0 }));
+        }
+      }
+
+      // Null ONLY this row's meet link (KEEP event_id — the row still belongs to the
+      // event) through the sole calendar-column writer.
+      try {
+        await attachCalendarLink(supabase, sessionId, eventId, null);
+      } catch (e) {
+        console.warn(JSON.stringify({ requestId, event: 'offline_meet_release_error', sessionId, error: e instanceof Error ? e.message : String(e) }));
+      }
     }
 
     // Notify the parent of the flip via parent_offline_notification_v3. Legacy
@@ -233,7 +312,9 @@ export async function setSessionMode(
       parentNotified = 'failed';
     }
 
-    return { ok: true, mode: 'offline', link: session.google_meet_link ?? null, notified: { parent: parentNotified, coach: 'no_offline_template' } };
+    // link is null post-flip: offline sessions hold no Meet link, and any prior link was
+    // released above. Result object matches the DB end-state.
+    return { ok: true, mode: 'offline', link: null, notified: { parent: parentNotified, coach: 'no_offline_template' } };
   }
 
   // ── ONLINE ──
