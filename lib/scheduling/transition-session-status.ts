@@ -71,6 +71,7 @@ import { cancelRecallBot } from '@/lib/recall-auto-bot';
 import { withCircuitBreaker } from './circuit-breaker';
 import { notify } from './notification-manager';
 import { logAudit } from './operations/helpers';
+import { attachCalendarLink } from './calendar-link';
 import { closeTuitionSession } from '@/lib/tuition/session-closure';
 import { createLogger } from './logger';
 
@@ -283,15 +284,52 @@ export async function transitionSessionStatus(
   const sideEffects: TransitionSideEffects = {};
 
   if (to === 'cancelled') {
-    // POLICY D — teardown ALWAYS (unconditional; NOT gated by skipSideEffects).
+    // POLICY D — teardown on cancel. C3 SHARED-EVENT GUARD: tuition recurring /
+    // multi-child cohorts reuse ONE google_event_id across many rows. Deleting the
+    // Google event while LIVE siblings still use it would tear it down for all of them.
     const eventId = session.google_event_id;
     if (eventId) {
-      try {
-        const r = await withCircuitBreaker('google-calendar', () => cancelEvent(eventId, true));
-        sideEffects.calendarTorndown = r?.success ?? false;
-      } catch (e) {
+      // Count OTHER live sessions sharing this event (exclude this row; exclude terminal).
+      const { count: siblingCount } = await supabase
+        .from('scheduled_sessions')
+        .select('id', { count: 'exact', head: true })
+        .eq('google_event_id', eventId)
+        .neq('id', sessionId)
+        .not('status', 'in', '(cancelled,completed,missed)');
+      const isShared = (siblingCount ?? 0) > 0;
+
+      // Detach this row's link ONLY when it is safe to do so (see branches below) —
+      // never strand a link that still points at an UNDELETED event.
+      let shouldNullLink = false;
+
+      if (!isShared) {
+        // LAST/ONLY live member — delete the Google event (today's behavior).
+        try {
+          const r = await withCircuitBreaker('google-calendar', () => cancelEvent(eventId, true));
+          sideEffects.calendarTorndown = r?.success ?? false;
+          // Only detach the row if the event was actually deleted; on a delete FAILURE
+          // leave google_event_id/meet_link intact so a retry/reconcile can still find it.
+          shouldNullLink = sideEffects.calendarTorndown;
+        } catch (e) {
+          sideEffects.calendarTorndown = false;
+          logger.error('calendar_cancel_failed', { requestId, sessionId, error: e instanceof Error ? e.message : String(e) });
+        }
+      } else {
+        // SHARED — live siblings still need the event; do NOT delete it. Safe to detach
+        // this row's link (the event is preserved for the siblings).
         sideEffects.calendarTorndown = false;
-        logger.error('calendar_cancel_failed', { requestId, sessionId, error: e instanceof Error ? e.message : String(e) });
+        logger.info('calendar_cancel_skipped_shared', { requestId, sessionId, eventId, siblingCount: siblingCount ?? 0 });
+        shouldNullLink = true;
+      }
+
+      if (shouldNullLink) {
+        // Calendar columns nulled ONLY via attachCalendarLink (sole writer) — never a
+        // direct .update in this path.
+        try {
+          await attachCalendarLink(supabase, sessionId, null, null);
+        } catch (e) {
+          logger.error('calendar_link_null_failed', { requestId, sessionId, error: e instanceof Error ? e.message : String(e) });
+        }
       }
     }
     const botId = session.recall_bot_id;
