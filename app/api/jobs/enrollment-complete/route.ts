@@ -181,43 +181,12 @@ export async function POST(request: NextRequest) {
       errors: calendarResult.errors.length,
     }));
 
-    // 5b. Tuition: set default session_mode for offline sessions
+    // 5b. Tuition flag — used for the recall-bot logging below. The former tuition
+    // session_mode relabel that lived here is RETIRED (3D): every insert now states
+    // session_mode explicitly (3C-a), so tuition offline sessions are born offline and
+    // no row ever reaches this job mislabeled 'online'. Removing it also eliminates the
+    // last MUTATE bypasser of session_mode — setSessionMode is now the sole mutate-writer.
     const isTuition = enrollment.enrollment_type === 'tuition';
-    if (isTuition) {
-      try {
-        // Look up tuition_onboarding for default session mode
-        const { data: onboarding } = await supabase
-          .from('tuition_onboarding')
-          .select('default_session_mode')
-          .eq('enrollment_id', data.enrollmentId)
-          .single();
-
-        const defaultMode = onboarding?.default_session_mode || 'offline';
-
-        if (defaultMode === 'offline') {
-          // Set non-terminal sessions to offline mode. Status guard (2B-1a): never
-          // rewrite history — a mode flip must not relabel completed/cancelled/missed
-          // online sessions. Mirrors enrollment-scheduler.ts:885.
-          await supabase
-            .from('scheduled_sessions')
-            .update({
-              session_mode: 'offline',
-              updated_at: new Date().toISOString(),
-            })
-            .eq('enrollment_id', data.enrollmentId)
-            .eq('session_mode', 'online')
-            .not('status', 'in', '("completed","cancelled","missed")');
-
-          console.log(JSON.stringify({
-            requestId,
-            event: 'tuition_sessions_set_offline',
-            enrollmentId: data.enrollmentId,
-          }));
-        }
-      } catch (tuitionErr: any) {
-        console.error(JSON.stringify({ requestId, event: 'tuition_session_mode_error', error: tuitionErr.message }));
-      }
-    }
 
     // 6. Schedule Recall.ai bots for session recording
     //    (scheduleBotsForEnrollment already filters: only sessions with Meet links, skips offline)
