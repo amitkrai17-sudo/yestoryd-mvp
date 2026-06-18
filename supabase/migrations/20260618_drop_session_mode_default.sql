@@ -1,0 +1,21 @@
+-- ============================================================================
+-- Drop the scheduled_sessions.session_mode column DEFAULT.
+--
+-- RUN ONLY AFTER 3C-a code is deployed to prod. Web runs this via MCP at
+-- push-time — caller-first, schema-after (same discipline as the WA-template
+-- migrations). Running it BEFORE the explicit-mode deploy would throw on every
+-- live insert that still relies on the default.
+--
+-- Context: as of 3C-a (commit 7cf5664a) every insert path into scheduled_sessions
+-- states session_mode explicitly:
+--   - buildInsertRow (session-engine.ts) — sessionMode is a REQUIRED param, always written
+--   - toCreateParams (enrollment-scheduler.ts) — tuition=defaultMode, coaching/checkin='online'
+--   - scheduleSession wrapper (create-session.ts) — 'online'
+--   - skill-booster/recommend — 'online'
+-- so the DB DEFAULT 'online' is no longer load-bearing.
+--
+-- NOT NULL is RETAINED. After this, an insert that omits session_mode becomes a
+-- write-time NOT NULL error (it is already a compile-time error via the required param).
+-- ============================================================================
+
+ALTER TABLE scheduled_sessions ALTER COLUMN session_mode DROP DEFAULT;
