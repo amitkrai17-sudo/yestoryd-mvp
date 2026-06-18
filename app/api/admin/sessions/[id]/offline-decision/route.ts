@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import { getSetting } from '@/lib/settings/getSettings';
-import { updateCalendarEventForMode } from '@/lib/googleCalendar';
+import { setSessionMode } from '@/lib/scheduling/session-mode-service';
 import { cancelRecallBot } from '@/lib/recall-auto-bot';
 import { sendNotification } from '@/lib/communication/notify';
 import crypto from 'crypto';
@@ -67,42 +67,26 @@ export async function POST(
       const sessionDatetime = new Date(`${session.scheduled_date}T${session.scheduled_time}`);
       const reportDeadline = new Date(sessionDatetime.getTime() + reportDeadlineHours * 60 * 60 * 1000);
 
-      const { error: updateError } = await supabase
-        .from('scheduled_sessions')
-        .update({
-          session_mode: 'offline',
-          offline_request_status: 'approved',
-          offline_approved_by: auth.email ?? 'admin',
-          offline_approved_at: new Date().toISOString(),
-          report_deadline: reportDeadline.toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', sessionId);
+      // session_mode + offline-approval metadata + Google event strip via the SOLE mode
+      // owner (setSessionMode). suppressOfflineNotify: this route sends its own richer
+      // parent notification below. Recall-bot cancel stays inline (per-route side-effect).
+      const modeResult = await setSessionMode(sessionId, 'offline', {
+        actor: 'admin',
+        supabase,
+        requestId,
+        suppressOfflineNotify: true,
+        offlineLocation: session.offline_location ?? undefined,
+        approval: {
+          requestStatus: 'approved',
+          approvedBy: auth.email ?? 'admin',
+          approvedAt: new Date().toISOString(),
+          reportDeadline: reportDeadline.toISOString(),
+        },
+      });
 
-      if (updateError) {
-        console.error(JSON.stringify({ requestId, event: 'approve_update_error', error: updateError.message }));
+      if (!modeResult.ok) {
+        console.error(JSON.stringify({ requestId, event: 'approve_update_error', error: modeResult.error }));
         return NextResponse.json({ error: 'Failed to approve offline request' }, { status: 500 });
-      }
-
-      // Update Google Calendar (remove Meet link, add location)
-      if (session.google_event_id && session.coach_id) {
-        const { data: coach } = await supabase
-          .from('coaches')
-          .select('email')
-          .eq('id', session.coach_id)
-          .single();
-
-        if (coach?.email) {
-          const calResult = await updateCalendarEventForMode(
-            session.google_event_id,
-            coach.email,
-            'offline',
-            session.offline_location ?? undefined
-          );
-          if (!calResult.success) {
-            console.error(JSON.stringify({ requestId, event: 'calendar_update_failed', error: calResult.error }));
-          }
-        }
       }
 
       // Cancel Recall.ai bot if exists

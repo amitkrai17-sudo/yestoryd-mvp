@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminOrCoach } from '@/lib/api-auth';
 import { scheduleSession } from '@/lib/scheduling/operations/create-session';
+import { setSessionMode } from '@/lib/scheduling/session-mode-service';
 
 export const dynamic = 'force-dynamic';
 
@@ -113,15 +114,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: result.error || 'Failed to schedule session' }, { status: 500 });
     }
 
-    // If offline, set session_mode on the session
+    // If offline, set session_mode via the SOLE mode owner. Born-offline (skipCalendar) →
+    // no Meet link → meet-release is a no-op. suppressOfflineNotify: this route sends no
+    // mode-change notification today, so suppression keeps it byte-identical (no net-new
+    // send). setSessionMode makes its own typed service client (omit opts.supabase, since
+    // this route's inline createClient is untyped). NOTE: setSessionMode also bumps
+    // updated_at, which the prior inline write did not.
     if (!isOnline && result.sessionId) {
-      await supabase
-        .from('scheduled_sessions')
-        .update({
-          session_mode: 'offline',
-          offline_request_status: 'auto_approved',
-        })
-        .eq('id', result.sessionId);
+      await setSessionMode(result.sessionId, 'offline', {
+        actor: auth.role === 'admin' ? 'admin' : 'coach',
+        suppressOfflineNotify: true,
+        approval: { requestStatus: 'auto_approved' },
+      });
     }
 
     return NextResponse.json({

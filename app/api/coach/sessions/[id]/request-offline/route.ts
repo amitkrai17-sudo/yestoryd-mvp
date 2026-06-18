@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSetting } from '@/lib/settings/getSettings';
-import { updateCalendarEventForMode } from '@/lib/googleCalendar';
+import { setSessionMode } from '@/lib/scheduling/session-mode-service';
 import { cancelRecallBot } from '@/lib/recall-auto-bot';
 import { sendNotification } from '@/lib/communication/notify';
 import { withParamsHandler } from '@/lib/api/with-api-handler';
@@ -169,47 +169,30 @@ export const POST = withParamsHandler<{ id: string }>(async (request, { id: sess
     const reportDeadline = new Date(sessionDatetime.getTime() + reportDeadlineHours * 60 * 60 * 1000);
 
     if (isQualified) {
-      // AUTO-APPROVE
-      const { error: updateError } = await supabase
-        .from('scheduled_sessions')
-        .update({
-          session_mode: 'offline',
-          offline_request_status: 'auto_approved',
-          offline_request_reason: body.reason,
-          offline_reason_detail: body.detail ?? null,
-          offline_location: body.location ?? null,
-          offline_location_type: body.location_type ?? null,
-          offline_approved_by: 'auto',
-          offline_approved_at: new Date().toISOString(),
-          report_deadline: reportDeadline.toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', sessionId);
+      // AUTO-APPROVE — session_mode + offline metadata + Google event strip via the SOLE
+      // mode owner (setSessionMode). suppressOfflineNotify: this route sends its own richer
+      // parent notification below. Recall-bot cancel stays inline (per-route side-effect).
+      const modeResult = await setSessionMode(sessionId, 'offline', {
+        actor: 'coach',
+        supabase,
+        requestId,
+        suppressOfflineNotify: true,
+        offlineLocation: body.location,
+        approval: {
+          requestStatus: 'auto_approved',
+          requestReason: body.reason,
+          reasonDetail: body.detail ?? null,
+          location: body.location ?? null,
+          locationType: body.location_type ?? null,
+          approvedBy: 'auto',
+          approvedAt: new Date().toISOString(),
+          reportDeadline: reportDeadline.toISOString(),
+        },
+      });
 
-      if (updateError) {
-        console.error(JSON.stringify({ requestId, event: 'auto_approve_update_error', error: updateError.message }));
+      if (!modeResult.ok) {
+        console.error(JSON.stringify({ requestId, event: 'auto_approve_update_error', error: modeResult.error }));
         return NextResponse.json({ error: 'Failed to update session' }, { status: 500 });
-      }
-
-      // Update Google Calendar (remove Meet link, add location)
-      if (session.google_event_id) {
-        const { data: coach } = await supabase
-          .from('coaches')
-          .select('email')
-          .eq('id', coachId)
-          .single();
-
-        if (coach?.email) {
-          const calResult = await updateCalendarEventForMode(
-            session.google_event_id,
-            coach.email,
-            'offline',
-            body.location
-          );
-          if (!calResult.success) {
-            console.error(JSON.stringify({ requestId, event: 'calendar_update_failed', error: calResult.error }));
-          }
-        }
       }
 
       // Cancel Recall.ai bot if exists
