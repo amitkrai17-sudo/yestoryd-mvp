@@ -106,6 +106,10 @@ export async function POST(request: NextRequest) {
         scheduled_date: today.toISOString().split('T')[0], // Placeholder
         scheduled_time: '00:00:00', // Placeholder
         duration_minutes: enrollment.session_duration_minutes || 45,
+        // 3C-a: state mode explicitly. Remedial is born 'online' today (DB default) — keep
+        // that byte-identical. (default_session_mode lives on tuition_onboarding, NOT on
+        // enrollments, so the enrollment row cannot supply a standing mode here — see report.)
+        session_mode: 'online',
         focus_area: focusArea,
         coach_notes: coachNotes || null,
         remedial_trigger_source: 'coach_manual',

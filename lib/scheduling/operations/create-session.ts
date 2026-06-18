@@ -35,6 +35,9 @@ export async function scheduleSession(
         scheduledDate: input.scheduledDate,
         scheduledTime: input.scheduledTime,
         durationMinutes: duration,
+        // 3C-a: born online by design. The sole caller (tuition/schedule) flips offline
+        // afterward via setSessionMode when the coach chose in-person.
+        sessionMode: 'online',
       },
       {
         skipCalendar: options.skipCalendar,

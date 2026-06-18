@@ -72,7 +72,7 @@ export interface CreateSessionParams {
   remedialTriggerSource?: string;
   googleMeetLink?: string | null;  // pre-populated batch classroom link
   slotMatchType?: string;          // from smart-slot-finder: 'exact_match'|'manual_required'|...
-  sessionMode?: string;            // 'offline' | 'online' (tuition)
+  sessionMode: string;             // 'offline' | 'online' — REQUIRED (3C-a): every insert states mode explicitly
 }
 
 /**
@@ -193,7 +193,7 @@ function buildInsertRow(params: CreateSessionParams): Record<string, unknown> {
   if (params.googleMeetLink) row.google_meet_link = params.googleMeetLink;
   if (params.batchId !== undefined) row.batch_id = params.batchId;
   if (params.slotMatchType) row.slot_match_type = params.slotMatchType;
-  if (params.sessionMode) row.session_mode = params.sessionMode;
+  row.session_mode = params.sessionMode; // REQUIRED (3C-a) — no DB/app default fallback; caller must state it
   return row;
 }
 

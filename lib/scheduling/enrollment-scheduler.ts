@@ -547,10 +547,12 @@ function toCreateParams(s: ScheduledSession): CreateSessionParams {
     scheduledTime: s.scheduled_time,
     durationMinutes: s.duration_minutes,
     status: s.status,
+    // 3C-a: state mode explicitly. Tuition arrives with session_mode set (defaultMode);
+    // coaching + parent_checkin arrive without one and are ONLINE by nature (Recall).
+    sessionMode: s.session_mode ?? 'online',
   };
   if (s.is_diagnostic) p.isDiagnostic = true;
   if (s.slot_match_type) p.slotMatchType = s.slot_match_type;
-  if (s.session_mode) p.sessionMode = s.session_mode;
   const extra = s as ScheduledSession & { batch_id?: string | null; google_meet_link?: string | null };
   if (extra.batch_id !== undefined) p.batchId = extra.batch_id;
   if (extra.google_meet_link) p.googleMeetLink = extra.google_meet_link;

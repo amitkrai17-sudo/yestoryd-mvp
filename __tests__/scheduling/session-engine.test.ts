@@ -116,6 +116,7 @@ const baseParams: CreateSessionParams = {
   scheduledDate: '2026-05-01',
   scheduledTime: '17:30',
   durationMinutes: 45,
+  sessionMode: 'online', // 3C-a: sessionMode is now a required CreateSessionParams field
 };
 
 describe('session-engine', () => {
