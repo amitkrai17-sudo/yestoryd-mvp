@@ -56,16 +56,68 @@ export async function rescheduleSession(
 
     const eventId = session.google_event_id;
     if (eventId) {
-      try {
-        const result = await withCircuitBreaker('google-calendar', () =>
-          rescheduleEvent(eventId, newStart, duration)
-        );
-        if (result.success) {
+      // C3 LANDMINE GUARD: is this Google event SHARED by other LIVE sessions?
+      // Tuition recurring / multi-child cohorts reuse ONE event id across many rows;
+      // PATCHing it in place would move the event for every sibling. Count live siblings.
+      const { count: siblingCount } = await supabase
+        .from('scheduled_sessions')
+        .select('id', { count: 'exact', head: true })
+        .eq('google_event_id', eventId)
+        .neq('id', sessionId)
+        .not('status', 'in', '(cancelled,completed,missed)');
+      const isShared = (siblingCount ?? 0) > 0;
+
+      if (isShared) {
+        // DETACH (decision a): give THIS row its own new event at the new time; leave the
+        // shared event + all siblings untouched. Do NOT PATCH the shared event.
+        try {
+          const childName = child?.child_name || child?.name || 'Student';
+          const coachEmail = coach?.email || '';
+          const parentEmail = child?.parent_email || '';
+          const endTime = new Date(newStart);
+          endTime.setMinutes(endTime.getMinutes() + duration);
+          const attendees: string[] = [];
+          if (parentEmail) attendees.push(parentEmail);
+          if (coachEmail) attendees.push(coachEmail);
+          const num = session.session_number ? ` (Session ${session.session_number})` : '';
+
+          const calResult = await withCircuitBreaker('google-calendar', () =>
+            scheduleCalendarEvent({
+              title: `Yestoryd ${session.session_type} - ${childName}${num}`,
+              description: `Reading ${session.session_type} session for ${childName}`,
+              startTime: newStart,
+              endTime,
+              attendees,
+              sessionType: session.session_type === 'parent_checkin' ? 'parent_checkin' : 'coaching',
+            }),
+          );
+          if (calResult.meetLink) newMeetLink = calResult.meetLink;
+          // attachCalendarLink is the SOLE column-writer — point ONLY this row at the new event.
+          await attachCalendarLink(supabase, sessionId, calResult.eventId, newMeetLink);
           calendarUpdated = true;
-          if (result.meetLink) newMeetLink = result.meetLink;
+          logger.info('calendar_detached_from_shared', {
+            sessionId, oldEventId: eventId, newEventId: calResult.eventId, siblingCount: siblingCount ?? 0,
+          });
+        } catch (calError: any) {
+          logger.error('calendar_detach_failed', { sessionId, error: calError.message });
         }
-      } catch (calError: any) {
-        logger.error('calendar_reschedule_failed', { sessionId, error: calError.message });
+      } else {
+        // TRUE 1:1 (no live siblings) — retain today's behavior: PATCH the event in place.
+        try {
+          const result = await withCircuitBreaker('google-calendar', () =>
+            rescheduleEvent(eventId, newStart, duration)
+          );
+          if (result.success) {
+            calendarUpdated = true;
+            if (result.meetLink) newMeetLink = result.meetLink;
+          }
+          // attachCalendarLink is the SOLE calendar-column writer: persist the link through it.
+          // eventId is unchanged (PATCH kept the same event) — re-stamp it so google_event_id is
+          // written to its own current value, never nulled.
+          await attachCalendarLink(supabase, sessionId, eventId, result.meetLink ?? session.google_meet_link);
+        } catch (calError: any) {
+          logger.error('calendar_reschedule_failed', { sessionId, error: calError.message });
+        }
       }
     }
 
@@ -80,7 +132,8 @@ export async function rescheduleSession(
       .update({
         scheduled_date: newSlot.date,
         scheduled_time: newSlot.time,
-        google_meet_link: newMeetLink,
+        // calendar columns (google_event_id / google_meet_link) are written ONLY by
+        // attachCalendarLink above — the row update touches neither.
         status: 'scheduled',
         // WA-WIRE-REMINDERS: a reschedule moves the session to a new time —
         // the prior reminder is stale, reset so the cron sends a fresh one.
