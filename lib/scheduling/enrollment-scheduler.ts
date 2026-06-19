@@ -948,8 +948,26 @@ export async function scheduleTuitionSessions(
 
     // Fallback days if none set
     if (preferredDays.length === 0) {
-      preferredDays = DEFAULT_DAY_SETS[sessionsPerWeek] || DEFAULT_DAY_SETS[2]!;
-      errors.push('No schedule_preference days found — using defaults');
+      if (sessionsPerWeek >= 6) {
+        // DEFENSE-IN-DEPTH (spw 6/7): the door-level guard (assertSpwDays) requires an
+        // explicit >= spw-day pool for spw>=6. Reaching here means it was bypassed.
+        // DEFAULT_DAY_SETS has no 6/7 entry, so the old fallback used DEFAULT_DAY_SETS[2]
+        // (Tue/Thu) and SILENTLY under-placed. Refuse that: leave the pool empty so
+        // planSessions emits its own "no pool days" warning (0 placements, surfaced)
+        // rather than placing a 6/7x enrollment on a wrong 2-day pool.
+        errors.push(
+          `sessions_per_week=${sessionsPerWeek} reached the scheduler with no schedule_preference days; ` +
+          `refusing the 2-day default (would under-place). Needs an explicit ${sessionsPerWeek}-day pool.`,
+        );
+        console.error(JSON.stringify({
+          event: 'tuition_spw_high_no_days_pool',
+          enrollmentId,
+          sessionsPerWeek,
+        }));
+      } else {
+        preferredDays = DEFAULT_DAY_SETS[sessionsPerWeek] || DEFAULT_DAY_SETS[2]!;
+        errors.push('No schedule_preference days found — using defaults');
+      }
     }
 
     // RC-5 (2C): capture pool in days-order BEFORE the sort — the planner's spw==1

@@ -620,6 +620,8 @@ export default function AdminTuitionPage() {
               <input type="number" value={newForm.sessionsPurchased || ''} onChange={e => setNewForm(p => ({ ...p, sessionsPurchased: +e.target.value }))}
                 placeholder="Sessions *" min={1} max={50} required
                 className="bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm text-white placeholder:text-text-tertiary" />
+              {/* TODO (banked UI work, §12): client-side block for spw>=6 without >=spw selected days.
+                  Server (assertSpwDays) is the source of truth; this is a UX nicety, not yet built. */}
               <input type="number" value={newForm.sessionsPerWeek || ''} onChange={e => setNewForm(p => ({ ...p, sessionsPerWeek: +e.target.value }))}
                 placeholder="Per week *" min={1} max={7} required
                 className="bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm text-white placeholder:text-text-tertiary" />

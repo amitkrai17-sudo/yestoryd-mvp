@@ -13,6 +13,7 @@ import {
   validateSessionRate,
 } from '@/lib/config/payout-config';
 import { createTuitionOnboarding } from '@/lib/tuition/create-onboarding';
+import { schedulePreferenceSchema, assertSpwDays } from '@/lib/tuition/schedule-preference';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,14 +30,9 @@ const CoachOnboardSchema = z.object({
   sessionType: z.enum(['individual', 'batch']).default('individual'),
   batchId: z.string().uuid().optional(),
   adminNotes: z.string().max(1000).optional(),
-  // Structured schedule — SAME shape/contract as the admin create route. Inlined to
-  // match (admin's is not yet a shared schema). DEBT: dedup both into one exported zod.
-  schedulePreference: z.object({
-    days: z.array(z.enum(['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'])),
-    times: z.record(z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/)).optional().default({}),
-    defaultTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional(),
-    timeSlot: z.string().max(50).optional(),
-  }).optional(),
+  // Structured schedule — shared zod from lib/tuition/schedule-preference (single
+  // source of truth; resolves the former dedup DEBT with the admin create route).
+  schedulePreference: schedulePreferenceSchema.optional(),
 });
 
 export const POST = withApiHandler(async (req: NextRequest, { auth, supabase, requestId }) => {
@@ -66,7 +62,7 @@ export const POST = withApiHandler(async (req: NextRequest, { auth, supabase, re
   if (input.batchId) {
     const { data: sibling } = await supabase
       .from('tuition_onboarding')
-      .select('session_rate, session_duration_minutes, sessions_per_week, default_session_mode')
+      .select('session_rate, session_duration_minutes, sessions_per_week, default_session_mode, schedule_preference')
       .eq('batch_id' as any, input.batchId)
       .eq('coach_id', coach.id)
       .limit(1)
@@ -74,6 +70,22 @@ export const POST = withApiHandler(async (req: NextRequest, { auth, supabase, re
 
     if (!sibling) {
       return NextResponse.json({ error: 'Batch not found or not owned by you' }, { status: 404 });
+    }
+
+    // A batch shares ONE schedule, so the days POOL is inherited from the batch (not
+    // the submitter) alongside frequency — keeping members consistent and letting the
+    // spw>=6 guard below see the batch's real pool. Falls back to the submitter's input
+    // when the batch has no/malformed explicit schedule.
+    let inheritedSchedule = input.schedulePreference;
+    if ((sibling as any).schedule_preference) {
+      try {
+        const raw = (sibling as any).schedule_preference;
+        const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        const reval = schedulePreferenceSchema.safeParse(parsed);
+        if (reval.success) inheritedSchedule = reval.data;
+      } catch {
+        /* malformed sibling schedule — keep the submitter's input */
+      }
     }
 
     // Override with batch values
@@ -84,7 +96,16 @@ export const POST = withApiHandler(async (req: NextRequest, { auth, supabase, re
       sessionsPerWeek: sibling.sessions_per_week ?? input.sessionsPerWeek,
       defaultSessionMode: (sibling.default_session_mode as 'online' | 'offline') ?? input.defaultSessionMode,
       sessionType: 'batch',
+      schedulePreference: inheritedSchedule,
     };
+  }
+
+  // spw<->days guard on the EFFECTIVE values (post batch-inheritance): spw>=6 requires
+  // an explicit pool of >= spw distinct days. A batch-join inheriting a valid pool
+  // passes; one resolving to spw>=6 with too few days is rejected. spw 1-5 unconstrained.
+  const spwDaysErr = assertSpwDays(input.sessionsPerWeek, input.schedulePreference?.days);
+  if (spwDaysErr) {
+    return NextResponse.json({ error: spwDaysErr }, { status: 400 });
   }
 
   // 4. Rate validation — coaches cannot bypass red flags

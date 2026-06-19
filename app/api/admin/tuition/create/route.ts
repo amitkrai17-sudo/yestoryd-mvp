@@ -9,6 +9,7 @@ import { z } from 'zod';
 import crypto from 'crypto';
 import { withApiHandler } from '@/lib/api/with-api-handler';
 import { sendNotification } from '@/lib/communication/notify';
+import { schedulePreferenceSchema, assertSpwDays } from '@/lib/tuition/schedule-preference';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,13 +21,9 @@ const CreateTuitionSchema = z.object({
   sessionDurationMinutes: z.number().int().min(15).max(120).default(60),
   sessionsPerWeek: z.number().int().min(1).max(7).default(2),
   // Structured schedule (client sends the OBJECT; route validates then serializes
-  // to the string column on insert — the column shape is unchanged).
-  schedulePreference: z.object({
-    days: z.array(z.enum(['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'])),
-    times: z.record(z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/)).optional().default({}),
-    defaultTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional(),
-    timeSlot: z.string().max(50).optional(),
-  }).optional(),
+  // to the string column on insert — the column shape is unchanged). Shared zod
+  // from lib/tuition/schedule-preference (single source of truth).
+  schedulePreference: schedulePreferenceSchema.optional(),
   defaultSessionMode: z.enum(['offline', 'online']).default('offline'),
   parentPhone: z.string().regex(/^[6-9]\d{9}$/, 'Valid 10-digit Indian mobile number required'),
   coachId: z.string().uuid(),
@@ -46,6 +43,14 @@ export const POST = withApiHandler(async (req: NextRequest, { auth, supabase, re
     );
   }
   const input = parsed.data;
+
+  // spw<->days guard: spw>=6 requires an explicit days pool of >= spw distinct days
+  // (the implicit DEFAULT_DAY_SETS fallback only serves 1-5). Admin create uses the
+  // raw input spw/days (no batch inheritance on this path), so guard post-parse.
+  const spwDaysErr = assertSpwDays(input.sessionsPerWeek, input.schedulePreference?.days);
+  if (spwDaysErr) {
+    return NextResponse.json({ error: spwDaysErr }, { status: 400 });
+  }
 
   // 2. Verify coach exists
   const { data: coach, error: coachErr } = await supabase
