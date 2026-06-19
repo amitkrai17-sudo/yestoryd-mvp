@@ -8,7 +8,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendNotification } from '@/lib/communication/notify';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
-import { pause as pauseEnrollment } from '@/lib/enrollment/pause-service';
+import { pause as pauseEnrollment, freezeEnrollmentSessions } from '@/lib/enrollment/pause-service';
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://www.yestoryd.com';
 
@@ -419,6 +419,11 @@ async function checkAndPause(
     }));
     return;
   }
+
+  // F2: balance-zero auto-pause must also FREEZE sessions (prior orphan: enrollment
+  // flipped to paused but sessions stayed scheduled). Open-ended — all future
+  // in-scope sessions -> 'paused', calendar kept.
+  await freezeEnrollmentSessions(supabase, { enrollmentId }, requestId);
 
   // Send paused WA
   if (parentPhone) {

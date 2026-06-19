@@ -8,6 +8,7 @@ import { getServiceSupabase } from '@/lib/api-auth';
 import { scheduleCalendarEvent } from '@/lib/googleCalendar';
 import { getCategoryLabelMap } from '@/lib/config/skill-categories';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
+import { transitionSessionStatus } from '@/lib/scheduling/transition-session-status';
 
 export const dynamic = 'force-dynamic';
 
@@ -103,21 +104,29 @@ Coach will join via Google Meet.`,
     const dateStr = startTime.toISOString().split('T')[0];
     const timeStr = startTime.toTimeString().slice(0, 8);
 
-    // SSOT-ALLOWLIST: birth/attach — status at creation, not a transition
-    const { error: updateError } = await supabase
-      .from('scheduled_sessions')
-      .update({
-        status: 'scheduled',
-        scheduled_date: dateStr,
-        scheduled_time: timeStr,
-        google_meet_link: calendarResult.meetLink,
-        google_event_id: calendarResult.eventId,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', sessionId);
+    // 4b-5: funnel the STATUS leg (pending_booking -> scheduled) through the SOLE
+    // status writer. The calendar columns are INIT-at-finalize — they ride the
+    // SAME atomic update via extraSessionFields (none are POLICY_FIELDS) so status
+    // + calendar stay transactionally together. 'scheduled' is a CORE-only target
+    // (no side-effects); notify:false (this route sends its own confirmation below).
+    const transition = await transitionSessionStatus({
+      sessionId,
+      to: 'scheduled',
+      actor: 'parent',
+      requestId: `skill-booster-book-${sessionId}`,
+      opts: {
+        extraSessionFields: {
+          scheduled_date: dateStr,
+          scheduled_time: timeStr,
+          google_meet_link: calendarResult.meetLink,
+          google_event_id: calendarResult.eventId,
+        },
+        notify: false,
+      },
+    });
 
-    if (updateError) {
-      console.error('Failed to update session:', updateError);
+    if (!transition.ok) {
+      console.error('Failed to finalize skill booster session:', transition.error);
       return NextResponse.json({ error: 'Session update failed' }, { status: 500 });
     }
 

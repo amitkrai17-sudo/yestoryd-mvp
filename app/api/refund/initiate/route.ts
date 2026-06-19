@@ -9,6 +9,7 @@ import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import razorpay from '@/lib/razorpay';
 import { calculateRefund, isFullRefundEligible } from '@/lib/refund/calculator';
 import { loadRevenueSplitConfig } from '@/lib/config/loader';
+import { transitionSessionStatus } from '@/lib/scheduling/transition-session-status';
 
 export const dynamic = 'force-dynamic';
 
@@ -167,13 +168,24 @@ export async function POST(request: NextRequest) {
       .update({ status: 'terminated', updated_at: new Date().toISOString() })
       .eq('id', enrollmentId);
 
-    // 11. Cancel remaining scheduled sessions
-    // SSOT-ALLOWLIST: bulk cancel — migrate to service (State-2 bulk cluster)
-    await supabase
+    // 11. Cancel remaining scheduled sessions — funnel each through the SOLE status
+    // writer (4b-3). POLICY D handles calendar/Recall teardown (sibling-guarded).
+    // notify:false — the refund/termination flow owns its own parent comms.
+    const { data: remainingSessions } = await supabase
       .from('scheduled_sessions')
-      .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+      .select('id')
       .eq('enrollment_id', enrollmentId)
       .in('status', ['scheduled', 'pending']);
+    for (const s of (remainingSessions ?? []) as Array<{ id: string }>) {
+      await transitionSessionStatus({
+        sessionId: s.id,
+        to: 'cancelled',
+        actor: 'admin',
+        reason,
+        requestId,
+        opts: { notify: false, actorLabel: auth.email ?? undefined },
+      });
+    }
 
     // 12. Log event
     await supabase.from('enrollment_events').insert({

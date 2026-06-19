@@ -20,10 +20,9 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/api-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { cancelEvent } from '@/lib/googleCalendar';
-import { cancelRecallBot } from '@/lib/recall-auto-bot';
 import { insertLearningEvent } from '@/lib/rai/learning-events';
 import { pause as pauseEnrollment } from '@/lib/enrollment/pause-service';
+import { transitionSessionStatus } from '@/lib/scheduling/transition-session-status';
 
 const supabase = createAdminClient();
 
@@ -207,59 +206,35 @@ export async function POST(req: NextRequest) {
   const cancelNote = `Cancelled by admin (enrollment switch): ${reason}`;
 
   if (futureSessions && futureSessions.length > 0) {
-    // Cancel external resources first (calendar + recall) — best effort
+    // Funnel each cancel through the SOLE status writer (4b-3). POLICY D runs the
+    // calendar + Recall teardown, now SIBLING-GUARDED (Step 2) so a shared tuition
+    // cohort event is not torn down for live siblings. coach_notes rides the same
+    // atomic update via extraSessionFields. notify:false — switch shares the payment
+    // link manually (no per-session parent template).
     for (const session of futureSessions) {
-      if (session.google_event_id) {
-        try {
-          await cancelEvent(session.google_event_id, true);
-        } catch (calErr: unknown) {
-          const msg = calErr instanceof Error ? calErr.message : String(calErr);
-          console.error(JSON.stringify({
-            requestId,
-            event: 'enrollment_switch_calendar_cancel_failed',
-            sessionId: session.id,
-            error: msg,
-          }));
-        }
-      }
-      if (session.recall_bot_id) {
-        try {
-          await cancelRecallBot(session.recall_bot_id);
-        } catch (recallErr: unknown) {
-          const msg = recallErr instanceof Error ? recallErr.message : String(recallErr);
-          console.error(JSON.stringify({
-            requestId,
-            event: 'enrollment_switch_recall_cancel_failed',
-            sessionId: session.id,
-            error: msg,
-          }));
-        }
-      }
-    }
-
-    // Bulk DB update — single query for all sessions
-    // SSOT-ALLOWLIST: bulk cancel — migrate to service (State-2 bulk cluster)
-    const sessionIds = futureSessions.map(s => s.id);
-    const { error: bulkCancelError } = await supabase
-      .from('scheduled_sessions')
-      .update({
-        status: 'cancelled',
-        coach_notes: cancelNote,
-        updated_at: new Date().toISOString(),
-      })
-      .in('id', sessionIds);
-
-    if (bulkCancelError) {
-      console.error(JSON.stringify({
+      const r = await transitionSessionStatus({
+        sessionId: session.id,
+        to: 'cancelled',
+        actor: 'admin',
+        reason,
         requestId,
-        event: 'enrollment_switch_bulk_cancel_error',
-        enrollmentId,
-        error: bulkCancelError.message,
-      }));
-      return NextResponse.json({ error: 'Failed to cancel future sessions' }, { status: 500 });
+        opts: {
+          supabase,
+          extraSessionFields: { coach_notes: cancelNote },
+          notify: false,
+          actorLabel: auth.email ?? undefined,
+        },
+      });
+      if (r.ok && !r.noop) cancelledSessionsCount += 1;
+      else if (!r.ok) {
+        console.error(JSON.stringify({
+          requestId,
+          event: 'enrollment_switch_session_cancel_failed',
+          sessionId: session.id,
+          error: r.error,
+        }));
+      }
     }
-
-    cancelledSessionsCount = sessionIds.length;
   }
 
   console.info(JSON.stringify({

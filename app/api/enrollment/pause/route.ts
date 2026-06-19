@@ -7,8 +7,6 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { cancelEvent } from '@/lib/googleCalendar';
-import { cancelRecallBot } from '@/lib/recall-auto-bot';
 import { dispatch } from '@/lib/scheduling/orchestrator';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { pause as pauseEnrollment, resume as resumeEnrollment } from '@/lib/enrollment/pause-service';
@@ -200,7 +198,9 @@ export async function POST(request: NextRequest) {
         new_end_date: newEndDate.toISOString().split('T')[0],
       }, 'parent');
 
-      // TODO: Reschedule paused sessions
+      // Sessions are un-paused by resumeEnrollment() itself (4b-2): each still-paused
+      // row is restored to its captured pre_pause_status via transitionSessionStatus,
+      // calendar intact. (Runs even with skipSideEffects — un-freezing is the fix.)
       // TODO: Send WhatsApp notification
 
       return NextResponse.json({
@@ -260,31 +260,12 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: pauseResult.error || 'Failed to pause' }, { status: 500 });
       }
 
-      // Mark sessions as paused
-      if (sessionsToCancel && sessionsToCancel.length > 0) {
-        const sessionIds = sessionsToCancel.map(s => s.id);
-        await supabase
-          .from('scheduled_sessions')
-          .update({ 
-            status: 'paused',
-            updated_at: new Date().toISOString(),
-          })
-          .in('id', sessionIds);
-
-        // Cancel Google Calendar events and Recall.ai bots
-        for (const s of sessionsToCancel) {
-          try {
-            if (s.google_event_id) {
-              await cancelEvent(s.google_event_id, true);
-            }
-            if (s.recall_bot_id) {
-              await cancelRecallBot(s.recall_bot_id);
-            }
-          } catch (cancelError) {
-            console.error(`Failed to cancel external resources for session ${s.id}:`, cancelError);
-          }
-        }
-      }
+      // Session freezing is OWNED by the enrollment.paused orchestrator handler
+      // (dispatched below) → freezeEnrollmentSessions → transitionSessionStatus.
+      // It suspends each window session to 'paused' KEEPING calendar + Recall, and
+      // captures pre_pause_status for an exact resume. This route no longer writes
+      // session status or tears down calendar inline (F1/F2 single-owner). The
+      // sessionsToCancel SELECT above is retained only for the response/event count.
 
       // Log event
       await logEnrollmentEvent(enrollmentId, 'pause_started', {

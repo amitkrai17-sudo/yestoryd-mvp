@@ -15,7 +15,7 @@ import { scheduleEnrollmentSessions } from './enrollment-scheduler';
 import { getSetting } from '@/lib/settings/getSettings';
 import { createLogger } from './logger';
 import { checkIdempotency, setIdempotency } from './redis-store';
-import { pause as pauseEnrollment } from '@/lib/enrollment/pause-service';
+import { pause as pauseEnrollment, freezeEnrollmentSessions } from '@/lib/enrollment/pause-service';
 
 const logger = createLogger('orchestrator');
 
@@ -253,33 +253,24 @@ async function dispatchInternal(
           return { success: false, event, error: 'enrollmentId, pauseStartDate, pauseEndDate required' };
         }
 
-        // Cancel sessions during pause period (handled by existing pause route)
-        // This event is for orchestrator awareness / additional processing
-        const supabase = getSupabase();
-        const { data: sessions } = await supabase
-          .from('scheduled_sessions')
-          .select('id')
-          .eq('enrollment_id', payload.enrollmentId)
-          .gte('scheduled_date', payload.pauseStartDate)
-          .lte('scheduled_date', payload.pauseEndDate)
-          .in('status', ['scheduled', 'rescheduled']);
-
-        let cancelled = 0;
-        const errors: string[] = [];
-
-        if (sessions) {
-          for (const session of sessions) {
-            const result = await cancelSession(session.id, 'Enrollment paused', 'system');
-            if (result.success) cancelled++;
-            else errors.push(result.error || 'Unknown error');
-          }
-        }
+        // F1: SUSPEND, do not cancel. The single owner freezes each window session
+        // -> 'paused' (capturing pre_pause_status), KEEPING calendar + Recall.
+        // Resume restores the exact prior status. This is the sole session-pausing
+        // action; pause/route dispatches here rather than touching sessions itself.
+        const { frozen, skipped } = await freezeEnrollmentSessions(
+          getSupabase(),
+          {
+            enrollmentId: payload.enrollmentId,
+            startDate: payload.pauseStartDate,
+            endDate: payload.pauseEndDate,
+          },
+          `enrollment-paused-${payload.enrollmentId}`,
+        );
 
         return {
-          success: errors.length === 0,
+          success: true,
           event,
-          data: { sessionsCancelled: cancelled },
-          error: errors.length > 0 ? errors.join('; ') : undefined,
+          data: { sessionsFrozen: frozen, sessionsSkipped: skipped },
         };
       }
 
@@ -528,6 +519,10 @@ async function dispatchInternal(
             skipSideEffects: true,
             actor: { type: 'system' },
           });
+          // F2: auto-pause must also FREEZE sessions (the prior orphan: enrollment
+          // flipped to paused but sessions stayed scheduled). Open-ended — all future
+          // in-scope sessions -> 'paused', calendar kept.
+          await freezeEnrollmentSessions(supabase, { enrollmentId: enrollment.id }, `noshow-auto-${enrollment.id}`);
           console.warn(`[Orchestrator] Enrollment auto-paused: ${enrollment.id}, total no-shows: ${newTotal}`);
         }
 

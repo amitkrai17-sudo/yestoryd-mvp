@@ -11527,6 +11527,7 @@ export type Database = {
           partial_reason: string | null
           payout_processed: boolean | null
           payout_processed_at: string | null
+          pre_pause_status: string | null
           prep_content_ids: string[] | null
           prep_notes: string | null
           progress_rating: number | null
@@ -11669,6 +11670,7 @@ export type Database = {
           partial_reason?: string | null
           payout_processed?: boolean | null
           payout_processed_at?: string | null
+          pre_pause_status?: string | null
           prep_content_ids?: string[] | null
           prep_notes?: string | null
           progress_rating?: number | null
@@ -11811,6 +11813,7 @@ export type Database = {
           partial_reason?: string | null
           payout_processed?: boolean | null
           payout_processed_at?: string | null
+          pre_pause_status?: string | null
           prep_content_ids?: string[] | null
           prep_notes?: string | null
           progress_rating?: number | null

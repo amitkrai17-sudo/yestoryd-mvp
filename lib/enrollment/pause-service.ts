@@ -23,6 +23,10 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { cancelEvent } from '@/lib/calendar/events';
 import { cancelRecallBot } from '@/lib/recall-auto-bot';
 import {
+  transitionSessionStatus,
+  type SessionStatusValue,
+} from '@/lib/scheduling/transition-session-status';
+import {
   getPausePolicy as defaultGetPausePolicy,
   resolveProductType,
   type ProductType,
@@ -221,6 +225,61 @@ async function logEvent(
 }
 
 // =============================================================================
+// SESSION FREEZE — SINGLE OWNER of session-level pausing (F1 + F2)
+//
+// Every freeze path routes here: parent route (via the enrollment.paused
+// orchestrator handler), no-show auto-pause, and balance-zero auto-pause.
+// (admin switch is a session CANCEL, not a freeze — it does not call this.)
+//
+// Transitions each in-scope session -> 'paused' through the SOLE status writer,
+// capturing the prior status into pre_pause_status. Calendar + Recall are KEPT
+// (suspend != cancel); resume restores the exact prior status. No teardown here.
+//
+// We only freeze what we can provably un-freeze: a row is freezable ONLY if it
+// has a legal paused->X resume edge. paused -> {scheduled, cancelled} are the only
+// legal edges, so the freezable set is {scheduled, rescheduled} ('rescheduled' is
+// normalized -> 'scheduled' on resume per F3). pending / pending_scheduling are NOT
+// frozen: they are not yet placed, and paused -> pending is not a legal edge, so
+// they could never be cleanly resumed. Such rows are left as-is when an enrollment
+// pauses. No speculative resume edges. Window is optional — open-ended (auto-pause)
+// freezes all future in-scope sessions.
+// =============================================================================
+
+const FREEZABLE_STATUSES = ['scheduled', 'rescheduled'];
+
+export async function freezeEnrollmentSessions(
+  supabase: AdminClient,
+  opts: { enrollmentId: string; startDate?: string; endDate?: string },
+  requestId: string,
+): Promise<{ frozen: number; skipped: number }> {
+  let query = supabase
+    .from('scheduled_sessions')
+    .select('id, status')
+    .eq('enrollment_id', opts.enrollmentId)
+    .in('status', FREEZABLE_STATUSES);
+  if (opts.startDate) query = query.gte('scheduled_date', opts.startDate);
+  if (opts.endDate) query = query.lte('scheduled_date', opts.endDate);
+
+  const { data: rows } = await query;
+  let frozen = 0;
+  let skipped = 0;
+  for (const row of (rows ?? []) as Array<{ id: string; status: string | null }>) {
+    const r = await transitionSessionStatus({
+      sessionId: row.id,
+      to: 'paused',
+      actor: 'system',
+      requestId,
+      // pre_pause_status is NOT a POLICY_FIELD — it rides the same atomic update
+      // as the status flip. notify:false → freezing is silent (no per-session WA).
+      opts: { supabase, extraSessionFields: { pre_pause_status: row.status }, notify: false },
+    });
+    if (r.ok && !r.noop) frozen += 1;
+    else skipped += 1;
+  }
+  return { frozen, skipped };
+}
+
+// =============================================================================
 // PAUSE
 // =============================================================================
 
@@ -229,8 +288,7 @@ export async function pause(
   opts: PauseOptions,
   deps?: PauseDeps,
 ): Promise<PauseResult> {
-  const { supabase, cancelEvent: doCancelEvent, cancelRecallBot: doCancelRecall, getPausePolicy, now } =
-    resolveDeps(deps);
+  const { supabase, getPausePolicy, now } = resolveDeps(deps);
 
   const enrollment = await loadEnrollment(supabase, enrollmentId);
   if (!enrollment) return { success: false, rejected: 'not_found', error: 'Enrollment not found' };
@@ -332,54 +390,20 @@ export async function pause(
     return { success: false, rejected: 'write_failed', error: writeError.message };
   }
 
-  // --- Product-parameterized side-effects (best-effort) ---
+  // --- Session freeze via the SINGLE owner (F1/F2) ---
+  // Calendar + Recall are KEPT (suspend != cancel) — no teardown. Window optional:
+  // open-ended (auto-pause) freezes all future in-scope sessions. recallCancelled
+  // stays 0 (freezing never tears down Recall).
   let sessionsAffected = 0;
-  let recallCancelled = 0;
+  const recallCancelled = 0;
 
-  if (!opts.skipSideEffects && hasWindow && enrollment.child_id) {
-    const { data: windowSessions } = await supabase
-      .from('scheduled_sessions')
-      .select('id, google_event_id, recall_bot_id')
-      .eq('child_id', enrollment.child_id)
-      .gte('scheduled_date', opts.startDate as string)
-      .lte('scheduled_date', opts.endDate as string)
-      .in('status', ['scheduled', 'rescheduled']);
-
-    const sessions = (windowSessions ?? []) as Array<{
-      id: string;
-      google_event_id: string | null;
-      recall_bot_id: string | null;
-    }>;
-
-    if (sessions.length > 0) {
-      const ids = sessions.map((s) => s.id);
-      // SSOT-ALLOWLIST: bulk pause writer — pause SSOT
-      await supabase
-        .from('scheduled_sessions')
-        .update({ status: 'paused', updated_at: nowDate.toISOString() } as never)
-        .in('id', ids);
-      sessionsAffected = ids.length;
-
-      for (const s of sessions) {
-        // Calendar teardown — BOTH products.
-        if (s.google_event_id) {
-          try {
-            await doCancelEvent(s.google_event_id, true);
-          } catch {
-            /* best-effort */
-          }
-        }
-        // Recall teardown — coaching ONLY (tuition never records).
-        if (productType === 'coaching' && s.recall_bot_id) {
-          try {
-            await doCancelRecall(s.recall_bot_id);
-            recallCancelled += 1;
-          } catch {
-            /* best-effort */
-          }
-        }
-      }
-    }
+  if (!opts.skipSideEffects) {
+    const { frozen } = await freezeEnrollmentSessions(
+      supabase,
+      { enrollmentId, startDate: opts.startDate, endDate: opts.endDate },
+      `pause-${enrollmentId}`,
+    );
+    sessionsAffected = frozen;
   }
 
   if (!opts.skipSideEffects) {
@@ -476,6 +500,37 @@ export async function resume(
 
   if (writeError) {
     return { success: false, rejected: 'write_failed', error: writeError.message };
+  }
+
+  // --- 4b-2: un-freeze sessions (fixes the resume orphan) ---
+  // Restore each still-paused row to its captured prior status. Runs ALWAYS
+  // (not gated by skipSideEffects) — leaving sessions paused IS the bug.
+  // F3 normalize: 'rescheduled' -> 'scheduled'. paused -> {scheduled, cancelled}
+  // are the only legal edges; anything else is skipped + logged (never throws).
+  const { data: pausedRows } = await supabase
+    .from('scheduled_sessions')
+    .select('id, pre_pause_status')
+    .eq('enrollment_id', enrollmentId)
+    .eq('status', 'paused')
+    .not('pre_pause_status', 'is', null);
+  for (const row of (pausedRows ?? []) as Array<{ id: string; pre_pause_status: string | null }>) {
+    const target = row.pre_pause_status === 'rescheduled' ? 'scheduled' : row.pre_pause_status;
+    if (target !== 'scheduled' && target !== 'cancelled') {
+      console.warn(JSON.stringify({
+        event: 'resume_unfreeze_skipped_illegal',
+        enrollmentId,
+        sessionId: row.id,
+        pre_pause_status: row.pre_pause_status,
+      }));
+      continue;
+    }
+    await transitionSessionStatus({
+      sessionId: row.id,
+      to: target as SessionStatusValue,
+      actor: 'system',
+      requestId: `resume-${enrollmentId}`,
+      opts: { supabase, extraSessionFields: { pre_pause_status: null }, notify: false },
+    });
   }
 
   if (!opts.skipSideEffects) {
