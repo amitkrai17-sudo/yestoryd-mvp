@@ -24,6 +24,14 @@
  *
  * Zero dependencies (plain Node) so it runs anywhere, including Vercel prebuild.
  *
+ * TODO (Step 6 Tier 2 — post-soak, do NOT build blindly): extend this gate beyond
+ *   `status` to the other guarded scheduled_sessions columns (session_mode,
+ *   google_event_id, google_meet_link, scheduled_date, scheduled_time, offline_*).
+ *   Derive the allowlist from the legit-writer SHAPES observed in `ssot_violations`
+ *   during the soak — a naive column-set grep has a large false-positive blast
+ *   radius on births + offline-mode owners (offline-decision, change-mode,
+ *   switch-to-online, request-offline). Keep the precise brace-matched anchor.
+ *
  * Usage: node scripts/check-status-ssot.mjs
  */
 
@@ -42,16 +50,16 @@ const ALLOWLIST = new Set([
   // B — birth / calendar-attach: status set at session creation, not a transition
   'app/api/jobs/enrollment-complete/route.ts',
   'app/api/sessions/confirm/route.ts',
-  'app/api/skill-booster/book/route.ts',
   'app/api/skill-booster/recommend/route.ts',
-  // C — bulk pause writer (pause SSOT)
-  'lib/enrollment/pause-service.ts',
-  // bulk cancel writers (State-2 bulk cluster — migrate to service later)
-  'app/api/enrollment/pause/route.ts',
-  'app/api/admin/enrollment/switch/route.ts',
-  'app/api/refund/initiate/route.ts',
   // recall lifecycle updateSessionStatus (variable write — not grep-caught) — absorb in recall cluster
   'app/api/webhooks/recall/route.ts',
+  // Step 6 Tier 1 (2026-06-19) — TIGHTENED: the former bulk-cluster writers
+  //   app/api/enrollment/pause/route.ts, app/api/admin/enrollment/switch/route.ts,
+  //   app/api/refund/initiate/route.ts, app/api/skill-booster/book/route.ts,
+  //   lib/enrollment/pause-service.ts
+  // were REMOVED from this allowlist after 4b funneled them through
+  // transitionSessionStatus. They now write 0 inline status (confirmed 0 hits) —
+  // re-adding them would be over-permissive and would mask a future bypass.
 ]);
 
 const norm = (p) => p.split(path.sep).join('/');

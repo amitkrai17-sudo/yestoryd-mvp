@@ -135,3 +135,39 @@ export {
   type DispatchResult,
   dispatch,
 } from './orchestrator';
+
+// ── Guarded-column owners (Step 6 barrel-lock) ──────────────────────────────
+// The sanctioned DIRECT writers of guarded scheduled_sessions columns. Consumers
+// MUST route writes through these — never an inline .update on the guarded column.
+//   transitionSessionStatus  → SOLE writer of `status`
+//   attachCalendarLink(+ToSet) → SOLE writer of google_event_id / google_meet_link
+//   setSessionMode           → owner of session_mode / offline_* columns
+//   planSessions             → pure placement primitive (no DB write)
+// (scheduleTuitionSessions + rescheduleSession are already exported above.)
+// NOTE: freezeEnrollmentSessions lives in lib/enrollment/pause-service.ts and is
+// intentionally NOT re-exported here — it writes no guarded column directly (it
+// drives transitionSessionStatus), so it is not a guarded-column owner.
+export {
+  type SessionStatusValue,
+  type TransitionActor,
+  type TransitionInput,
+  type TransitionResult,
+  transitionSessionStatus,
+} from './transition-session-status';
+
+export {
+  attachCalendarLink,
+  attachCalendarLinkToSet,
+} from './calendar-link';
+
+export {
+  type SetSessionModeOpts,
+  type SetSessionModeResult,
+  setSessionMode,
+} from './session-mode-service';
+
+export {
+  type PlanInput,
+  type Placement,
+  planSessions,
+} from './plan-sessions';

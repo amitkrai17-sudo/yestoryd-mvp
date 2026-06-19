@@ -1,0 +1,2 @@
+-- ALREADY APPLIED to prod via MCP on 2026-06-19; file for repo parity. DO NOT re-run.
+-- SUPERSEDED before any production effect by the fix migration; intentional no-op for history. See 20260619090003_fix_ssot_guard_array_append_and_visible_errors.sql.
