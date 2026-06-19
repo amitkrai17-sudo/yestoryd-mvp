@@ -20,9 +20,9 @@ describe('assertSpwDays — spw<->days placement guard', () => {
     expect(assertSpwDays(6, ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'])).toBeNull();
   });
 
-  it('spw=6 with 3 days → rejected', () => {
+  it('spw=6 with 3 days → rejected (Branch 1: explicit days < spw)', () => {
     const err = assertSpwDays(6, ['Mon', 'Wed', 'Fri']);
-    expect(err).toBe('6+ sessions per week requires explicitly selecting at least 6 days.');
+    expect(err).toBe("6 sessions per week needs at least 6 days selected — you've selected 3. Add more days or reduce sessions per week.");
   });
 
   it('spw=7 with 7 days → passes (null)', () => {
@@ -39,12 +39,35 @@ describe('assertSpwDays — spw<->days placement guard', () => {
 
   it('spw=6 with 6 names but only 4 DISTINCT → rejected (distinct count, not raw length)', () => {
     expect(assertSpwDays(6, ['Mon', 'Mon', 'Tue', 'Wed', 'Thu', 'Thu'])).toBe(
-      '6+ sessions per week requires explicitly selecting at least 6 days.',
+      "6 sessions per week needs at least 6 days selected — you've selected 4. Add more days or reduce sessions per week.",
     );
   });
 
-  it('spw=6 with empty array → rejected', () => {
+  it('spw=6 with empty array → rejected (Branch 2: no days at spw>=6)', () => {
     expect(assertSpwDays(6, [])).not.toBeNull();
+  });
+
+  // 2C generalization — Branch 1 now rejects explicit days < spw at ANY spw (not just >=6).
+  it('spw=3 with 2 days → rejected (Branch 1 at spw<6)', () => {
+    expect(assertSpwDays(3, ['Mon', 'Wed'])).toBe(
+      "3 sessions per week needs at least 3 days selected — you've selected 2. Add more days or reduce sessions per week.",
+    );
+  });
+
+  it('spw=4 with 1 day → rejected (Branch 1 at spw<6)', () => {
+    expect(assertSpwDays(4, ['Wed'])).toBe(
+      "4 sessions per week needs at least 4 days selected — you've selected 1. Add more days or reduce sessions per week.",
+    );
+  });
+
+  it('spw=3 with 3 days → passes (distinct == spw)', () => {
+    expect(assertSpwDays(3, ['Mon', 'Tue', 'Wed'])).toBeNull();
+  });
+
+  it('spw=5 with 2 days → rejected (Branch 1 at spw<6)', () => {
+    expect(assertSpwDays(5, ['Mon', 'Tue'])).toBe(
+      "5 sessions per week needs at least 5 days selected — you've selected 2. Add more days or reduce sessions per week.",
+    );
   });
 });
 

@@ -12,6 +12,7 @@ import {
   RefreshCw, Send, ChevronDown, ChevronUp, IndianRupee,
   BookOpen, UserCheck, Pause, ArrowUpDown, ArrowLeftRight, Play,
   Trash2, CheckCircle2, XCircle, MessageCircle, Copy,
+  Home, Monitor,
 } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { StatusBadge } from '@/components/shared/StatusBadge';
@@ -198,7 +199,7 @@ export default function AdminTuitionPage() {
     sessionRate: 250,
     sessionsPurchased: 0, sessionDurationMinutes: 0, sessionsPerWeek: 0,
     schedulePref: { days: [], times: {} } as SchedulePreference,
-    defaultSessionMode: 'offline' as const,
+    defaultSessionMode: 'offline' as 'offline' | 'online',
     parentPhone: '', coachId: '', adminNotes: '',
     categorySlug: '',
     batchId: '', // empty = new batch, UUID = join existing batch
@@ -551,6 +552,16 @@ export default function AdminTuitionPage() {
     );
   }
 
+  // Client mirror of assertSpwDays() in lib/tuition/schedule-preference.ts (SERVER source
+  // of truth, still enforced via 400). Two-branch: (1) explicit days but fewer DISTINCT
+  // than spw -> reject at ANY spw; (2) no days at spw>=6 -> reject. Set() matches the
+  // server's distinct-count predicate. UX-only: warns + disables before the round-trip;
+  // never replaces the server 400.
+  const spwDaysDistinct = new Set(newForm.schedulePref?.days ?? []).size;
+  const spwDaysViolation =
+    (spwDaysDistinct > 0 && spwDaysDistinct < newForm.sessionsPerWeek) ||
+    (spwDaysDistinct === 0 && newForm.sessionsPerWeek >= 6);
+
   return (
     <div className="bg-surface-0 min-h-screen">
       {/* Header */}
@@ -620,8 +631,14 @@ export default function AdminTuitionPage() {
               <input type="number" value={newForm.sessionsPurchased || ''} onChange={e => setNewForm(p => ({ ...p, sessionsPurchased: +e.target.value }))}
                 placeholder="Sessions *" min={1} max={50} required
                 className="bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm text-white placeholder:text-text-tertiary" />
-              {/* TODO (banked UI work, §12): client-side block for spw>=6 without >=spw selected days.
-                  Server (assertSpwDays) is the source of truth; this is a UX nicety, not yet built. */}
+              {/* Client mirror of assertSpwDays (server source of truth): explicit days < spw,
+                  or no days at spw>=6. UX-only — server still enforces via 400. */}
+              {spwDaysViolation && (
+                <div className="sm:col-span-2 lg:col-span-3 flex items-center gap-2 text-sm text-amber-400">
+                  <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                  <span>{`${newForm.sessionsPerWeek} sessions per week needs at least ${newForm.sessionsPerWeek} days selected. You've picked ${spwDaysDistinct} — add more days below.`}</span>
+                </div>
+              )}
               <input type="number" value={newForm.sessionsPerWeek || ''} onChange={e => setNewForm(p => ({ ...p, sessionsPerWeek: +e.target.value }))}
                 placeholder="Per week *" min={1} max={7} required
                 className="bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm text-white placeholder:text-text-tertiary" />
@@ -666,6 +683,25 @@ export default function AdminTuitionPage() {
                   }
                 </select>
               </div>
+              {/* Class mode — INIT default for all future classes (parent can change at onboarding) */}
+              <div>
+                <label className="text-xs text-text-tertiary block mb-1">Class mode</label>
+                <p className="text-[10px] text-text-tertiary mb-1.5 leading-tight">Default for all future classes — parent can change at onboarding.</p>
+                <div className="flex gap-2">
+                  <button type="button" aria-pressed={newForm.defaultSessionMode === 'offline'}
+                    onClick={() => setNewForm(p => ({ ...p, defaultSessionMode: 'offline' }))}
+                    className={`flex-1 min-h-[44px] rounded-xl px-3 py-2 text-sm flex items-center justify-center gap-2 transition-colors ${newForm.defaultSessionMode === 'offline' ? 'bg-white text-[#0a0a0f]' : 'bg-surface-2 text-white border border-border'}`}>
+                    <Home className="w-4 h-4" />
+                    In person
+                  </button>
+                  <button type="button" aria-pressed={newForm.defaultSessionMode === 'online'}
+                    onClick={() => setNewForm(p => ({ ...p, defaultSessionMode: 'online' }))}
+                    className={`flex-1 min-h-[44px] rounded-xl px-3 py-2 text-sm flex items-center justify-center gap-2 transition-colors ${newForm.defaultSessionMode === 'online' ? 'bg-white text-[#0a0a0f]' : 'bg-surface-2 text-white border border-border'}`}>
+                    <Monitor className="w-4 h-4" />
+                    Online
+                  </button>
+                </div>
+              </div>
               {/* Schedule: days + per-day/same-time pickers + optional bucket (SSOT) */}
               <div className="sm:col-span-2 lg:col-span-3">
                 <ScheduleCapture
@@ -682,7 +718,7 @@ export default function AdminTuitionPage() {
                   className="px-4 py-2 text-sm text-text-tertiary hover:text-white rounded-xl">
                   Cancel
                 </button>
-                <button type="submit" disabled={creating || !newForm.parentPhone || !newForm.coachId}
+                <button type="submit" disabled={creating || !newForm.parentPhone || !newForm.coachId || spwDaysViolation}
                   className="flex items-center gap-1.5 bg-white text-[#0a0a0f] font-semibold px-4 py-2 rounded-xl hover:bg-gray-100 disabled:opacity-50 text-sm h-9">
                   {creating ? <Spinner size="sm" color="muted" /> : <Plus className="w-4 h-4" />}
                   Create & Send Link

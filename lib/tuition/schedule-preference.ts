@@ -35,11 +35,16 @@ export type SchedulePreferenceInput = z.infer<typeof schedulePreferenceSchema>;
  * @returns a user-facing error string, or null when valid.
  */
 export function assertSpwDays(spw: number, days: string[] | undefined): string | null {
-  if (spw >= 6) {
-    const distinct = new Set(days ?? []).size;
-    if (distinct < spw) {
-      return `6+ sessions per week requires explicitly selecting at least ${spw} days.`;
-    }
+  const distinct = new Set(days ?? []).size;
+  // Branch 1 — explicit days present but fewer DISTINCT days than spw: the planner caps
+  // effectiveSpw to the pool size and under-places the remainder. Reject for ANY spw.
+  if (distinct > 0 && distinct < spw) {
+    return `${spw} sessions per week needs at least ${spw} days selected — you've selected ${distinct}. Add more days or reduce sessions per week.`;
+  }
+  // Branch 2 — NO explicit days: the implicit DEFAULT_DAY_SETS fallback only maps 1-5,
+  // so spw>=6 with no pool would silently fall back to a wrong 2-day default. Reject.
+  if (distinct === 0 && spw >= 6) {
+    return `${spw} sessions per week requires explicitly selecting at least ${spw} days.`;
   }
   return null;
 }
