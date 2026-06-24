@@ -37,11 +37,21 @@ async function saveInsight(
   data: any,
   validUntil: Date
 ): Promise<void> {
-  await supabase.from('admin_insights').insert({
+  const { error } = await supabase.from('admin_insights').upsert({
     insight_type: insightType,
     insight_data: data,
     valid_until: validUntil.toISOString(),
-  });
+    computed_at: new Date().toISOString(),
+  }, { onConflict: 'insight_type' });
+
+  // insight_type is UNIQUE: a bare .insert() raised a duplicate-key violation on
+  // every run after the first (Dec-2025), and the discarded {error} silently
+  // froze the table. Upsert refreshes the row; the captured error is thrown so
+  // the caller's try/catch records it in the cron's errors[] (visible in the
+  // compute_insights_executed audit) instead of failing silently again.
+  if (error) {
+    throw new Error(`saveInsight(${insightType}) upsert failed: ${error.message}`);
+  }
 }
 
 // --- MAIN PROCESSOR ---

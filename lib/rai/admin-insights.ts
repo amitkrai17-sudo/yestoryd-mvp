@@ -183,8 +183,8 @@ function formatInactiveChildren(data: any, freshness: string): string {
 }
 
 function formatRevenueTrends(data: any, freshness: string): string {
-  const thisMonth = (data.this_month / 100).toLocaleString('en-IN'); // Convert paise to rupees
-  const lastMonth = (data.last_month / 100).toLocaleString('en-IN');
+  const thisMonth = (data.this_month || 0).toLocaleString('en-IN');
+  const lastMonth = (data.last_month || 0).toLocaleString('en-IN');
   const growth = data.growth_rate;
   const growthLabel = growth > 0 ? '[UP]' : growth < 0 ? '[DOWN]' : '[FLAT]';
 
@@ -206,7 +206,7 @@ function formatSessionCompletion(data: any, freshness: string): string {
 }
 
 function formatWeeklySummary(data: any, freshness: string): string {
-  return `Platform Health Summary:\n\n• At-Risk Children: ${data.at_risk_count}\n• Inactive (2+ weeks): ${data.inactive_count}\n• Conversion Rate: ${data.conversion_rate}%\n• Session Completion: ${data.session_completion_rate}%\n• Revenue This Month: ₹${((data.revenue_this_month || 0) / 100).toLocaleString('en-IN')}\n• Revenue Growth: ${data.revenue_growth > 0 ? '+' : ''}${data.revenue_growth}%\n• Active Coaches: ${data.total_coaches}\n\n(Updated ${freshness})`;
+  return `Platform Health Summary:\n\n• At-Risk Children: ${data.at_risk_count}\n• Inactive (2+ weeks): ${data.inactive_count}\n• Conversion Rate: ${data.conversion_rate}%\n• Session Completion: ${data.session_completion_rate}%\n• Revenue This Month: ₹${(data.revenue_this_month || 0).toLocaleString('en-IN')}\n• Revenue Growth: ${data.revenue_growth > 0 ? '+' : ''}${data.revenue_growth}%\n• Active Coaches: ${data.total_coaches}\n\n(Updated ${freshness})`;
 }
 
 // ============================================================
