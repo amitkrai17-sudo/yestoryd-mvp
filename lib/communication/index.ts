@@ -5,6 +5,7 @@ import { sendWhatsAppMessage, isWhatsAppConfigured } from './aisensy';
 import { sendLeadBotMessage } from './leadbot';
 import { resolveDerivations, type ValidatorTemplate } from './validate-notification';
 import { logCommunication, RecipientType, TriggeredBy } from './log';
+import { composeIdempotencyKey, claimIdempotencyRow, releaseIdempotencyRow } from './idempotency';
 import { sendEmail, isEmailConfigured } from '@/lib/email/resend-client';
 import { loadAuthConfig } from '@/lib/config/loader';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -43,6 +44,13 @@ export interface SendCommunicationParams {
   triggeredByUserId?: string;
   contextType?: string;
   contextId?: string;
+  /**
+   * Phase 2C opt-in atomic dedup axis. When the template has dedup_scope=[paymentId]
+   * and the caller threads this (e.g. razorpay_payment_id at verify/webhook, internal
+   * payment.id offline), sendCommunication engages a single atomic claim guarding BOTH
+   * WhatsApp + email. Absent → legacy 2-row path, unchanged.
+   */
+  paymentId?: string;
 }
 
 export interface SendCommunicationResult {
@@ -170,6 +178,90 @@ export async function sendCommunication(params: SendCommunicationParams): Promis
         contextId: params.contextId ?? params.relatedEntityId ?? null,
       };
 
+      // ── PHASE 2C: opt-in atomic claim (Option A) ──
+      // Engages ONLY when the template has a dedup_scope AND every scope field resolves
+      // in the caller's meta (strict-AND). A SINGLE keyed communication_logs row guards
+      // BOTH channels: claim-lost → send NEITHER WhatsApp NOR email; claim-won → send WA
+      // (ownsLog → adapter skips its own row) + email, then settle wa_sent+email_sent on
+      // the one row. When NOT engaged, the legacy 2-row path below runs UNCHANGED.
+      const dedupFields = (template as any).dedup_scope?.fields as string[] | undefined;
+      const scopeMeta: Record<string, unknown> = {
+        contextId: params.contextId ?? params.relatedEntityId ?? null,
+        ...(params.paymentId ? { paymentId: params.paymentId } : {}),
+      };
+      const engageClaim = !!dedupFields?.length
+        && dedupFields.every((f) => { const v = scopeMeta[f]; return v !== undefined && v !== null && v !== ''; });
+
+      if (engageClaim) {
+        const { key } = composeIdempotencyKey({
+          templateCode: params.templateCode,
+          phone: phone ?? '',
+          firstParam: '',
+          dedupScope: dedupFields,
+          meta: scopeMeta,
+          salt: null,
+        });
+        const claim = await claimIdempotencyRow(supabase, {
+          idempotency_key: key,
+          template_code: params.templateCode,
+          recipient_type: params.recipientType as RecipientType,
+          recipient_id: params.recipientId ?? null,
+          recipient_phone: phone ?? null,
+          recipient_email: email ?? null,
+          wa_sent: false,
+          email_sent: false,
+          sms_sent: false,
+          sent_at: null,
+          channel: (template as any).channel,
+          triggered_by: (params.triggeredBy as TriggeredBy) ?? 'system',
+          triggered_by_user_id: params.triggeredByUserId ?? null,
+          context_type: params.contextType ?? params.relatedEntityType ?? null,
+          context_id: params.contextId ?? params.relatedEntityId ?? null,
+          context_data: { variables: params.variables, payment_id: params.paymentId ?? null },
+          created_at: new Date().toISOString(),
+        });
+        if (claim.error) {
+          return { success: false, results: [{ channel: 'all', success: false, error: 'claim_failed' }] };
+        }
+        if (claim.duplicate) {
+          // True duplicate — suppress BOTH WhatsApp and email (one logical notification).
+          return { success: false, results: [{ channel: 'all', success: false, error: 'duplicate' }] };
+        }
+        const claimId = claim.claimId as string;
+
+        let waOk = false; let emailOk = false;
+        let waMsg: string | undefined; let emailMsg: string | undefined;
+        if (template.use_whatsapp && phone && !params.skipChannels?.includes('whatsapp') && whatsappAllowed) {
+          const waResult = await sendWhatsAppToRecipient(template, phone, mergedVariables, { ...waMeta, ownsLog: true });
+          results.push({ channel: 'whatsapp', ...waResult });
+          waOk = waResult.success; waMsg = waResult.messageId;
+        }
+        if (template.use_email && email && !params.skipChannels?.includes('email') && emailAllowed) {
+          const emailResult = await sendEmailToRecipient(template, email, mergedVariables);
+          results.push({ channel: 'email', ...emailResult });
+          emailOk = emailResult.success; emailMsg = emailResult.messageId;
+        }
+
+        if (waOk || emailOk) {
+          await supabase.from('communication_logs').update({
+            wa_sent: waOk,
+            email_sent: emailOk,
+            sent_at: new Date().toISOString(),
+            context_data: {
+              variables: params.variables,
+              payment_id: params.paymentId ?? null,
+              wa_provider_message_id: waMsg ?? null,
+              email_provider_message_id: emailMsg ?? null,
+            } as never,
+          }).eq('id', claimId);
+        } else {
+          await releaseIdempotencyRow(supabase, claimId, 'all_channels_failed');
+        }
+
+        const overallSuccess = results.some((r) => r.success);
+        return { success: overallSuccess, results, logId: claimId };
+      }
+
       if (template.use_whatsapp && phone && !params.skipChannels?.includes('whatsapp') && whatsappAllowed) {
         const waResult = await sendWhatsAppToRecipient(template, phone, mergedVariables, waMeta);
         results.push({ channel: 'whatsapp', ...waResult });
@@ -227,6 +319,9 @@ async function sendWhatsAppToRecipient(
     triggeredByUserId?: string | null;
     contextType?: string | null;
     contextId?: string | null;
+    /** Phase 2C: when true, notify/sendCommunication owns the log row — the adapter
+     *  must NOT write its own (the single claimed row is settled by the caller). */
+    ownsLog?: boolean;
   }
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   // Apply Pattern B derivations (additive; no-op if caller already passed the alias)

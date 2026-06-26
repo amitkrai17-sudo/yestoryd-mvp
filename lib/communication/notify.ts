@@ -17,6 +17,7 @@ import { sendWhatsAppMessage } from './aisensy';
 import { sendLeadBotMessage } from './leadbot';
 import { logCommunication, type RecipientType } from './log';
 import type { TemplateButtons, WaSendResult } from './types';
+import { composeIdempotencyKey, claimIdempotencyRow, releaseIdempotencyRow } from './idempotency';
 import { redactNamedParams, redactVariables } from './redact';
 import { formatForWhatsApp } from '@/lib/utils/phone';
 import {
@@ -552,40 +553,19 @@ export async function sendNotification(
   // WARN-mode failures already logged to activity_log inside validateNotification.
 
   // ── STEP 6. Idempotency ──
-  // Backward-compatible: when meta.contextId is unset, the hash is identical
-  // to the pre-B2.2 4-element shape. With contextId, an extra element is
-  // mixed in for per-incident dedupe (e.g. razorpay_payment_id).
+  // Key composition is the SHARED implementation (lib/communication/idempotency.ts)
+  // reused by sendCommunication's 2C opt-in claim — single source, no fork. Legacy
+  // phone:day:firstParam[:ctx][:salt] OR the dedup_scope tuple (2B). Byte-identical
+  // to the pre-2C inline formula (regression-asserted).
   const firstParam = (finalPositionalParams[0] as string | undefined) ?? '';
-  const ctx = meta?.contextId;
-  const salt = meta?.idempotencySalt;
-  // Legacy formula — byte-identical to pre-2B. Used when a template has NO
-  // dedup_scope, OR when a scoped template is missing one of its axis values.
-  // The salt segment is appended ONLY when truthy (absent/null salt → same input).
-  const legacyBase = ctx
-    ? `${templateCode}:${phone}:${todayIST()}:${firstParam}:${ctx}`
-    : `${templateCode}:${phone}:${todayIST()}:${firstParam}`;
-
-  // Phase 2B: per-template dedup scope. When communication_templates.dedup_scope
-  // names a field list, key on (templateCode, <those meta values>) — NO phone, NO
-  // todayIST, NO firstParam — so the same entity dedups across days/runs. A missing
-  // axis (undefined/null/'') falls back to the legacy formula rather than emit a
-  // poisoned ':undefined:' segment. NULL dedup_scope → legacy (unchanged).
-  const scopeFields = template.dedup_scope?.fields;
-  let idempotencyBase: string;
-  if (scopeFields?.length) {
-    const metaRecord = (meta ?? {}) as Record<string, unknown>;
-    const vals = scopeFields.map((f) => metaRecord[f]);
-    if (vals.some((v) => v === undefined || v === null || v === '')) {
-      console.error('[notify] dedup_scope field missing — falling back to legacy key', JSON.stringify({ templateCode, scope: scopeFields }));
-      idempotencyBase = legacyBase;
-    } else {
-      idempotencyBase = `${templateCode}:${vals.join(':')}`;
-    }
-  } else {
-    idempotencyBase = legacyBase;
-  }
-  const idempotencyInput = salt ? `${idempotencyBase}:${salt}` : idempotencyBase;
-  const idempotencyKey = crypto.createHash('sha256').update(idempotencyInput).digest('hex');
+  const { key: idempotencyKey } = composeIdempotencyKey({
+    templateCode,
+    phone,
+    firstParam,
+    dedupScope: template.dedup_scope?.fields ?? null,
+    meta: (meta ?? null) as Record<string, unknown> | null,
+    salt: meta?.idempotencySalt ?? null,
+  });
 
   // ── STEP 6. ATOMIC CLAIM (Phase 2A — claim-then-act) ──
   // Replaces the racy SELECT-then-act. INSERT the keyed claim row up front with
@@ -603,42 +583,38 @@ export async function sendNotification(
     original_recipient_id: recipientId,
   };
 
-  const { data: claimRows, error: claimErr } = await supabase
-    .from('communication_logs')
-    .upsert(
-      {
-        idempotency_key: idempotencyKey,
-        template_code: templateCode,
-        recipient_type: templateRecipientType,
-        recipient_id: isUuidRecipient ? recipientId : null,
-        recipient_phone: phone,
-        wa_sent: false,
-        email_sent: false,
-        sms_sent: false,
-        sent_at: null,
-        channel: resolvedChannel,
-        triggered_by: meta?.triggeredBy ?? 'system',
-        triggered_by_user_id: meta?.triggeredByUserId ?? null,
-        context_type: meta?.contextType ?? null,
-        context_id: meta?.contextId ?? null,
-        context_data: claimContextData as never,
-        created_at: new Date().toISOString(),
-      },
-      { onConflict: 'idempotency_key', ignoreDuplicates: true },
-    )
-    .select('id');
+  // Shared atomic claim (lib/communication/idempotency.ts) — same primitive
+  // sendCommunication's 2C opt-in uses.
+  const claim = await claimIdempotencyRow(supabase, {
+    idempotency_key: idempotencyKey,
+    template_code: templateCode,
+    recipient_type: templateRecipientType,
+    recipient_id: isUuidRecipient ? recipientId : null,
+    recipient_phone: phone,
+    wa_sent: false,
+    email_sent: false,
+    sms_sent: false,
+    sent_at: null,
+    channel: resolvedChannel,
+    triggered_by: meta?.triggeredBy ?? 'system',
+    triggered_by_user_id: meta?.triggeredByUserId ?? null,
+    context_type: meta?.contextType ?? null,
+    context_id: meta?.contextId ?? null,
+    context_data: claimContextData,
+    created_at: new Date().toISOString(),
+  });
 
-  if (claimErr) {
+  if (claim.error) {
     // Claim infra failed (not a duplicate). Do NOT send (avoids an unlogged,
     // un-deduped message); caller may retry. Mirrors a transient send_failed.
-    console.error('[notify] claim insert failed:', claimErr.message);
+    console.error('[notify] claim insert failed:', claim.error);
     return { success: false, reason: 'send_failed' };
   }
-  if (!claimRows || claimRows.length === 0) {
+  if (claim.duplicate) {
     // Key already claimed → this call is the duplicate. No send.
     return { success: false, reason: 'duplicate' };
   }
-  const claimId = claimRows[0].id as string;
+  const claimId = claim.claimId as string;
 
   // SETTLE (success) / RELEASE (failure/dry-run) by claimId — sole post-send writes.
   const settleClaim = async (result: WaSendResult): Promise<void> => {
@@ -657,13 +633,8 @@ export async function sendNotification(
       })
       .eq('id', claimId);
   };
-  const releaseClaim = async (errorMessage: string | null): Promise<void> => {
-    // NULL the key so a retry can re-claim; keep the row as a failure/dry-run audit.
-    await supabase
-      .from('communication_logs')
-      .update({ idempotency_key: null, error_message: errorMessage })
-      .eq('id', claimId);
-  };
+  const releaseClaim = (errorMessage: string | null): Promise<void> =>
+    releaseIdempotencyRow(supabase, claimId, errorMessage);
 
   // ── STEP 7. SEND-ONLY adapters (notify owns the log via ownsLog) ──
   if (resolvedChannel !== 'aisensy' && resolvedChannel !== 'leadbot') {

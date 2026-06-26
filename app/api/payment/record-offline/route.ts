@@ -248,6 +248,10 @@ export const POST = withApiHandler(async (req: NextRequest, ctx) => {
       },
       relatedEntityType: 'enrollment',
       relatedEntityId: body.enrollment_id,
+      // 2C atomic dedup: offline has no razorpay id → internal payments.id (single caller).
+      contextType: 'payment',
+      contextId: body.enrollment_id,
+      paymentId: payment.id,
     });
   } catch (waErr: unknown) {
     console.error(JSON.stringify({ requestId, event: 'payment_wa_send_failed', path: 'offline_payment', error: waErr instanceof Error ? waErr.message : String(waErr) }));

@@ -336,17 +336,9 @@ async function processPaymentCaptured(
 
     // Send payment confirmation WhatsApp + Email (with dedup — verify may have sent already)
     try {
-      const { data: existingSend } = await supabase
-        .from('communication_logs')
-        .select('id')
-        .eq('template_code', 'parent_payment_confirmed_v3')
-        .eq('related_entity_id', tuitionEnrollmentId)
-        .eq('related_entity_type', 'enrollment')
-        .eq('status', 'sent')
-        .limit(1)
-        .maybeSingle();
-
-      if (!existingSend) {
+      // 2C atomic claim (dedup_scope=[paymentId]) replaces the former existingSend
+      // pre-check — verify + webhook share the razorpay id, so the second loses the claim.
+      {
         const { sendCommunication } = await import('@/lib/communication');
         const { getProgramLabel } = await import('@/lib/utils/program-label');
         const { data: onboardingForLabel } = await supabase
@@ -385,6 +377,9 @@ async function processPaymentCaptured(
           },
           relatedEntityType: 'enrollment',
           relatedEntityId: tuitionEnrollmentId,
+          contextType: 'payment',
+          contextId: tuitionEnrollmentId,
+          paymentId: paymentId,
         });
       }
     } catch (waErr: any) {
@@ -712,17 +707,9 @@ async function processPaymentCaptured(
 
   // 10b. Send payment confirmation WhatsApp + Email (with dedup — verify may have sent already)
   try {
-    const { data: existingSend } = await supabase
-      .from('communication_logs')
-      .select('id')
-      .eq('template_code', 'parent_payment_confirmed_v3')
-      .eq('related_entity_id', enrollment.id)
-      .eq('related_entity_type', 'enrollment')
-      .eq('status', 'sent')
-      .limit(1)
-      .maybeSingle();
-
-    if (!existingSend) {
+    // 2C atomic claim (dedup_scope=[paymentId]) replaces the former existingSend
+    // pre-check — verify + webhook share the razorpay id, so the second loses the claim.
+    {
       const { sendCommunication } = await import('@/lib/communication');
       const { getProgramLabel } = await import('@/lib/utils/program-label');
       const coachingEnr = { billing_model: 'prepaid_season' as const };
@@ -748,6 +735,9 @@ async function processPaymentCaptured(
         },
         relatedEntityType: 'enrollment',
         relatedEntityId: enrollment.id,
+        contextType: 'payment',
+        contextId: enrollment.id,
+        paymentId: paymentId,
       });
     }
   } catch (waErr: any) {

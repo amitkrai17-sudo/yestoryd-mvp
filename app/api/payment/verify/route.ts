@@ -372,6 +372,10 @@ export async function POST(request: NextRequest) {
           },
           relatedEntityType: 'enrollment',
           relatedEntityId: tuitionEnrollmentId,
+          // 2C atomic dedup: same razorpay_payment_id at verify + webhook → one key.
+          contextType: 'payment',
+          contextId: tuitionEnrollmentId,
+          paymentId: body.razorpay_payment_id,
         });
       } catch (waErr: unknown) {
         console.error(JSON.stringify({ requestId, event: 'payment_wa_send_failed', path: 'tuition_verify', error: waErr instanceof Error ? waErr.message : String(waErr) }));
@@ -785,6 +789,10 @@ export async function POST(request: NextRequest) {
         },
         relatedEntityType: 'enrollment',
         relatedEntityId: enrollment.id,
+        // 2C atomic dedup: same razorpay_payment_id at verify + webhook → one key.
+        contextType: 'payment',
+        contextId: enrollment.id,
+        paymentId: body.razorpay_payment_id,
       });
     } catch (waErr: unknown) {
       console.error(JSON.stringify({ requestId, event: 'payment_wa_send_failed', path: 'standard_verify', error: waErr instanceof Error ? waErr.message : String(waErr) }));
