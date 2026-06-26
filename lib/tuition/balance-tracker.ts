@@ -312,6 +312,12 @@ export async function deductTuitionBalance(
             new_balance: String(newBalance),
           }, {
             templateButtons: { category: 'utility_cta', url: enrollmentId },
+            // 2B dedup scope (template.dedup_scope = [contextId, nudgeSeq]): key on
+            // the enrollment + this nudge's sequence so the (lifetime-capped 2)
+            // re-nudges aren't collapsed, but a same-nudge re-fire is.
+            contextType: 'enrollment',
+            contextId: enrollmentId,
+            nudgeSeq: nudgesSent,
           });
           if (result.success) {
             alertSent = 'low_balance';

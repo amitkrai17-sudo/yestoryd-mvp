@@ -182,6 +182,10 @@ async function processReminders(requestId: string, source: string) {
             triggeredBy: 'cron',
             contextType: 'scheduled_session',
             contextId: group.primary.id,
+            // 2B dedup scope (template.dedup_scope = [contextId, scheduledDate, reminderWindow]).
+            // This is the 1h coach reminder window; enrollment-lifecycle sends the 24h window.
+            scheduledDate: group.primary.scheduled_date,
+            reminderWindow: '1h' as const,
             contextData: {
               batch_id: batchId,
               sibling_session_ids: group.sessionIds,

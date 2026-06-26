@@ -374,6 +374,10 @@ export async function GET(request: NextRequest) {
               triggeredBy: 'cron',
               contextType: 'scheduled_session',
               contextId: primary.id,
+              // 2B dedup scope (template.dedup_scope = [contextId, scheduledDate, reminderWindow]).
+              // This is the 24h coach reminder window; coach-reminders-1h sends the 1h window.
+              scheduledDate: primary.scheduled_date,
+              reminderWindow: '24h' as const,
               contextData: {
                 batch_id: batchId,
                 sibling_session_ids: group.sessionIds,

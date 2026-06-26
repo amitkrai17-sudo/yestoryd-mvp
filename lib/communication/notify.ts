@@ -133,6 +133,27 @@ export interface NotifyMeta {
    * hours naturally.
    */
   forceImmediate?: boolean;
+  /**
+   * Per-template dedup-scope axis (Phase 2B). Threaded by callers of templates
+   * whose communication_templates.dedup_scope names these fields, so STEP-6 keys
+   * on the entity instead of the legacy phone:day:firstParam formula.
+   *   - scheduledDate: raw 'YYYY-MM-DD' (DB scheduled_date) for session reminders
+   *     → key (template, contextId=sessionId, scheduledDate); survives reschedule.
+   *   - nudgeSeq: low_balance_nudges_sent counter for parent_tuition_low_balance_v4
+   *     → key (template, contextId=enrollmentId, nudgeSeq); allows the (capped) re-nudges.
+   * Absent → templates with NULL dedup_scope are unaffected (legacy formula).
+   */
+  scheduledDate?: string;
+  nudgeSeq?: number;
+  /**
+   * Reminder window discriminator (Phase 2B, Option 3). coach_session_reminder_1h_v3
+   * is sent by BOTH the 24h cron (enrollment-lifecycle) and the 1h cron
+   * (coach-reminders-1h) for the SAME session+date; its dedup_scope is
+   * [contextId, scheduledDate, reminderWindow] so the two windows key distinctly
+   * and the coach keeps both reminders. Parent reminders use distinct template
+   * codes per window and do NOT need this.
+   */
+  reminderWindow?: '24h' | '1h';
 }
 
 interface TemplateRow {
@@ -148,6 +169,10 @@ interface TemplateRow {
   required_variables: string[];
   wa_variable_derivations: DerivationsMap | null;
   cost_per_send: number | null;
+  /** Phase 2B: when set, names the meta fields that compose the dedup key for
+   *  this template (e.g. {"fields":["contextId","scheduledDate"]}). NULL → legacy
+   *  phone:day:firstParam[:ctx] key (unchanged). */
+  dedup_scope: { fields?: string[] } | null;
 }
 
 interface EngineSettings {
@@ -317,7 +342,7 @@ export async function sendNotification(
   // ── STEP 1. Template lookup ──
   const { data: templateRows, error: tmplErr } = await supabase
     .from('communication_templates')
-    .select('template_code, wa_template_name, language_code, wa_template_category, recipient_type, use_whatsapp, is_active, channel, wa_variables, required_variables, wa_variable_derivations, cost_per_send')
+    .select('template_code, wa_template_name, language_code, wa_template_category, recipient_type, use_whatsapp, is_active, channel, wa_variables, required_variables, wa_variable_derivations, cost_per_send, dedup_scope')
     .eq('template_code', templateCode)
     .limit(1);
 
@@ -533,13 +558,32 @@ export async function sendNotification(
   const firstParam = (finalPositionalParams[0] as string | undefined) ?? '';
   const ctx = meta?.contextId;
   const salt = meta?.idempotencySalt;
-  // Base string is byte-identical to the pre-salt construction for BOTH the
-  // ctx-present and ctx-absent branches. The salt segment is appended ONLY
-  // when a salt is provided (truthy), so an absent/null salt yields the exact
-  // same input string — and therefore the same sha256 — as before this change.
-  const idempotencyBase = ctx
+  // Legacy formula — byte-identical to pre-2B. Used when a template has NO
+  // dedup_scope, OR when a scoped template is missing one of its axis values.
+  // The salt segment is appended ONLY when truthy (absent/null salt → same input).
+  const legacyBase = ctx
     ? `${templateCode}:${phone}:${todayIST()}:${firstParam}:${ctx}`
     : `${templateCode}:${phone}:${todayIST()}:${firstParam}`;
+
+  // Phase 2B: per-template dedup scope. When communication_templates.dedup_scope
+  // names a field list, key on (templateCode, <those meta values>) — NO phone, NO
+  // todayIST, NO firstParam — so the same entity dedups across days/runs. A missing
+  // axis (undefined/null/'') falls back to the legacy formula rather than emit a
+  // poisoned ':undefined:' segment. NULL dedup_scope → legacy (unchanged).
+  const scopeFields = template.dedup_scope?.fields;
+  let idempotencyBase: string;
+  if (scopeFields?.length) {
+    const metaRecord = (meta ?? {}) as Record<string, unknown>;
+    const vals = scopeFields.map((f) => metaRecord[f]);
+    if (vals.some((v) => v === undefined || v === null || v === '')) {
+      console.error('[notify] dedup_scope field missing — falling back to legacy key', JSON.stringify({ templateCode, scope: scopeFields }));
+      idempotencyBase = legacyBase;
+    } else {
+      idempotencyBase = `${templateCode}:${vals.join(':')}`;
+    }
+  } else {
+    idempotencyBase = legacyBase;
+  }
   const idempotencyInput = salt ? `${idempotencyBase}:${salt}` : idempotencyBase;
   const idempotencyKey = crypto.createHash('sha256').update(idempotencyInput).digest('hex');
 

@@ -144,6 +144,9 @@ async function processReminders(requestId: string): Promise<{ results: ReminderR
             triggeredBy: 'cron',
             contextType: 'scheduled_session',
             contextId: sib.id,
+            // 2B dedup scope (template.dedup_scope = [contextId, scheduledDate]):
+            // raw DB scheduled_date string; survives reschedule (which resets the marker).
+            scheduledDate: sib.scheduled_date,
             contextData: {
               batch_id: sib.batch_id ?? null,
               group_key: group.key,

@@ -3941,6 +3941,7 @@ export type Database = {
           cost_tier: string | null
           created_at: string | null
           created_by: string | null
+          dedup_scope: Json | null
           delay_minutes: number | null
           description: string | null
           email_body_html: string | null
@@ -3985,6 +3986,7 @@ export type Database = {
           cost_tier?: string | null
           created_at?: string | null
           created_by?: string | null
+          dedup_scope?: Json | null
           delay_minutes?: number | null
           description?: string | null
           email_body_html?: string | null
@@ -4029,6 +4031,7 @@ export type Database = {
           cost_tier?: string | null
           created_at?: string | null
           created_by?: string | null
+          dedup_scope?: Json | null
           delay_minutes?: number | null
           description?: string | null
           email_body_html?: string | null
