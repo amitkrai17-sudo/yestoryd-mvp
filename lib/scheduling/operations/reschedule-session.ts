@@ -16,14 +16,14 @@
  *                                   former UPDATE branch of scheduleSession().
  */
 
-import { rescheduleEvent, scheduleCalendarEvent, cancelEvent } from '@/lib/calendar';
+import { cancelEvent } from '@/lib/calendar';
+import { reconcileSessionCalendarEvent } from '@/lib/scheduling/session-calendar-writer';
 import { cancelRecallBot, createRecallBot } from '@/lib/recall-auto-bot';
 import { notify } from '../notification-manager';
 import { withCircuitBreaker } from '../circuit-breaker';
 import { createLogger } from '../logger';
 import { executeWithCompensation, type TransactionStep } from '../transaction-manager';
 import { getSupabase, logAudit, getSessionWithRelations } from './helpers';
-import { attachCalendarLink } from '../calendar-link';
 import type { SessionResult } from './types';
 import { formatDateShort, formatTime12 } from '@/lib/utils/date-format';
 
@@ -51,75 +51,10 @@ export async function rescheduleSession(
     const duration = session.duration_minutes || 45;
     const newStart = new Date(`${newSlot.date}T${newSlot.time}`);
 
-    let calendarUpdated = false;
-    let newMeetLink = session.google_meet_link;
-
-    const eventId = session.google_event_id;
-    if (eventId) {
-      // C3 LANDMINE GUARD: is this Google event SHARED by other LIVE sessions?
-      // Tuition recurring / multi-child cohorts reuse ONE event id across many rows;
-      // PATCHing it in place would move the event for every sibling. Count live siblings.
-      const { count: siblingCount } = await supabase
-        .from('scheduled_sessions')
-        .select('id', { count: 'exact', head: true })
-        .eq('google_event_id', eventId)
-        .neq('id', sessionId)
-        .not('status', 'in', '(cancelled,completed,missed)');
-      const isShared = (siblingCount ?? 0) > 0;
-
-      if (isShared) {
-        // DETACH (decision a): give THIS row its own new event at the new time; leave the
-        // shared event + all siblings untouched. Do NOT PATCH the shared event.
-        try {
-          const childName = child?.child_name || child?.name || 'Student';
-          const coachEmail = coach?.email || '';
-          const parentEmail = child?.parent_email || '';
-          const endTime = new Date(newStart);
-          endTime.setMinutes(endTime.getMinutes() + duration);
-          const attendees: string[] = [];
-          if (parentEmail) attendees.push(parentEmail);
-          if (coachEmail) attendees.push(coachEmail);
-          const num = session.session_number ? ` (Session ${session.session_number})` : '';
-
-          const calResult = await withCircuitBreaker('google-calendar', () =>
-            scheduleCalendarEvent({
-              title: `Yestoryd ${session.session_type} - ${childName}${num}`,
-              description: `Reading ${session.session_type} session for ${childName}`,
-              startTime: newStart,
-              endTime,
-              attendees,
-              sessionType: session.session_type === 'parent_checkin' ? 'parent_checkin' : 'coaching',
-            }),
-          );
-          if (calResult.meetLink) newMeetLink = calResult.meetLink;
-          // attachCalendarLink is the SOLE column-writer — point ONLY this row at the new event.
-          await attachCalendarLink(supabase, sessionId, calResult.eventId, newMeetLink);
-          calendarUpdated = true;
-          logger.info('calendar_detached_from_shared', {
-            sessionId, oldEventId: eventId, newEventId: calResult.eventId, siblingCount: siblingCount ?? 0,
-          });
-        } catch (calError: any) {
-          logger.error('calendar_detach_failed', { sessionId, error: calError.message });
-        }
-      } else {
-        // TRUE 1:1 (no live siblings) — retain today's behavior: PATCH the event in place.
-        try {
-          const result = await withCircuitBreaker('google-calendar', () =>
-            rescheduleEvent(eventId, newStart, duration)
-          );
-          if (result.success) {
-            calendarUpdated = true;
-            if (result.meetLink) newMeetLink = result.meetLink;
-          }
-          // attachCalendarLink is the SOLE calendar-column writer: persist the link through it.
-          // eventId is unchanged (PATCH kept the same event) — re-stamp it so google_event_id is
-          // written to its own current value, never nulled.
-          await attachCalendarLink(supabase, sessionId, eventId, result.meetLink ?? session.google_meet_link);
-        } catch (calError: any) {
-          logger.error('calendar_reschedule_failed', { sessionId, error: calError.message });
-        }
-      }
-    }
+    // PHASE 2A: the canonical reconciling writer owns the calendar event — it runs
+    // AFTER the DB date/time write below (it reads the new slot from scheduled_sessions,
+    // the SSOT), DETACHes shared/recurring events (siblings untouched), patches a true
+    // 1:1 in place, and is the sole event + link writer.
 
     const botId = session.recall_bot_id;
     if (botId) {
@@ -150,6 +85,11 @@ export async function rescheduleSession(
     if (updateError) {
       return { success: false, error: `DB update failed: ${updateError.message}` };
     }
+
+    // Canonical reconcile against the just-written slot (shared → detach; 1:1 → patch).
+    const recon = await reconcileSessionCalendarEvent(sessionId);
+    const calendarUpdated = recon.action !== 'skipped' && recon.action !== 'noop';
+    const newMeetLink = recon.meetLink ?? session.google_meet_link;
 
     await logAudit(supabase, 'session_rescheduled', {
       sessionId,
@@ -300,22 +240,15 @@ export async function rescheduleExistingSession(
         name: 'create_calendar_event',
         execute: async () => {
           try {
-            const sessionNumber = session.session_number ?? undefined;
-            const num = sessionNumber ? ` (Session ${sessionNumber})` : '';
-            const calResult = await withCircuitBreaker('google-calendar', () =>
-              scheduleCalendarEvent({
-                title: `Yestoryd ${session.session_type} - ${childName}${num}`,
-                description: `Reading ${session.session_type} session for ${childName}`,
-                startTime,
-                endTime,
-                attendees,
-                sessionType: session.session_type === 'parent_checkin' ? 'parent_checkin' : 'coaching',
-              }),
+            // PHASE 2A: route creation through the canonical reconciling writer. Step 1
+            // already set status='scheduled' with the new slot, so the writer reads SSOT,
+            // creates a unique offline/online-correct event, and writes the link itself.
+            const recon = await withCircuitBreaker('google-calendar', () =>
+              reconcileSessionCalendarEvent(sessionId),
             );
-            calendarEventId = calResult.eventId;
-            meetLink = calResult.meetLink;
-            await attachCalendarLink(supabase, sessionId, calendarEventId, meetLink);
-            logger.info('calendar_created', { requestId, sessionId, eventId: calendarEventId });
+            calendarEventId = recon.eventId;
+            meetLink = recon.meetLink;
+            logger.info('calendar_created', { requestId, sessionId, eventId: calendarEventId, action: recon.action });
             return { eventId: calendarEventId, meetLink };
           } catch (calError: any) {
             logger.error('calendar_creation_failed', { requestId, sessionId, error: calError.message });

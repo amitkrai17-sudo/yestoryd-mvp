@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "next dev",
     "check:status-ssot": "node scripts/check-status-ssot.mjs",
-    "prebuild": "node scripts/check-status-ssot.mjs",
+    "check:calendar-ssot": "node scripts/check-calendar-ssot.mjs",
+    "prebuild": "node scripts/check-status-ssot.mjs && node scripts/check-calendar-ssot.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",

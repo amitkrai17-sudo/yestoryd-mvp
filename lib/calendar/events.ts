@@ -231,10 +231,18 @@ export async function deleteCalendarEvent(eventId: string, organizerEmail?: stri
   }
 }
 
-// Patch a calendar event when session_mode changes. Preserves
-// conferenceData + Meet link (conferenceDataVersion: 0) in both directions.
-// offline: appends the '[OFFLINE SESSION - In Person]' marker and sets location.
-// online:  strips any '[OFFLINE SESSION...]' marker and clears location.
+/**
+ * @deprecated Phase 2A — cannot actually add/remove a Meet link (it patches with
+ *   conferenceDataVersion:0, only touching description + location). Session mode is
+ *   now reconciled by reconcileSessionCalendarEvent (lib/scheduling/session-calendar-writer.ts),
+ *   which delete+creates to truly strip/add conferenceData. Still referenced by the
+ *   ONLINE branch of resolveOnlineLink (session-mode-service) until that flip is
+ *   migrated to the writer; do NOT use for offline strips.
+ *
+ * Patch a calendar event when session_mode changes. offline: appends the
+ * '[OFFLINE SESSION - In Person]' marker and sets location. online: strips any
+ * '[OFFLINE SESSION...]' marker and clears location.
+ */
 export async function updateCalendarEventForMode(
   eventId: string,
   organizerEmail: string,

@@ -21,15 +21,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Receiver } from '@upstash/qstash';
 import { getServiceSupabase } from '@/lib/api-auth';
-import { google } from 'googleapis';
 import { scheduleBotsForEnrollment } from '@/lib/recall-auto-bot';
 import { z } from 'zod';
 import crypto from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import { getProgramContext, type ProgramContext } from '@/lib/utils/program-label';
-import { resolveSessionTime, dayKeyToNum, DAY_KEYS, type SchedulePreference, type DayKey } from '@/lib/scheduling/schedule-time';
-import { attachCalendarLinkToSet } from '@/lib/scheduling/calendar-link';
+import { reconcileSessionCalendarEvent } from '@/lib/scheduling/session-calendar-writer';
 
 export const dynamic = 'force-dynamic';
 
@@ -367,566 +365,47 @@ async function scheduleCalendarForExistingSessions(
     sessionsWithCalendar: existingSessions.filter(s => s.google_event_id).length,
   }));
 
-  // 2. CHECK IDEMPOTENCY - Skip if all calendar events already created
-  const sessionsNeedingCalendar = existingSessions.filter(s => !s.google_event_id);
-  if (sessionsNeedingCalendar.length === 0) {
-    console.log(JSON.stringify({
-      requestId,
-      event: 'calendar_events_already_exist',
-      enrollmentId,
-      totalSessions: existingSessions.length,
-      skipping: true,
-    }));
-
-    // Return existing sessions for email
-    return {
-      sessionsUpdated: existingSessions.length,
-      sessions: existingSessions.map(s => ({
-        id: s.id,
-        sessionNumber: s.session_number ?? 0,
-        type: s.session_type ?? '',
-        date: s.scheduled_date ?? '',
-        meetLink: s.google_meet_link || '',
-        eventId: s.google_event_id || '',
-      })),
-      errors: [],
-    };
-  }
-
-  // 3. Initialize Google Calendar API (coach as organizer)
-  const calAuth = new google.auth.JWT(
-    process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-    undefined,
-    process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    ['https://www.googleapis.com/auth/calendar'],
-    data.coachEmail // Impersonate coach so they become the organizer
-  );
-  const calendar = google.calendar({ version: 'v3', auth: calAuth });
-
-  // ================================================================
-  // 3b. BATCH CALENDAR HANDLING (tuition batches)
-  // ================================================================
-  // Check if this enrollment has a tuition_onboarding with a batch_id.
-  // If so, handle Calendar events at batch level (one recurring event per batch)
-  // rather than per-session.
-  const adminSupabase = createAdminClient();
-  const { data: onboardingBatch } = await adminSupabase
-    .from('tuition_onboarding')
-    .select('*')
-    .eq('enrollment_id', enrollmentId)
-    .single();
-
-  const batchId = onboardingBatch?.batch_id ?? null;
-  const isTuitionBatch = batchId !== null && existingSessions.some(s => s.session_type === 'tuition');
-
-  if (isTuitionBatch && onboardingBatch) {
-    try {
-      let batchMeetLink = onboardingBatch.meet_link;
-      let batchCalendarEventId = onboardingBatch.calendar_event_id;
-
-      if (!batchMeetLink) {
-        // Check if a sibling in the same batch already has a meet_link
-        const { data: sibling } = await adminSupabase
-          .from('tuition_onboarding')
-          .select('meet_link, calendar_event_id')
-          .eq('batch_id', batchId)
-          .not('meet_link', 'is', null)
-          .limit(1)
-          .maybeSingle();
-
-        if (sibling?.meet_link) {
-          // Copy persistent classroom link from sibling
-          batchMeetLink = sibling.meet_link;
-          batchCalendarEventId = sibling.calendar_event_id;
-
-          // Update this onboarding record with the batch's classroom link
-          await adminSupabase
-            .from('tuition_onboarding')
-            .update({ meet_link: batchMeetLink, calendar_event_id: batchCalendarEventId })
-            .eq('id', onboardingBatch.id);
-
-          // Add this child's parent as attendee to existing Calendar event
-          if (batchCalendarEventId) {
-            try {
-              const existingEvent = await calendar.events.get({
-                calendarId: data.coachEmail,
-                eventId: batchCalendarEventId,
-              });
-
-              const currentAttendees = existingEvent.data.attendees || [];
-              const parentAlreadyAdded = currentAttendees.some(
-                (a: any) => a.email === data.parentEmail
-              );
-
-              if (!parentAlreadyAdded) {
-                await calendar.events.patch({
-                  calendarId: data.coachEmail,
-                  eventId: batchCalendarEventId,
-                  sendUpdates: 'all',
-                  requestBody: {
-                    attendees: [
-                      ...currentAttendees,
-                      { email: data.parentEmail, displayName: data.parentName },
-                    ],
-                  },
-                });
-                console.log(JSON.stringify({
-                  requestId,
-                  event: 'batch_attendee_added',
-                  batchId,
-                  parentEmail: data.parentEmail,
-                  calendarEventId: batchCalendarEventId,
-                }));
-              }
-            } catch (attendeeErr: any) {
-              console.error(JSON.stringify({
-                requestId,
-                event: 'batch_attendee_add_error',
-                error: attendeeErr.message,
-              }));
-            }
-          }
-        } else {
-          // First payment in this batch — create recurring Calendar event
-          // Parse schedule_preference for recurrence rule
-          const DAY_MAP: Record<string, string> = {
-            Mon: 'MO', Tue: 'TU', Wed: 'WE', Thu: 'TH', Fri: 'FR', Sat: 'SA', Sun: 'SU',
-            Monday: 'MO', Tuesday: 'TU', Wednesday: 'WE', Thursday: 'TH', Friday: 'FR', Saturday: 'SA', Sunday: 'SU',
-          };
-
-          let rruleDays = 'MO,FR'; // default
-          // SSOT: the event start TIME comes from resolveSessionTime (./schedule-time),
-          // NOT an independent prose parse. Build a SchedulePreference here; derive the
-          // time once the anchor day is known (below). preferredTime is never parsed here.
-          let schedulePref: SchedulePreference = { days: [], times: {} };
-
-          if (onboardingBatch.schedule_preference) {
-            try {
-              const pref = JSON.parse(onboardingBatch.schedule_preference);
-              if (Array.isArray(pref.days) && pref.days.length > 0) {
-                rruleDays = pref.days.map((d: string) => DAY_MAP[d] || d.slice(0, 2).toUpperCase()).join(',');
-              }
-              schedulePref = {
-                days: (Array.isArray(pref.days) ? pref.days : [])
-                  .map((d: string) => `${d.slice(0, 1).toUpperCase()}${d.slice(1, 3).toLowerCase()}`)
-                  .filter((k: string): k is DayKey => (DAY_KEYS as string[]).includes(k)),
-                times: (pref.times && typeof pref.times === 'object') ? pref.times : {},
-                defaultTime: typeof pref.defaultTime === 'string' ? pref.defaultTime : undefined,
-                timeSlot: typeof pref.timeSlot === 'string' ? pref.timeSlot : undefined,
-              };
-            } catch { /* use defaults */ }
-          }
-
-          const duration = onboardingBatch.session_duration_minutes || 60;
-          const isOffline = onboardingBatch.default_session_mode === 'offline';
-
-          // Fetch subject label for title
-          let subjectLabel = 'English Classes';
-          if (onboardingBatch.category_id) {
-            const { data: cat } = await adminSupabase
-              .from('skill_categories')
-              .select('label')
-              .eq('id', onboardingBatch.category_id)
-              .single();
-            if (cat?.label) subjectLabel = cat.label;
-          }
-
-          // Gather parent emails from PAID enrollments in this batch only
-          const { data: batchSiblings } = await adminSupabase
-            .from('tuition_onboarding')
-            .select('enrollment_id, child_name')
-            .eq('batch_id', batchId);
-
-          const attendeeEmails: { email: string; displayName: string }[] = [];
-          for (const sib of batchSiblings || []) {
-            if (!sib.enrollment_id) continue;
-            const { data: enr } = await adminSupabase
-              .from('enrollments')
-              .select('parent_id, status')
-              .eq('id', sib.enrollment_id)
-              .single();
-            if (enr?.parent_id && enr.status === 'active') {
-              const { data: parent } = await adminSupabase
-                .from('parents')
-                .select('email, name')
-                .eq('id', enr.parent_id)
-                .single();
-              if (parent?.email && !attendeeEmails.some(a => a.email === parent.email)) {
-                attendeeEmails.push({ email: parent.email, displayName: parent.name || 'Parent' });
-              }
-            }
-          }
-
-          // Add support email for recording
-          attendeeEmails.push({ email: COMPANY_CONFIG.supportEmail, displayName: 'Yestoryd (Recording)' });
-
-          // Build child names for title
-          const childNames = (batchSiblings || []).map(s => s.child_name).filter(Boolean);
-          const eventTitle = `Yestoryd: ${subjectLabel} — ${data.coachName}`;
-          const eventDescription = `${subjectLabel} session\nCoach: ${data.coachName}\nStudents: ${childNames.join(', ')}\nDuration: ${duration} minutes\n\nQuestions? WhatsApp: ${COMPANY_CONFIG.leadBotWhatsAppDisplay}`;
-
-          // Find the first session date as the recurring event start (anchor day).
-          const firstSession = existingSessions.find(s => s.scheduled_date);
-          const eventStartDate = firstSession?.scheduled_date || new Date().toISOString().split('T')[0];
-          const anchorDay = new Date(`${eventStartDate}T00:00:00+05:30`).getDay();
-          // RRULE has a SINGLE start time. If this batch has per-day differing times
-          // (post-2D-e structured rows), one event cannot express them — flag and use
-          // the anchor-day time. Legacy/uniform rows resolve to one time (no flag).
-          const recurringDays = schedulePref.days.length > 0
-            ? schedulePref.days.map(dayKeyToNum)
-            : [anchorDay];
-          const distinctTimes = new Set(recurringDays.map(d => resolveSessionTime(schedulePref, d)));
-          if (distinctTimes.size > 1) {
-            console.warn(JSON.stringify({
-              requestId,
-              event: 'batch_event_per_day_time_conflict',
-              batchId,
-              times: Array.from(distinctTimes),
-              note: 'RRULE single start cannot express per-day times; using anchor-day time',
-            }));
-          }
-          // Canonical "HH:MM:SS" via the SOLE reader, keyed on the anchor day.
-          const startTime = resolveSessionTime(schedulePref, anchorDay);
-          const eventStart = new Date(`${eventStartDate}T${startTime}+05:30`);
-          const eventEnd = new Date(eventStart);
-          eventEnd.setMinutes(eventEnd.getMinutes() + duration);
-
-          const recurringEvent = await calendar.events.insert({
-            calendarId: data.coachEmail,
-            conferenceDataVersion: isOffline ? 0 : 1,
-            sendUpdates: 'all',
-            requestBody: {
-              summary: eventTitle,
-              description: eventDescription,
-              start: { dateTime: eventStart.toISOString(), timeZone: 'Asia/Kolkata' },
-              end: { dateTime: eventEnd.toISOString(), timeZone: 'Asia/Kolkata' },
-              recurrence: [`RRULE:FREQ=WEEKLY;BYDAY=${rruleDays}`],
-              attendees: attendeeEmails,
-              ...(isOffline ? {} : {
-                conferenceData: {
-                  createRequest: {
-                    requestId: `yestoryd-batch-${batchId}-${Date.now()}`,
-                    conferenceSolutionKey: { type: 'hangoutsMeet' },
-                  },
-                },
-              }),
-              reminders: {
-                useDefault: false,
-                overrides: [
-                  { method: 'email', minutes: 24 * 60 },
-                  { method: 'email', minutes: 60 },
-                  { method: 'popup', minutes: 30 },
-                ],
-              },
-              colorId: '6', // Orange for tuition
-            },
-          });
-
-          batchMeetLink = isOffline ? '' : (recurringEvent.data.conferenceData?.entryPoints?.find(
-            (ep: any) => ep.entryPointType === 'video'
-          )?.uri || '');
-          batchCalendarEventId = recurringEvent.data.id || null;
-
-          // Store persistent classroom link on ALL tuition_onboarding records in this batch
-          if (batchCalendarEventId) {
-            await adminSupabase
-              .from('tuition_onboarding')
-              .update({
-                meet_link: batchMeetLink,
-                calendar_event_id: batchCalendarEventId,
-                updated_at: new Date().toISOString(),
-              })
-              .eq('batch_id', batchId);
-          }
-
-          console.log(JSON.stringify({
-            requestId,
-            event: 'batch_recurring_calendar_created',
-            batchId,
-            calendarEventId: batchCalendarEventId,
-            meetLink: batchMeetLink,
-            rrule: `RRULE:FREQ=WEEKLY;BYDAY=${rruleDays}`,
-            childCount: childNames.length,
-          }));
-        }
-      } else {
-        // meet_link already set on this record — just add parent as attendee if needed
-        if (batchCalendarEventId) {
-          try {
-            const existingEvent = await calendar.events.get({
-              calendarId: data.coachEmail,
-              eventId: batchCalendarEventId,
-            });
-            const currentAttendees = existingEvent.data.attendees || [];
-            if (!currentAttendees.some((a: any) => a.email === data.parentEmail)) {
-              await calendar.events.patch({
-                calendarId: data.coachEmail,
-                eventId: batchCalendarEventId,
-                sendUpdates: 'all',
-                requestBody: {
-                  attendees: [
-                    ...currentAttendees,
-                    { email: data.parentEmail, displayName: data.parentName },
-                  ],
-                },
-              });
-            }
-          } catch (attendeeErr: any) {
-            console.error(JSON.stringify({ requestId, event: 'batch_attendee_add_error', error: attendeeErr.message }));
-          }
-        }
-      }
-
-      // Apply batch meet_link to ALL sessions in this enrollment
-      // Batch sessions share one Calendar event + one Meet link — always sync to latest.
-      // 2A: calendar columns now go through the sole set-writer (attachCalendarLinkToSet).
-      // The status flip is a non-calendar write and stays direct. A null batch value must
-      // preserve each row's existing value (offline batch has batchMeetLink=''), so group
-      // by the effective (eventId, meetLink) pair — mirrors the old conditional `if`s.
-      if (batchMeetLink || batchCalendarEventId) {
-        // SELECT the exact row set under the IDENTICAL WHERE + current calendar values.
-        const { data: batchRows } = await supabase
-          .from('scheduled_sessions')
-          .select('id, google_event_id, google_meet_link')
-          .eq('enrollment_id', enrollmentId)
-          .in('status', ['pending', 'scheduled']);
-
-        // status flip (non-calendar column) — same WHERE as before.
-        await supabase
-          .from('scheduled_sessions')
-          .update({ status: 'scheduled', updated_at: new Date().toISOString() })
-          .eq('enrollment_id', enrollmentId)
-          .in('status', ['pending', 'scheduled']);
-
-        // calendar columns via the set-writer, grouped by effective value so an absent
-        // batch value leaves each row's existing event_id / meet_link untouched.
-        const groups = new Map<string, { eventId: string | null; meetLink: string | null; ids: string[] }>();
-        for (const r of batchRows ?? []) {
-          const eventId = batchCalendarEventId || r.google_event_id || null;
-          const meetLink = batchMeetLink || r.google_meet_link || null;
-          const key = `${eventId ?? ''}|${meetLink ?? ''}`;
-          const g = groups.get(key) ?? { eventId, meetLink, ids: [] };
-          g.ids.push(r.id);
-          groups.set(key, g);
-        }
-        for (const g of Array.from(groups.values())) {
-          await attachCalendarLinkToSet(supabase, g.ids, g.eventId, g.meetLink);
-        }
-
-        console.log(JSON.stringify({
-          requestId,
-          event: 'batch_sessions_updated_with_classroom',
-          enrollmentId,
-          meetLink: batchMeetLink,
-          sessionsCount: sessionsNeedingCalendar.length,
-        }));
-      }
-
-      // Return all sessions for email
-      return {
-        sessionsUpdated: existingSessions.length,
-        sessions: existingSessions.map(s => ({
-          id: s.id,
-          sessionNumber: s.session_number ?? 0,
-          type: s.session_type ?? '',
-          date: s.scheduled_date ?? '',
-          meetLink: batchMeetLink || s.google_meet_link || '',
-          eventId: batchCalendarEventId || s.google_event_id || '',
-        })),
-        errors: [],
-      };
-    } catch (batchCalErr: any) {
-      console.error(JSON.stringify({
-        requestId,
-        event: 'batch_calendar_error',
-        batchId,
-        error: batchCalErr.message,
-      }));
-      // Fall through to per-session Calendar creation as fallback
-    }
-  }
-
-  // ================================================================
-  // 4. PER-SESSION CALENDAR EVENTS (non-batch path, or batch fallback)
-  // ================================================================
-  const startDate = enrollment.preference_start_date
-    ? new Date(enrollment.preference_start_date)
-    : enrollment.program_start
-      ? new Date(enrollment.program_start)
-      : getNextAvailableStartDate();
-
-  console.log(JSON.stringify({
-    requestId,
-    event: 'calendar_scheduling_start',
-    enrollmentId,
-    startDate: startDate.toISOString(),
-    sessionsToSchedule: sessionsNeedingCalendar.length,
-  }));
-
-  // 5. CREATE CALENDAR EVENTS FOR EACH EXISTING SESSION
+  // == PHASE 2A: the per-session reconciling writer is the SOLE creator/updater. ==
+  // Replaces BOTH the batch weekly-RRULE path and the inline per-session insert.
+  // The writer reads date/time/mode from scheduled_sessions (SSOT) - fixing A13
+  // (06:00-vs-18:00, which came from reading schedule_preference) - and is
+  // idempotent: a matched event is a noop, so the every-payment re-queue is free.
+  // Shared/recurring events DETACH onto a fresh unique event (no sibling breakage);
+  // offline strips the Meet. NO idempotency early-return here: re-runs MUST be able
+  // to reconcile (self-heal) a session whose event drifted.
   for (const session of existingSessions) {
-    // Skip if already has calendar event
-    if (session.google_event_id) {
+    try {
+      const r = await reconcileSessionCalendarEvent(session.id, { requestId });
+      if (r.error && r.action === 'skipped') {
+        errors.push({ sessionId: session.id, sessionNumber: session.session_number, error: r.error });
+      }
       sessionsUpdated.push({
         id: session.id,
         sessionNumber: session.session_number ?? 0,
         type: session.session_type ?? '',
         date: session.scheduled_date ?? '',
-        meetLink: session.google_meet_link || '',
-        eventId: session.google_event_id,
+        meetLink: r.meetLink ?? '',
+        eventId: r.eventId ?? '',
       });
-      continue;
-    }
-
-    try {
-      // Calculate session date based on session_number and week_number
-      // Use session's existing date/time if set (tuition sessions have pre-set dates),
-      // otherwise calculate from start date + week number (coaching pattern)
-      let sessionDate: Date;
-      if (session.scheduled_date && session.scheduled_time && session.scheduled_time !== '00:00:00') {
-        sessionDate = new Date(`${session.scheduled_date}T${session.scheduled_time}+05:30`);
-      } else {
-        sessionDate = calculateSessionDate(
-          startDate,
-          session.session_number ?? 0,
-          session.week_number ?? 0,
-          session.session_type ?? 'coaching'
-        );
-      }
-
-      const isTuitionSession = session.session_type === 'tuition';
-      const isCoaching = session.session_type === 'coaching';
-      // V2: Use session's own duration, then enrollment config, then legacy fallback
-      const duration = session.duration_minutes
-        || (isCoaching ? (enrollment.session_duration_minutes || 45) : isTuitionSession ? 60 : 30);
-
-      const endDate = new Date(sessionDate);
-      endDate.setMinutes(endDate.getMinutes() + duration);
-
-      // Build event title and description
-      const isOffline = session.session_mode === 'offline';
-      const eventTitle = isTuitionSession
-        ? `Yestoryd: ${data.childName} - English Classes Session ${session.session_number}`
-        : isCoaching
-          ? `Yestoryd: ${data.childName} - 1:1 Coaching Session ${session.session_number}`
-          : `Yestoryd: ${data.childName} - Parent Check-in`;
-
-      const baseDescription = isTuitionSession
-        ? `English Classes Session with ${data.childName}\n\nCoach: ${data.coachName}\nParent: ${data.parentName}\nSession ${session.session_number}\nDuration: ${duration} minutes\n\nQuestions? WhatsApp: ${COMPANY_CONFIG.leadBotWhatsAppDisplay}`
-        : isCoaching
-          ? `1:1 Coaching Session with ${data.childName}\n\nCoach: ${data.coachName}\nParent: ${data.parentName}\nSession ${session.session_number} of program\nDuration: ${duration} minutes\n\nQuestions? WhatsApp: ${COMPANY_CONFIG.leadBotWhatsAppDisplay}`
-          : `Parent Progress Check-in for ${data.childName}\n\nCoach: ${data.coachName}\nParent: ${data.parentName}\nDuration: ${duration} minutes\n\nQuestions? WhatsApp: ${COMPANY_CONFIG.leadBotWhatsAppDisplay}`;
-
-      const eventDescription = isOffline
-        ? baseDescription + '\n\n[OFFLINE SESSION - In Person]'
-        : baseDescription;
-
-      // Create Google Calendar event
-      const event = await calendar.events.insert({
-        calendarId: data.coachEmail, // Coach's calendar (coach is organizer)
-        conferenceDataVersion: isOffline ? 0 : 1,
-        sendUpdates: 'all',
-        requestBody: {
-          summary: eventTitle,
-          description: eventDescription,
-          start: { dateTime: sessionDate.toISOString(), timeZone: 'Asia/Kolkata' },
-          end: { dateTime: endDate.toISOString(), timeZone: 'Asia/Kolkata' },
-          attendees: [
-            { email: data.parentEmail, displayName: data.parentName },
-            { email: COMPANY_CONFIG.supportEmail, displayName: 'Yestoryd (Recording)' },
-          ],
-          ...(isOffline ? {} : {
-            conferenceData: {
-              createRequest: {
-                requestId: `yestoryd-${enrollmentId}-session-${session.id}-${Date.now()}`,
-                conferenceSolutionKey: { type: 'hangoutsMeet' },
-              },
-            },
-          }),
-          ...(isOffline && session.offline_location ? { location: session.offline_location } : {}),
-          reminders: {
-            useDefault: false,
-            overrides: [
-              { method: 'email', minutes: 24 * 60 },
-              { method: 'email', minutes: 60 },
-              { method: 'popup', minutes: 30 },
-            ],
-          },
-          colorId: isTuitionSession ? '6' : isCoaching ? '9' : '5', // 6=orange for tuition
-        },
-      });
-
-      const meetLink = isOffline ? '' : (event.data.conferenceData?.entryPoints?.find(
-        (ep: any) => ep.entryPointType === 'video'
-      )?.uri || '');
-
-      // UPDATE existing session with calendar details (NOT INSERT!)
-      // SSOT-ALLOWLIST: birth/attach — status at creation, not a transition
-      const { error: updateError } = await supabase
-        .from('scheduled_sessions')
-        .update({
-          google_event_id: event.data.id,
-          google_meet_link: meetLink,
-          scheduled_date: sessionDate.toISOString().split('T')[0],
-          scheduled_time: sessionDate.toTimeString().slice(0, 8),
-          status: 'scheduled',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', session.id);
-
-      if (updateError) {
-        console.error(JSON.stringify({
-          requestId,
-          event: 'session_update_failed',
-          sessionId: session.id,
-          error: updateError.message,
-        }));
-        errors.push({
-          sessionId: session.id,
-          sessionNumber: session.session_number,
-          error: updateError.message,
-        });
-        continue;
-      }
-
-      sessionsUpdated.push({
-        id: session.id,
-        sessionNumber: session.session_number ?? 0,
-        type: session.session_type ?? '',
-        date: sessionDate.toISOString(),
-        meetLink,
-        eventId: event.data.id || '',
-      });
-
       console.log(JSON.stringify({
         requestId,
-        event: 'calendar_event_created',
+        event: 'session_calendar_reconciled',
         sessionId: session.id,
         sessionNumber: session.session_number,
-        sessionType: session.session_type,
-        googleEventId: event.data.id,
+        action: r.action,
+        eventId: r.eventId,
       }));
-
-      // Rate limiting delay to avoid Google Calendar API limits
-      await new Promise(resolve => setTimeout(resolve, 300));
-
-    } catch (calendarError: any) {
+    } catch (e: any) {
       console.error(JSON.stringify({
         requestId,
-        event: 'calendar_create_failed',
+        event: 'session_calendar_reconcile_failed',
         sessionId: session.id,
-        sessionNumber: session.session_number,
-        error: calendarError.message,
+        error: e?.message ?? 'reconcile_failed',
       }));
-
-      errors.push({
-        sessionId: session.id,
-        sessionNumber: session.session_number,
-        type: session.session_type,
-        error: calendarError.message,
-      });
-      // Continue with other sessions even if one fails
+      errors.push({ sessionId: session.id, sessionNumber: session.session_number, error: e?.message ?? 'reconcile_failed' });
     }
+    // Pacing - avoid Google Calendar API rate limits.
+    await new Promise((resolve) => setTimeout(resolve, 200));
   }
 
   return { sessionsUpdated: sessionsUpdated.length, sessions: sessionsUpdated, errors };

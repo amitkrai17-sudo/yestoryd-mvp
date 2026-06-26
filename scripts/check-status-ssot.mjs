@@ -47,8 +47,10 @@ const ALLOWLIST = new Set([
   'lib/scheduling/session-engine.ts',            // buildInsertRow — birth INSERT
   // A — reschedule owner (Policy F): the service delegates reschedule to these helpers
   'lib/scheduling/operations/reschedule-session.ts',
-  // B — birth / calendar-attach: status set at session creation, not a transition
-  'app/api/jobs/enrollment-complete/route.ts',
+  // B — birth: status set at session creation, not a transition.
+  // (Phase 2A removed enrollment-complete's raw calendar-attach status flip; sessions
+  //  now reach that job already status='scheduled' from the engine, so it is no longer
+  //  an inline status writer and was dropped from this allowlist.)
   'app/api/sessions/confirm/route.ts',
   'app/api/skill-booster/recommend/route.ts',
   // recall lifecycle updateSessionStatus (variable write — not grep-caught) — absorb in recall cluster

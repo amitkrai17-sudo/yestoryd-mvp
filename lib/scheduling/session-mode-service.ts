@@ -11,6 +11,7 @@
 
 import { scheduleCalendarEvent, updateCalendarEventForMode, getEventDetails } from '@/lib/calendar/events';
 import { attachCalendarLink } from './calendar-link';
+import { reconcileSessionCalendarEvent } from './session-calendar-writer';
 import { getServiceSupabase } from '@/lib/api-auth';
 import { sendNotification, type NotifyResult } from '@/lib/communication/notify';
 import { formatDateShort, formatTime12 } from '@/lib/utils/date-format';
@@ -256,53 +257,16 @@ export async function setSessionMode(
       return { ok: false, mode, link: session.google_meet_link ?? null, notified: { parent: 'skipped', coach: 'skipped' }, error: 'update_failed' };
     }
 
-    // Step 2/3 seam — release the dangling online Meet link when flipping to offline.
-    // Decision (ii): STRIP the Meet marker off the Google event, never DELETE it — a
-    // shared / room / recurring event may still serve LIVE (or online) siblings (same
-    // landmine as 2B/2C). Sibling-guarded. All column writes go via attachCalendarLink
-    // (sole writer); calendar API is best-effort and never fails the committed mode flip.
-    if (session.google_meet_link) {
-      const eventId = session.google_event_id; // const → narrowing survives the awaits below
-
-      if (eventId) {
-        // Sibling check (same shape as 2B/2C): other LIVE sessions sharing this event?
-        const { count: siblingCount } = await supabase
-          .from('scheduled_sessions')
-          .select('id', { count: 'exact', head: true })
-          .eq('google_event_id', eventId)
-          .neq('id', sessionId)
-          .not('status', 'in', '(cancelled,completed,missed)');
-        const isShared = (siblingCount ?? 0) > 0;
-
-        if (!isShared) {
-          // SOLE owner — strip the Meet marker off the Google event itself (keep the event).
-          try {
-            let coachEmail: string | null = null;
-            if (session.coach_id) {
-              const { data: coach } = await supabase.from('coaches').select('email').eq('id', session.coach_id).single();
-              coachEmail = coach?.email ?? null;
-            }
-            if (coachEmail) {
-              await updateCalendarEventForMode(eventId, coachEmail, 'offline', opts.offlineLocation);
-            } else {
-              console.warn(JSON.stringify({ requestId, event: 'offline_meet_strip_no_coach_email', sessionId, eventId }));
-            }
-          } catch (e) {
-            console.warn(JSON.stringify({ requestId, event: 'offline_meet_strip_error', sessionId, error: e instanceof Error ? e.message : String(e) }));
-          }
-        } else {
-          // SHARED — do NOT touch the Google event (siblings may still use it / be online on it).
-          console.warn(JSON.stringify({ requestId, event: 'offline_meet_strip_skipped_shared', sessionId, eventId, siblingCount: siblingCount ?? 0 }));
-        }
-      }
-
-      // Null ONLY this row's meet link (KEEP event_id — the row still belongs to the
-      // event) through the sole calendar-column writer.
-      try {
-        await attachCalendarLink(supabase, sessionId, eventId, null);
-      } catch (e) {
-        console.warn(JSON.stringify({ requestId, event: 'offline_meet_release_error', sessionId, error: e instanceof Error ? e.message : String(e) }));
-      }
+    // PHASE 2A: reconcile the calendar event against the now-offline row. The canonical
+    // writer DELETES+RECREATES an EXCLUSIVE event without conferenceData — truly stripping
+    // the Meet (updateCalendarEventForMode could not) — DETACHes a SHARED/recurring event
+    // (siblings keep theirs, this session gets its own meetless event), and nulls
+    // google_meet_link via attachCalendarLink. Best-effort: a calendar failure never
+    // fails the already-committed mode flip.
+    try {
+      await reconcileSessionCalendarEvent(sessionId, { requestId });
+    } catch (e) {
+      console.warn(JSON.stringify({ requestId, event: 'offline_calendar_reconcile_error', sessionId, error: e instanceof Error ? e.message : String(e) }));
     }
 
     // Notify the parent of the flip via parent_offline_notification_v3. Legacy
