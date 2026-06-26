@@ -113,6 +113,14 @@ export interface SendMeta {
    * observability/log-shape data, not adapter behavior data.
    */
   safeVariables?: string[];
+  /**
+   * When true, notify.ts owns the communication_logs row (atomic claim-then-act,
+   * Phase 2A): notify INSERTs the keyed claim row before the send and SETTLEs/
+   * RELEASEs it after, so the adapter must NOT write its own log row (that would
+   * double-log and break the claim). Absent/false → the adapter logs exactly as
+   * before (direct/bypass callers: sendCommunication, backops, tier-change, etc.).
+   */
+  ownsLog?: boolean;
 }
 
 // ────────────────────────────────────────────────────────────
@@ -186,6 +194,14 @@ export interface WaSendResult {
   success: boolean;
   messageId?: string;
   error?: string;
+  /** Provider HTTP status (Phase 2A) — surfaced so notify.ts can persist it on
+   *  SETTLE when it owns the log row (meta.ownsLog). Absent on validation-only
+   *  early returns. */
+  httpStatus?: number;
+  /** True when this was a dry-run (leadbot kill-switch / explicit isDryRun) — the
+   *  message did NOT actually go out. notify.ts RELEASEs (does not settle) on a
+   *  dry-run so a later real send can re-claim the same idempotency key. */
+  dryRun?: boolean;
 }
 
 /**

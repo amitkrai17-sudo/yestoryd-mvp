@@ -16,7 +16,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { sendWhatsAppMessage } from './aisensy';
 import { sendLeadBotMessage } from './leadbot';
 import { logCommunication, type RecipientType } from './log';
-import type { TemplateButtons } from './types';
+import type { TemplateButtons, WaSendResult } from './types';
 import { redactNamedParams, redactVariables } from './redact';
 import { formatForWhatsApp } from '@/lib/utils/phone';
 import {
@@ -36,7 +36,6 @@ const DEFAULT_DAILY_CAP = 3;
 const DEFAULT_QUIET_START = 21; // 21:00 IST
 const DEFAULT_QUIET_END = 8;    // 08:00 IST
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
-const POST_SEND_LOG_WINDOW_MS = 10_000;
 
 export type NotifyReason =
   | 'template_not_found'
@@ -544,178 +543,157 @@ export async function sendNotification(
   const idempotencyInput = salt ? `${idempotencyBase}:${salt}` : idempotencyBase;
   const idempotencyKey = crypto.createHash('sha256').update(idempotencyInput).digest('hex');
 
-  const { data: existingRows } = await supabase
+  // ── STEP 6. ATOMIC CLAIM (Phase 2A — claim-then-act) ──
+  // Replaces the racy SELECT-then-act. INSERT the keyed claim row up front with
+  // ON CONFLICT (idempotency_key) DO NOTHING (the FULL UNIQUE(idempotency_key)
+  // constraint, migration 20260416120000): if a concurrent/earlier send already
+  // claimed this key, no row is returned → this call is the duplicate and MUST
+  // NOT send. The send happens next (STEP 7); the row is SETTLEd on success or
+  // RELEASEd (key→NULL, kept as audit) on failure/dry-run so a retry can re-claim
+  // — never a silently-suppressed message. The adapter is told ownsLog:true so it
+  // does NOT write its own row (no double-log).
+  const resolvedChannel = template.channel; // 'aisensy' | 'leadbot' (openclaw rejected above)
+  const claimContextData = {
+    variables: safeVariables ?? finalPositionalParams,
+    named_params: safeNamedParams,
+    original_recipient_id: recipientId,
+  };
+
+  const { data: claimRows, error: claimErr } = await supabase
     .from('communication_logs')
-    .select('id')
-    .eq('idempotency_key', idempotencyKey)
-    .limit(1);
-  if (existingRows && existingRows.length > 0) {
-    return { success: false, reason: 'duplicate', logId: existingRows[0].id as string };
-  }
-
-  // ── STEP 7. Route by channel ──
-  if (template.channel === 'aisensy') {
-    if (!template.wa_template_name) {
-      await logCommunication({
-        ...logBase,
-        recipientPhone: phone,
-        waSent: false,
-        errorMessage: 'wa_template_name is null',
-      });
-      return { success: false, reason: 'send_failed' };
-    }
-
-    const result = await sendWhatsAppMessage({
-      to: phone,
-      templateName: template.wa_template_name,
-      templateCategory: template.wa_template_category ?? undefined,
-      templateButtons: meta?.templateButtons,
-      source: meta?.source,
-      // Use derivation-resolved positional params so AiSensy receives the
-      // derived value (e.g. child_first_name) when the caller passed only
-      // the canonical (e.g. child_name). For templates without derivations
-      // this is identical to the original positionalParams.
-      variables: finalPositionalParams as string[],
-      meta: {
-        templateCode,
-        recipientType: templateRecipientType,
-        recipientId: isUuidRecipient ? recipientId : null,
-        triggeredBy: meta?.triggeredBy ?? 'system',
-        triggeredByUserId: meta?.triggeredByUserId ?? null,
-        contextType: meta?.contextType ?? null,
-        contextId: meta?.contextId ?? null,
-        contextData: { named_params: safeNamedParams, original_recipient_id: recipientId },
-        safeVariables,
-      },
-    });
-
-    // On success, annotate the log row that sendWhatsAppMessage just inserted
-    // with idempotency_key, cost_per_send, channel. Failures stay unannotated
-    // so they remain retryable.
-    let logId: string | undefined;
-    if (result.success) {
-      const { data: recentRows } = await supabase
-        .from('communication_logs')
-        .select('id')
-        .eq('template_code', templateCode)
-        .eq('recipient_phone', phone)
-        .is('idempotency_key', null)
-        .gte('created_at', new Date(Date.now() - POST_SEND_LOG_WINDOW_MS).toISOString())
-        .order('created_at', { ascending: false })
-        .limit(1);
-      const rowId = recentRows?.[0]?.id as string | undefined;
-      if (rowId) {
-        try {
-          await supabase
-            .from('communication_logs')
-            .update({
-              idempotency_key: idempotencyKey,
-              cost_per_send: template.cost_per_send,
-              channel: 'aisensy',
-              triggered_by: meta?.triggeredBy ?? 'system',
-              triggered_by_user_id: meta?.triggeredByUserId ?? null,
-              context_type: meta?.contextType ?? null,
-              context_id: meta?.contextId ?? null,
-            })
-            .eq('id', rowId);
-          logId = rowId;
-        } catch (err) {
-          // UNIQUE violation on idempotency_key means a concurrent send won.
-          console.warn('[notify] log annotate failed:', err instanceof Error ? err.message : err);
-        }
-      }
-    }
-
-    return {
-      success: result.success,
-      reason: result.success ? undefined : 'send_failed',
-      logId,
-    };
-  }
-
-  if (template.channel === 'leadbot') {
-    if (!template.wa_template_name) {
-      await logCommunication({
-        ...logBase,
-        recipientPhone: phone,
-        waSent: false,
-        errorMessage: 'wa_template_name is null',
-      });
-      return { success: false, reason: 'send_failed' };
-    }
-
-    const result = await sendLeadBotMessage(
+    .upsert(
       {
+        idempotency_key: idempotencyKey,
+        template_code: templateCode,
+        recipient_type: templateRecipientType,
+        recipient_id: isUuidRecipient ? recipientId : null,
+        recipient_phone: phone,
+        wa_sent: false,
+        email_sent: false,
+        sms_sent: false,
+        sent_at: null,
+        channel: resolvedChannel,
+        triggered_by: meta?.triggeredBy ?? 'system',
+        triggered_by_user_id: meta?.triggeredByUserId ?? null,
+        context_type: meta?.contextType ?? null,
+        context_id: meta?.contextId ?? null,
+        context_data: claimContextData as never,
+        created_at: new Date().toISOString(),
+      },
+      { onConflict: 'idempotency_key', ignoreDuplicates: true },
+    )
+    .select('id');
+
+  if (claimErr) {
+    // Claim infra failed (not a duplicate). Do NOT send (avoids an unlogged,
+    // un-deduped message); caller may retry. Mirrors a transient send_failed.
+    console.error('[notify] claim insert failed:', claimErr.message);
+    return { success: false, reason: 'send_failed' };
+  }
+  if (!claimRows || claimRows.length === 0) {
+    // Key already claimed → this call is the duplicate. No send.
+    return { success: false, reason: 'duplicate' };
+  }
+  const claimId = claimRows[0].id as string;
+
+  // SETTLE (success) / RELEASE (failure/dry-run) by claimId — sole post-send writes.
+  const settleClaim = async (result: WaSendResult): Promise<void> => {
+    await supabase
+      .from('communication_logs')
+      .update({
+        wa_sent: true,
+        sent_at: new Date().toISOString(),
+        cost_per_send: template.cost_per_send,
+        channel: resolvedChannel,
+        context_data: {
+          ...claimContextData,
+          provider_message_id: result.messageId ?? null,
+          http_status: result.httpStatus ?? null,
+        } as never,
+      })
+      .eq('id', claimId);
+  };
+  const releaseClaim = async (errorMessage: string | null): Promise<void> => {
+    // NULL the key so a retry can re-claim; keep the row as a failure/dry-run audit.
+    await supabase
+      .from('communication_logs')
+      .update({ idempotency_key: null, error_message: errorMessage })
+      .eq('id', claimId);
+  };
+
+  // ── STEP 7. SEND-ONLY adapters (notify owns the log via ownsLog) ──
+  if (resolvedChannel !== 'aisensy' && resolvedChannel !== 'leadbot') {
+    console.error('[notify] unknown channel:', resolvedChannel);
+    await releaseClaim(`unknown_channel: ${resolvedChannel}`);
+    return { success: false, reason: 'send_failed' };
+  }
+  if (!template.wa_template_name) {
+    await releaseClaim('wa_template_name is null');
+    return { success: false, reason: 'send_failed' };
+  }
+
+  // Shared send meta. ownsLog:true → adapter is send-only (skips its own insert).
+  // contextData/safeVariables preserve the pre-2A sent-row shape.
+  const sendMeta = {
+    templateCode,
+    recipientType: templateRecipientType,
+    recipientId: isUuidRecipient ? recipientId : null,
+    triggeredBy: meta?.triggeredBy ?? 'system',
+    triggeredByUserId: meta?.triggeredByUserId ?? null,
+    contextType: meta?.contextType ?? null,
+    contextId: meta?.contextId ?? null,
+    contextData: { named_params: safeNamedParams, original_recipient_id: recipientId },
+    safeVariables,
+    ownsLog: true,
+  };
+
+  let result: WaSendResult;
+  try {
+    if (resolvedChannel === 'aisensy') {
+      result = await sendWhatsAppMessage({
         to: phone,
         templateName: template.wa_template_name,
-        languageCode: template.language_code || 'en',
         templateCategory: template.wa_template_category ?? undefined,
         templateButtons: meta?.templateButtons,
         source: meta?.source,
+        // Derivation-resolved positional params (e.g. child_first_name when the
+        // caller passed only child_name); identical to positionalParams otherwise.
         variables: finalPositionalParams as string[],
-        meta: {
-          templateCode,
-          recipientType: templateRecipientType,
-          recipientId: isUuidRecipient ? recipientId : null,
-          triggeredBy: meta?.triggeredBy ?? 'system',
-          triggeredByUserId: meta?.triggeredByUserId ?? null,
-          contextType: meta?.contextType ?? null,
-          contextId: meta?.contextId ?? null,
-          contextData: { named_params: safeNamedParams, original_recipient_id: recipientId },
-          safeVariables,
+        meta: sendMeta,
+      });
+    } else {
+      result = await sendLeadBotMessage(
+        {
+          to: phone,
+          templateName: template.wa_template_name,
+          languageCode: template.language_code || 'en',
+          templateCategory: template.wa_template_category ?? undefined,
+          templateButtons: meta?.templateButtons,
+          source: meta?.source,
+          variables: finalPositionalParams as string[],
+          meta: sendMeta,
         },
-      },
-      { isDryRun: false }, // TASK 4 will replace with site_settings reader (leadbot_live_sends)
-    );
-
-    // Annotate the log row leadbot.ts just inserted with idempotency_key,
-    // cost_per_send, channel. Failures stay unannotated for retry.
-    let logId: string | undefined;
-    if (result.success) {
-      const { data: recentRows } = await supabase
-        .from('communication_logs')
-        .select('id')
-        .eq('template_code', templateCode)
-        .eq('recipient_phone', phone)
-        .is('idempotency_key', null)
-        .gte('created_at', new Date(Date.now() - POST_SEND_LOG_WINDOW_MS).toISOString())
-        .order('created_at', { ascending: false })
-        .limit(1);
-      const rowId = recentRows?.[0]?.id as string | undefined;
-      if (rowId) {
-        try {
-          await supabase
-            .from('communication_logs')
-            .update({
-              idempotency_key: idempotencyKey,
-              cost_per_send: template.cost_per_send,
-              channel: 'leadbot',
-              triggered_by: meta?.triggeredBy ?? 'system',
-              triggered_by_user_id: meta?.triggeredByUserId ?? null,
-              context_type: meta?.contextType ?? null,
-              context_id: meta?.contextId ?? null,
-            })
-            .eq('id', rowId);
-          logId = rowId;
-        } catch (err) {
-          console.warn('[notify] log annotate failed:', err instanceof Error ? err.message : err);
-        }
-      }
+        { isDryRun: false }, // TASK 4 will replace with site_settings reader (leadbot_live_sends)
+      );
     }
-
-    return {
-      success: result.success,
-      reason: result.success ? undefined : 'send_failed',
-      logId,
-    };
+  } catch (err) {
+    // Adapter threw (e.g. auth-template variable contract). RELEASE the claim then
+    // re-throw to preserve the prior propagation behavior to callers.
+    await releaseClaim(err instanceof Error ? err.message : String(err));
+    throw err;
   }
 
-  console.error('[notify] unknown channel:', template.channel);
-  await logCommunication({
-    ...logBase,
-    recipientPhone: phone,
-    waSent: false,
-    errorMessage: `unknown_channel: ${template.channel}`,
-  });
-  return { success: false, reason: 'send_failed' };
+  if (result.success && !result.dryRun) {
+    await settleClaim(result);
+    return { success: true, logId: claimId };
+  }
+
+  // Dry-run OR failure → RELEASE (key→NULL) so a real retry can re-claim. The row
+  // stays as audit: 'dry_run' for dry-runs, the provider error for failures.
+  await releaseClaim(result.dryRun ? 'dry_run' : (result.error ?? 'send_failed'));
+  return {
+    success: result.success,
+    reason: result.success ? undefined : 'send_failed',
+    logId: claimId,
+  };
 }

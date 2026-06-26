@@ -46,9 +46,14 @@ export async function sendWhatsAppMessage(params: WaSendParams): Promise<WaSendR
     ...extra,
   });
 
+  // Phase 2A: when notify.ts owns the log row (claim-then-act), the adapter is
+  // SEND-ONLY — it must not write its own communication_logs row. Direct/bypass
+  // callers (ownsLog absent) keep logging exactly as before.
+  const ownsLog = params.meta?.ownsLog === true;
+
   if (!apiKey) {
     console.error('[AiSensy] API key not configured');
-    await logCommunication({
+    if (!ownsLog) await logCommunication({
       ...logBase,
       waSent: false,
       errorMessage: 'API key not configured',
@@ -59,7 +64,7 @@ export async function sendWhatsAppMessage(params: WaSendParams): Promise<WaSendR
 
   if (!isValidPhone(params.to)) {
     console.error('[AiSensy] Invalid phone number:', params.to);
-    await logCommunication({
+    if (!ownsLog) await logCommunication({
       ...logBase,
       waSent: false,
       errorMessage: `Invalid phone number: ${params.to}`,
@@ -175,27 +180,27 @@ export async function sendWhatsAppMessage(params: WaSendParams): Promise<WaSendR
     if (isSuccess) {
       const messageId = data.messageId || data.id;
       console.log('[AiSensy] SUCCESS:', params.templateName, messageId || '');
-      await logCommunication({
+      if (!ownsLog) await logCommunication({
         ...logBase,
         waSent: true,
         contextData: buildContextData({ provider_message_id: messageId ?? null, http_status: response.status }),
       });
-      return { success: true, messageId };
+      return { success: true, messageId, httpStatus: response.status };
     }
 
     const errorMsg = data.message || data.error || `HTTP ${response.status}: ${data.status || 'unknown'}`;
     console.error('[AiSensy] FAILED:', params.templateName, errorMsg);
-    await logCommunication({
+    if (!ownsLog) await logCommunication({
       ...logBase,
       waSent: false,
       errorMessage: errorMsg,
       contextData: buildContextData({ http_status: response.status, response_body: data }),
     });
-    return { success: false, error: errorMsg };
+    return { success: false, error: errorMsg, httpStatus: response.status };
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : 'Network error';
     console.error('[AiSensy] EXCEPTION:', errorMsg);
-    await logCommunication({
+    if (!ownsLog) await logCommunication({
       ...logBase,
       waSent: false,
       errorMessage: errorMsg,

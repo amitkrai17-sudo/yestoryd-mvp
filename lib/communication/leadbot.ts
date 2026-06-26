@@ -497,6 +497,11 @@ export async function sendLeadBotMessage(
     ...extra,
   });
 
+  // Phase 2A: when notify.ts owns the log row (claim-then-act), the adapter is
+  // SEND-ONLY — it must not write its own communication_logs row. Direct/bypass
+  // callers (ownsLog absent) keep logging exactly as before.
+  const ownsLog = params.meta?.ownsLog === true;
+
   // ── Path 1: Env check ──
   let phoneNumberId: string;
   let accessToken: string;
@@ -504,7 +509,7 @@ export async function sendLeadBotMessage(
     ({ phoneNumberId, accessToken } = getConfig());
   } catch {
     console.error('[WA-LeadBot] Lead Bot not configured');
-    await logCommunication({
+    if (!ownsLog) await logCommunication({
       ...logBase,
       waSent: false,
       errorMessage: 'Lead Bot not configured',
@@ -516,7 +521,7 @@ export async function sendLeadBotMessage(
   // ── Path 2: Phone validation ──
   if (!isValidPhone(params.to)) {
     console.error('[WA-LeadBot] Invalid phone number:', params.to);
-    await logCommunication({
+    if (!ownsLog) await logCommunication({
       ...logBase,
       waSent: false,
       errorMessage: `Invalid phone number: ${params.to}`,
@@ -540,7 +545,7 @@ export async function sendLeadBotMessage(
   if (isDryRun) {
     const dryRunId = `DRY_RUN_${Date.now()}`;
     console.log('[WA-LeadBot] DRY-RUN:', params.templateName, '→', formattedPhone);
-    await logCommunication({
+    if (!ownsLog) await logCommunication({
       ...logBase,
       waSent: false,
       errorMessage: 'dry_run',
@@ -548,7 +553,7 @@ export async function sendLeadBotMessage(
         provider_message_id: dryRunId,
       }),
     });
-    return { success: true, messageId: dryRunId };
+    return { success: true, messageId: dryRunId, dryRun: true };
   }
 
   // ── Real-send path (Paths 3, 4, 5) ──
@@ -572,7 +577,7 @@ export async function sendLeadBotMessage(
     // ── Path 3: Successful send ──
     if (response.ok && messageId) {
       console.log('[WA-LeadBot] SUCCESS:', params.templateName, messageId);
-      await logCommunication({
+      if (!ownsLog) await logCommunication({
         ...logBase,
         waSent: true,
         contextData: buildContextData({
@@ -580,7 +585,7 @@ export async function sendLeadBotMessage(
           http_status: response.status,
         }),
       });
-      return { success: true, messageId };
+      return { success: true, messageId, httpStatus: response.status };
     }
 
     // ── Path 4: Failed POST (non-200 or no message id) ──
@@ -596,7 +601,7 @@ export async function sendLeadBotMessage(
     }
 
     console.error('[WA-LeadBot] FAILED:', params.templateName, errorMsg);
-    await logCommunication({
+    if (!ownsLog) await logCommunication({
       ...logBase,
       waSent: false,
       errorMessage: errorMsg,
@@ -605,12 +610,12 @@ export async function sendLeadBotMessage(
         response_body: data,
       }),
     });
-    return { success: false, error: errorMsg };
+    return { success: false, error: errorMsg, httpStatus: response.status };
   } catch (error) {
     // ── Path 5: Network exception ──
     const errorMsg = error instanceof Error ? error.message : 'Network error';
     console.error('[WA-LeadBot] EXCEPTION:', errorMsg);
-    await logCommunication({
+    if (!ownsLog) await logCommunication({
       ...logBase,
       waSent: false,
       errorMessage: errorMsg,
