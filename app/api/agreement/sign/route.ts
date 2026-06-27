@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getPricingConfig } from '@/lib/config/pricing-config';
-import { loadRevenueSplitConfig } from '@/lib/config/loader';
+import { getRevenueSplitPercents, loadPayoutConfig, loadCoachGroup } from '@/lib/config/payout-config';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 const supabase = createAdminClient();
@@ -168,11 +168,12 @@ async function sendConfirmationEmail(
   let platformLeadEarningsStr = '3,000';
   let ownLeadEarningsStr = '4,200';
   try {
-    const [pricingConfig, splitConfig] = await Promise.all([getPricingConfig(), loadRevenueSplitConfig()]);
+    const [pricingConfig, cfg, grp] = await Promise.all([getPricingConfig(), loadPayoutConfig(), loadCoachGroup(coach.id)]);
     const tier = pricingConfig.tiers.find(t => t.slug === 'full') || pricingConfig.tiers[pricingConfig.tiers.length - 1];
     const basePrice = tier?.discountedPrice ?? 0;
-    coachPercent = splitConfig.coachCostPercent;
-    ownLeadPercent = splitConfig.coachCostPercent + splitConfig.leadCostPercent;
+    const split = getRevenueSplitPercents(grp?.name ?? 'rising', 'coaching', 'coach', cfg);
+    coachPercent = split.coachPercent;
+    ownLeadPercent = split.coachPercent + split.leadPercent;
     platformLeadEarningsStr = Math.round(basePrice * coachPercent / 100).toLocaleString('en-IN');
     ownLeadEarningsStr = Math.round(basePrice * ownLeadPercent / 100).toLocaleString('en-IN');
   } catch (e) {

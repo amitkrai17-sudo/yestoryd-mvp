@@ -4,7 +4,8 @@
 // SECURITY: requireAdmin() - only admins can trigger status notifications
 
 import { NextRequest, NextResponse } from 'next/server';
-import { loadCoachConfig, loadIntegrationsConfig, loadEmailConfig, loadRevenueSplitConfig } from '@/lib/config/loader';
+import { loadCoachConfig, loadIntegrationsConfig, loadEmailConfig } from '@/lib/config/loader';
+import { getRevenueSplitPercents, loadPayoutConfig } from '@/lib/config/payout-config';
 import { getPricingConfig } from '@/lib/config/pricing-config';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import { withApiHandler } from '@/lib/api/with-api-handler';
@@ -21,16 +22,19 @@ export const POST = withApiHandler(async (request, { auth, supabase }) => {
       );
     }
 
-    const [coachConfig, integrationsConfig, emailConfig, splitConfig, pricingConfig] = await Promise.all([
-      loadCoachConfig(), loadIntegrationsConfig(), loadEmailConfig(), loadRevenueSplitConfig(), getPricingConfig(),
+    const [coachConfig, integrationsConfig, emailConfig, cfg, pricingConfig] = await Promise.all([
+      loadCoachConfig(), loadIntegrationsConfig(), loadEmailConfig(), loadPayoutConfig(), getPricingConfig(),
     ]);
     const settings = { siteBaseUrl: integrationsConfig.siteBaseUrl, adminEmail: emailConfig.fromEmail };
 
     // Compute earnings from base price × split percentages
     const fullSeasonTier = pricingConfig.tiers.find(t => t.slug === 'full') || pricingConfig.tiers[pricingConfig.tiers.length - 1];
     const basePrice = fullSeasonTier?.discountedPrice ?? 0;
-    const coachPercent = splitConfig.coachCostPercent;
-    const ownLeadPercent = splitConfig.coachCostPercent + splitConfig.leadCostPercent;
+    // 'rising' literal: coachId here is coach_applications.id (an applicant with no
+    // assigned tier yet), so the resolver cannot derive a real group — rising is the base tier.
+    const split = getRevenueSplitPercents('rising', 'coaching', 'coach', cfg);
+    const coachPercent = split.coachPercent;
+    const ownLeadPercent = split.coachPercent + split.leadPercent;
     const ownLeadEarnings = Math.round(basePrice * ownLeadPercent / 100);
     const ownLeadEarningsStr = ownLeadEarnings.toLocaleString('en-IN');
     const onboardingLink = `${settings.siteBaseUrl}/coach/onboarding?coachId=${coachId}`;
