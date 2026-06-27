@@ -32,9 +32,9 @@ function replaceVariables(html: string, config: ConfigValues, coachData?: any, s
     '{{entity_type}}': config.entity_type || 'Sole Proprietorship',
     
     // Revenue split
-    '{{lead_cost_percent}}': config.lead_cost_percent || '20',
+    '{{lead_cost_percent}}': config.lead_cost_percent || '10',
     '{{coach_cost_percent}}': config.coach_cost_percent || '50',
-    '{{platform_fee_percent}}': config.platform_fee_percent || '30',
+    '{{platform_fee_percent}}': config.platform_fee_percent || '40',
     
     // TDS
     '{{tds_rate_standard}}': config.tds_rate_standard || '10',
@@ -75,7 +75,7 @@ function replaceVariables(html: string, config: ConfigValues, coachData?: any, s
     // Calculated values
     '{{yestoryd_lead_coach_share}}': config.coach_cost_percent || '50',
     '{{coach_lead_coach_share}}': String(
-      parseInt(config.coach_cost_percent || '50') + parseInt(config.lead_cost_percent || '20')
+      parseInt(config.coach_cost_percent || '50') + parseInt(config.lead_cost_percent || '10')
     ),
   };
 

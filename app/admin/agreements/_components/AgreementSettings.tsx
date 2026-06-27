@@ -36,9 +36,9 @@ const DEFAULT_VARIABLES: ConfigVariable[] = [
   { key: 'entity_type', value: 'Sole Proprietorship', description: 'Business entity type', category: 'company' },
 
   // Revenue Split
-  { key: 'lead_cost_percent', value: '20', description: 'Lead cost percentage', category: 'revenue' },
+  { key: 'lead_cost_percent', value: '10', description: 'Lead cost percentage', category: 'revenue' },
   { key: 'coach_cost_percent', value: '50', description: 'Coach cost percentage', category: 'revenue' },
-  { key: 'platform_fee_percent', value: '30', description: 'Platform fee percentage', category: 'revenue' },
+  { key: 'platform_fee_percent', value: '40', description: 'Platform fee percentage', category: 'revenue' },
 
   // TDS
   { key: 'tds_rate_standard', value: '10', description: 'Standard TDS rate with PAN (%)', category: 'tds' },

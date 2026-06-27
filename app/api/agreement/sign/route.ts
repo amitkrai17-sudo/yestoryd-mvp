@@ -164,7 +164,7 @@ async function sendConfirmationEmail(
 
   // Compute earnings from base price × split percentages
   let coachPercent = 50;
-  let ownLeadPercent = 70;
+  let ownLeadPercent = 60;
   let platformLeadEarningsStr = '3,000';
   let ownLeadEarningsStr = '4,200';
   try {
@@ -254,7 +254,7 @@ async function sendConfirmationEmail(
                 ${referralLink}
               </p>
               <p style="color: rgba(255,255,255,0.8); margin: 10px 0 0 0; font-size: 12px;">
-                Share this link to earn 70% on every enrollment!
+                Share this link to earn 60% on every enrollment!
               </p>
             </div>
             
