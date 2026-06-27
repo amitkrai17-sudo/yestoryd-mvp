@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import {
   loadPayoutConfig,
+  getRevenueSplitPercents,
   calculatePerSessionRate,
   calculateEnrollmentBreakdown,
   getTuitionCoachPercent,
@@ -502,26 +503,16 @@ async function handleAllProductsMode(requestId: string, startTime: number, ageBa
 // ============================================================
 
 async function handleLegacyMode(requestId: string, startTime: number) {
-  // Fetch active revenue split config
-  const { data: splitConfig, error: splitError } = await supabase
-    .from('revenue_split_config')
-    .select('lead_cost_percent, coach_cost_percent, platform_fee_percent')
-    .eq('is_active', true)
-    .single();
-
-  if (splitError || !splitConfig) {
-    console.error(JSON.stringify({
-      requestId,
-      event: 'earnings_calculator_error',
-      error: 'Revenue config not found',
-      details: splitError?.message,
-    }));
-
-    return NextResponse.json(
-      { success: false, error: 'Configuration unavailable' },
-      { status: 503 }
-    );
-  }
+  // Resolve split from canonical resolver (site_settings SSOT). Generic illustration
+  // (no specific coach) → 'rising' base tier, coaching product, coach referrer so
+  // own-lead total = coach + lead. Platform = 100 - lead - coach.
+  const payoutCfg = await loadPayoutConfig();
+  const resolved = getRevenueSplitPercents('rising', 'coaching', 'coach', payoutCfg);
+  const splitConfig = {
+    lead_cost_percent: resolved.leadPercent,
+    coach_cost_percent: resolved.coachPercent,
+    platform_fee_percent: resolved.platformPercent,
+  };
 
   // Fetch active products
   const { data: products, error: productsError } = await supabase
