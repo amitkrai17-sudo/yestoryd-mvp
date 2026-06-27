@@ -8,7 +8,7 @@ import crypto from 'crypto';
 import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import razorpay from '@/lib/razorpay';
 import { calculateRefund, isFullRefundEligible } from '@/lib/refund/calculator';
-import { loadRevenueSplitConfig } from '@/lib/config/loader';
+import { getRevenueSplitPercents, loadPayoutConfig, loadCoachGroup } from '@/lib/config/payout-config';
 import { transitionSessionStatus } from '@/lib/scheduling/transition-session-status';
 
 export const dynamic = 'force-dynamic';
@@ -100,8 +100,9 @@ export async function POST(request: NextRequest) {
     }
 
     // 7. Calculate refund
-    const revConfig = await loadRevenueSplitConfig();
-    const coachPercent = revConfig.coachCostPercent ?? 0;
+    const cfg = await loadPayoutConfig();
+    const grp = enrollment.coach_id ? await loadCoachGroup(enrollment.coach_id) : null;
+    const coachPercent = getRevenueSplitPercents(grp?.name ?? 'rising', 'coaching', 'organic', cfg).coachPercent;
 
     const completed = sessionsCompleted ?? 0;
     const total = sessionsTotal ?? 0;
