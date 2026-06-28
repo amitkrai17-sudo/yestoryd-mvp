@@ -225,6 +225,13 @@ const JOBS: Job[] = [
     description: 'Process coach unavailability windows',
   },
   {
+    name: 'auto-complete-sessions',
+    path: '/api/cron/auto-complete-sessions',
+    schedule: { type: 'daily', istHour: 5, istMinute: 0 },
+    method: 'GET',
+    description: 'Auto-complete delivered offline tuition sessions stuck in scheduled (48h grace)',
+  },
+  {
     name: 'enrollment-lifecycle',
     path: '/api/cron/enrollment-lifecycle',
     schedule: { type: 'daily', istHour: 5, istMinute: 30 },
