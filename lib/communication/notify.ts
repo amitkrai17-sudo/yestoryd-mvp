@@ -174,6 +174,9 @@ interface TemplateRow {
    *  this template (e.g. {"fields":["contextId","scheduledDate"]}). NULL → legacy
    *  phone:day:firstParam[:ctx] key (unchanged). */
   dedup_scope: { fields?: string[] } | null;
+  /** When explicitly false, the template bypasses STEP-5 quiet-hours deferral
+   *  (sends immediately). NULL/true → respects quiet hours (unchanged). */
+  respect_window: boolean | null;
 }
 
 interface EngineSettings {
@@ -343,7 +346,7 @@ export async function sendNotification(
   // ── STEP 1. Template lookup ──
   const { data: templateRows, error: tmplErr } = await supabase
     .from('communication_templates')
-    .select('template_code, wa_template_name, language_code, wa_template_category, recipient_type, use_whatsapp, is_active, channel, wa_variables, required_variables, wa_variable_derivations, cost_per_send, dedup_scope')
+    .select('template_code, wa_template_name, language_code, wa_template_category, recipient_type, use_whatsapp, is_active, channel, wa_variables, required_variables, wa_variable_derivations, cost_per_send, dedup_scope, respect_window')
     .eq('template_code', templateCode)
     .limit(1);
 
@@ -441,6 +444,12 @@ export async function sendNotification(
   // hours (STEP 5). Hoisted here so STEP 4 can reference them; STEP 5 reuses them.
   const isAdmin = template.recipient_type === 'admin';
   const isAuthCategory = template.wa_template_category === 'authentication';
+  // Transactional/utility templates (WhatsApp's own utility/authentication line)
+  // bypass the per-recipient daily cap. Case-insensitive — DB holds both 'utility'
+  // and 'UTILITY'. 'marketing' (and NULL) still respect the cap.
+  const isTransactional =
+    template.wa_template_category != null &&
+    ['utility', 'authentication'].includes(template.wa_template_category.toLowerCase());
 
   // ── STEP 4. Daily cap ──
   const { count: sentToday } = await supabase
@@ -450,7 +459,7 @@ export async function sendNotification(
     .eq('wa_sent', true)
     .gte('created_at', startOfTodayIstUtc());
 
-  if (!isAdmin && !isAuthCategory && (sentToday ?? 0) >= settings.dailyCap) {
+  if (!isAdmin && !isAuthCategory && !isTransactional && (sentToday ?? 0) >= settings.dailyCap) {
     await logCommunication({
       ...logBase,
       recipientPhone: phone,
@@ -464,7 +473,7 @@ export async function sendNotification(
   // ── STEP 5. Quiet hours ──
   const hour = istHour();
   const inQuiet = hour >= settings.quietStart || hour < settings.quietEnd;
-  if (!isAdmin && !isAuthCategory && !meta?.forceImmediate && inQuiet) {
+  if (!isAdmin && !isAuthCategory && !meta?.forceImmediate && template.respect_window !== false && inQuiet) {
     const deferUntil = nextQuietEndUtc(settings.quietEnd);
     // Raw insert into communication_queue (different table from
     // communication_logs which logCommunication targets). Drain-2C cron
