@@ -41,6 +41,10 @@ export const maxDuration = 30;
 
 const BATCH_SIZE = 50;
 
+// 2a: blanket staleness backstop. now()-scheduled_for beyond this drops the row
+// (ANY template) — see the per-row check for the 36h justification.
+const STALE_BACKSTOP_MS = 36 * 60 * 60 * 1000;
+
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
 /** Today's date in IST as 'YYYY-MM-DD' via the +05:30 offset + getUTC* (NOT
  *  toISOString, which rolls to the next UTC day during late-evening IST). */
@@ -115,11 +119,11 @@ export async function GET(request: NextRequest) {
   if (!rows || rows.length === 0) {
     console.log(JSON.stringify({
       event: 'drain_2c_summary',
-      claimed: 0, drained: 0, failed: 0, reDeferred: 0, skippedStale: 0,
+      claimed: 0, drained: 0, failed: 0, reDeferred: 0, skippedStale: 0, staleSkipped: 0,
       durationMs: Date.now() - startTime,
     }));
     return NextResponse.json({
-      success: true, claimed: 0, drained: 0, failed: 0, reDeferred: 0, skippedStale: 0,
+      success: true, claimed: 0, drained: 0, failed: 0, reDeferred: 0, skippedStale: 0, staleSkipped: 0,
     });
   }
 
@@ -127,9 +131,37 @@ export async function GET(request: NextRequest) {
   let failed = 0;
   let reDeferred = 0;
   let skippedStale = 0;
+  let staleSkipped = 0;
 
   for (const row of rows) {
     const nowIso = new Date().toISOString();
+
+    // 2a: blanket staleness backstop (generalization of 1b to ALL templates).
+    // Placed BEFORE the recipient/contextId resolution and the 1b session lookup
+    // — cheapest short-circuit. The drainer runs once daily at 08:00 IST, so a
+    // direct-insert (scheduled_for=now()) row waits up to ~24h for its first
+    // drain; 36h guarantees ≥1 attempt before drop and catches genuine staleness
+    // by the 2nd cycle. Lateness is elapsed-ms from scheduled_for (intended send),
+    // NOT created_at. 1b still runs after this for the precise same-day case.
+    if (Date.now() - new Date(row.scheduled_for).getTime() > STALE_BACKSTOP_MS) {
+      await supabase
+        .from('communication_queue')
+        .update({
+          processed_at: nowIso,
+          error_message: 'stale: >36h past scheduled_for (missed drain cycle)',
+          last_attempt_at: nowIso,
+        })
+        .eq('id', row.id);
+      staleSkipped++;
+      console.log(JSON.stringify({
+        event: 'drain_2c_row',
+        queueId: row.id,
+        templateCode: row.template_code,
+        result: 'stale_backstop',
+        scheduledFor: row.scheduled_for,
+      }));
+      continue;
+    }
 
     // Recipient: prefer UUID, fall back to phone (matches Drain-2A CHECK constraint)
     const recipient = row.recipient_id ?? row.recipient_phone;
@@ -292,6 +324,7 @@ export async function GET(request: NextRequest) {
     failed,
     reDeferred,
     skippedStale,
+    staleSkipped,
     durationMs,
   }));
 
@@ -302,6 +335,7 @@ export async function GET(request: NextRequest) {
     failed,
     reDeferred,
     skippedStale,
+    staleSkipped,
   });
 }
 
