@@ -41,6 +41,17 @@ export const maxDuration = 30;
 
 const BATCH_SIZE = 50;
 
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+/** Today's date in IST as 'YYYY-MM-DD' via the +05:30 offset + getUTC* (NOT
+ *  toISOString, which rolls to the next UTC day during late-evening IST). */
+function istTodayYmd(): string {
+  const ist = new Date(Date.now() + IST_OFFSET_MS);
+  const y = ist.getUTCFullYear();
+  const m = String(ist.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(ist.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 // NotifyMeta.triggeredBy is a strict union; queue.created_by is text.
 // Validate before passing to sendNotification via a type guard so no cast
 // is needed at the call site.
@@ -104,17 +115,18 @@ export async function GET(request: NextRequest) {
   if (!rows || rows.length === 0) {
     console.log(JSON.stringify({
       event: 'drain_2c_summary',
-      claimed: 0, drained: 0, failed: 0, reDeferred: 0,
+      claimed: 0, drained: 0, failed: 0, reDeferred: 0, skippedStale: 0,
       durationMs: Date.now() - startTime,
     }));
     return NextResponse.json({
-      success: true, claimed: 0, drained: 0, failed: 0, reDeferred: 0,
+      success: true, claimed: 0, drained: 0, failed: 0, reDeferred: 0, skippedStale: 0,
     });
   }
 
   let drained = 0;
   let failed = 0;
   let reDeferred = 0;
+  let skippedStale = 0;
 
   for (const row of rows) {
     const nowIso = new Date().toISOString();
@@ -158,6 +170,35 @@ export async function GET(request: NextRequest) {
       metaWrapped.contextType ?? row.related_entity_type ?? 'cron:process-deferred-comms';
     const resolvedContextId =
       metaWrapped.contextId ?? row.related_entity_id ?? null;
+
+    // 1b: never drain a stale session-reminder. The 1a sent-flag latch stops the
+    // re-enqueue at source; this guards rows queued before 1a shipped (Web
+    // neutralized 214; this catches stragglers). Convention check: every
+    // session-reminder code contains 'session_reminder' (the 5 current codes +
+    // any future _online_/window variant); non-reminder session templates
+    // (session_summary, session_cancelled) lack it and still send for past sessions.
+    if (row.template_code.includes('session_reminder')) {
+      const staleReason = await reminderStaleReason(supabase, resolvedContextId);
+      if (staleReason) {
+        await supabase
+          .from('communication_queue')
+          .update({
+            processed_at: nowIso,
+            error_message: `stale: ${staleReason}`,
+            last_attempt_at: nowIso,
+          })
+          .eq('id', row.id);
+        skippedStale++;
+        console.log(JSON.stringify({
+          event: 'drain_2c_row',
+          queueId: row.id,
+          templateCode: row.template_code,
+          result: 'skipped_stale',
+          reason: staleReason,
+        }));
+        continue;
+      }
+    }
 
     try {
       const result = await sendNotification(
@@ -250,6 +291,7 @@ export async function GET(request: NextRequest) {
     drained,
     failed,
     reDeferred,
+    skippedStale,
     durationMs,
   }));
 
@@ -259,6 +301,7 @@ export async function GET(request: NextRequest) {
     drained,
     failed,
     reDeferred,
+    skippedStale,
   });
 }
 
@@ -279,4 +322,24 @@ async function markFailedAttempt(
       last_attempt_at: nowIso,
     })
     .eq('id', queueId);
+}
+
+// 1b: returns a stale-reason string when a queued session-reminder must NOT be
+// sent, or null when the session is still a today-or-future 'scheduled' row.
+async function reminderStaleReason(
+  supabase: ReturnType<typeof createAdminClient>,
+  sessionId: string | null,
+): Promise<string | null> {
+  if (!sessionId) return 'no_session_context';
+  const { data: session } = await supabase
+    .from('scheduled_sessions')
+    .select('id, status, scheduled_date')
+    .eq('id', sessionId)
+    .maybeSingle();
+  if (!session) return 'session_not_found';
+  if (session.status !== 'scheduled') return `status_${session.status}`;
+  // scheduled_date is a 'YYYY-MM-DD' date column; lexical compare vs IST-today
+  // is exact and DST-safe (both sides are pure calendar dates).
+  if (session.scheduled_date && session.scheduled_date < istTodayYmd()) return 'past_date';
+  return null;
 }
