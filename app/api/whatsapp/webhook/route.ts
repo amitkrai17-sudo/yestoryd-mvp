@@ -132,6 +132,43 @@ async function handleMessages(messages: ExtractedMessage[], requestId: string) {
   for (const msg of messages) {
     const phone = normalizePhone(msg.from);
 
+    // 0a. Coach-confirm button tap (interactiveId = csc_<action>:<sessionId>):
+    //     enqueue straight to /process — NO conversation, NO wa_leads, NO dedup row.
+    //     Runs BEFORE the internal-number skip so a coach in INTERNAL_FALLBACK_NUMBERS
+    //     (e.g. Rucha) still reaches the csc_ handler, which authorizes by phone. The
+    //     handler + transitionSessionStatus are idempotent, so a duplicate webhook
+    //     delivery is harmless. The /process csc_ branch tolerates conversationId=null.
+    if (msg.interactiveId?.startsWith('csc_')) {
+      const qstash = getQStash();
+      if (qstash) {
+        try {
+          const result = await qstash.publishJSON({
+            url: `${APP_URL}/api/whatsapp/process`,
+            body: {
+              conversationId: null,
+              messageId: msg.messageId,
+              phone,
+              text: msg.text,
+              type: msg.type,
+              contactName: msg.contactName,
+              interactiveId: msg.interactiveId,
+              interactiveTitle: msg.interactiveTitle,
+              currentState: null,
+              requestId,
+            },
+            retries: 3,
+            delay: 1,
+          });
+          console.log(JSON.stringify({ requestId, event: 'wa_coach_confirm_queued', qstashMessageId: result.messageId, phone }));
+        } catch (error: any) {
+          console.error(JSON.stringify({ requestId, event: 'wa_coach_confirm_queue_error', error: error.message }));
+        }
+      } else {
+        console.warn(JSON.stringify({ requestId, event: 'wa_leadbot_qstash_not_configured' }));
+      }
+      continue;
+    }
+
     // 0. Skip internal/staff/test numbers entirely — no conversation, no lead,
     //    no /process enqueue. Meta still gets its 200 ACK (returned after the loop).
     if (isInternalNumber(phone, INTERNAL_FALLBACK_NUMBERS)) {

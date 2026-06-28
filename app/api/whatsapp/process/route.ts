@@ -230,6 +230,18 @@ export async function POST(request: NextRequest) {
     // 3. Mark as read (blue ticks) — fire and forget
     markAsRead(messageId).catch(() => {});
 
+    // 3.5. Coach session-confirm short-circuit — runs BEFORE the conversation
+    // fetch / is_bot_active / rate-limit because a coach tap has NO lead
+    // conversation (the webhook enqueues it directly with conversationId=null).
+    // interactiveId carries the per-send payload csc_<action>:<sessionId>; the
+    // handler authorizes the tapper as the session's coach by phone. Keyed on
+    // interactiveId (the payload), NOT interactiveTitle.
+    if (interactiveId?.startsWith('csc_')) {
+      const { handleCoachSessionConfirm } = await import('@/lib/whatsapp/handlers/coach-session-confirm');
+      await handleCoachSessionConfirm(interactiveId, phone, messageId, requestId);
+      return NextResponse.json({ status: 'coach_session_confirm_handled' });
+    }
+
     // 4. Fetch latest conversation from DB (state may have changed since queued)
     const supabase = getSupabase();
     const { data: conversation } = await supabase
@@ -265,19 +277,6 @@ export async function POST(request: NextRequest) {
         });
       }
       return NextResponse.json({ status: 'rate_limited' });
-    }
-
-    // 6.4. Coach session-confirm short-circuit — a coach tapping a
-    // coach_session_confirm_v1 quick-reply button. interactiveId carries the
-    // per-send payload csc_<action>:<sessionId> (Graph-API-registered template;
-    // VERIFIED live). Keyed on interactiveId (the payload), NOT interactiveTitle,
-    // and placed BEFORE the enrolled-parent / keyword routing so the tap is caught
-    // first (a coach is not an enrolled parent and would otherwise fall through to
-    // the lead classifier). The handler authorizes the tapper as the session's coach.
-    if (interactiveId?.startsWith('csc_')) {
-      const { handleCoachSessionConfirm } = await import('@/lib/whatsapp/handlers/coach-session-confirm');
-      await handleCoachSessionConfirm(interactiveId, phone, messageId, requestId);
-      return NextResponse.json({ status: 'coach_session_confirm_handled' });
     }
 
     // 6.5. Enrolled-parent short-circuit — handle child-specific messages
