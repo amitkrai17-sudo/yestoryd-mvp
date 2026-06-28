@@ -72,6 +72,15 @@ export function formatTime12(timeStr: string): string {
   return `${hour12}:${minutes} ${ampm}`;
 }
 
+/** "15 Jun" — day + short month, no year (WhatsApp session lines) */
+export function formatDayMonth(date: string | Date): string {
+  return new Intl.DateTimeFormat(LOCALE, {
+    day: 'numeric',
+    month: 'short',
+    timeZone: TIMEZONE,
+  }).format(new Date(date));
+}
+
 /**
  * Date object representing 00:00:00 IST (Asia/Kolkata) of TODAY.
  * Useful for IST-day-bucket SQL filters: `.gte('column', startOfTodayIST().toISOString())`.
