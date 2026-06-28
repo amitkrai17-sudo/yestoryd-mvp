@@ -405,6 +405,26 @@ export async function transitionSessionStatus(
         enrollmentType = enr?.enrollment_type ?? null;
       }
       const sessionType = session.session_type ?? null;
+
+      // Suppress a HOLLOW parent summary: a delivered-but-unconfirmed session
+      // (auto-complete cron) has no real coach observations, so a synthesized
+      // summary would be dishonest — mirror force-complete's deliberate omission.
+      // Deduct + payout + counter still fire. The normal coach-confirmed path has
+      // a confirmed (manual_structured) capture and KEEPS its summary.
+      let summaryAllowed = enrollmentType === 'tuition' && !!session.child_id;
+      if (summaryAllowed) {
+        const { data: cap } = await supabase
+          .from('structured_capture_responses')
+          .select('capture_method, coach_confirmed')
+          .eq('session_id', sessionId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (!cap || cap.capture_method === 'auto_filled' || cap.coach_confirmed === false) {
+          summaryAllowed = false;
+        }
+      }
+
       try {
         await closeTuitionSession({
           supabase,
@@ -414,7 +434,7 @@ export async function transitionSessionStatus(
           setStatus: false, // CORE already wrote status + completed_at
           deductBalance: enrollmentType === 'tuition',
           insertPayout: sessionType === 'tuition' && !!session.coach_id,
-          dispatchSummary: enrollmentType === 'tuition' && !!session.child_id,
+          dispatchSummary: summaryAllowed,
           sessionsDelivered: opts.sessionsDelivered ?? 1,
           deductActor: opts.actorLabel ?? input.actor,
           appUrl: process.env.NEXT_PUBLIC_APP_URL || 'https://www.yestoryd.com',
