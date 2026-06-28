@@ -157,6 +157,13 @@ const JOBS: Job[] = [
     method: 'GET',
     description: '1-hour session reminders for parents (tuition only; online gated until _online_v1 Meta approval)',
   },
+  {
+    name: 'send-coach-session-confirm',
+    path: '/api/cron/send-coach-session-confirm',
+    schedule: { type: 'interval', minutes: 60 },
+    method: 'GET',
+    description: 'Prompt coach to confirm class outcome (coach_session_confirm_v1) for past-due tuition sessions; throttled per run',
+  },
 
   // ── Interval: every 120 min ───────────────────────────────
   {
@@ -227,9 +234,9 @@ const JOBS: Job[] = [
   {
     name: 'auto-complete-sessions',
     path: '/api/cron/auto-complete-sessions',
-    schedule: { type: 'daily', istHour: 5, istMinute: 0 },
+    schedule: { type: 'daily', istHour: 8, istMinute: 0 },
     method: 'GET',
-    description: 'Auto-complete delivered offline tuition sessions stuck in scheduled (48h grace)',
+    description: 'Escalate to admin (never bill) tuition sessions unconfirmed 48h after coach prompt',
   },
   {
     name: 'enrollment-lifecycle',
