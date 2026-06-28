@@ -386,7 +386,11 @@ export async function GET(request: NextRequest) {
             },
           );
 
-          if (waResult.success) {
+          if (waResult.success || waResult.deferred) {
+            // 1a: latch on a real send OR a successful quiet-hours deferral
+            // (notify.ts → {success:false, deferred:true}); the queued row carries
+            // the real send. enrollment-lifecycle runs 05:30 IST (inside quiet
+            // hours) so this 24h coach reminder ALWAYS deferred and never latched.
             await supabase
               .from('scheduled_sessions')
               .update({
@@ -395,7 +399,9 @@ export async function GET(request: NextRequest) {
               })
               .in('id', group.sessionIds);
 
-            results.coachReminders24h.sent += group.sessionIds.length;
+            if (waResult.success) {
+              results.coachReminders24h.sent += group.sessionIds.length;
+            }
           } else {
             results.coachReminders24h.failed += group.sessionIds.length;
             results.coachReminders24h.errors.push(`Group ${group.key}: ${waResult.reason}`);

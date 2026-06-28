@@ -167,7 +167,11 @@ async function processReminders(requestId: string): Promise<{ results: ReminderR
           },
         );
 
-        if (waResult.success) {
+        if (waResult.success || waResult.deferred) {
+          // 1a: latch the per-template sent flag on a real send OR a successful
+          // quiet-hours deferral. notify.ts returns {success:false, deferred:true}
+          // when it parks the send in communication_queue; the drained row carries
+          // the actual send, so latching here stops the hourly re-enqueue loop.
           await supabase
             .from('scheduled_sessions')
             .update({
@@ -175,7 +179,7 @@ async function processReminders(requestId: string): Promise<{ results: ReminderR
               parent_reminder_1h_sent_at: new Date().toISOString(),
             })
             .eq('id', sib.id);
-          results.sent++;
+          if (waResult.success) results.sent++;
         } else {
           results.failed++;
           results.errors.push(`Session ${sib.id}: ${waResult.reason ?? 'send_failed'}`);

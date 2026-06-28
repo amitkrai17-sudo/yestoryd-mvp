@@ -194,7 +194,10 @@ async function processReminders(requestId: string, source: string) {
           },
         );
 
-        if (waResult.success) {
+        if (waResult.success || waResult.deferred) {
+          // 1a: latch on a real send OR a successful quiet-hours deferral
+          // (notify.ts → {success:false, deferred:true}); the queued row carries
+          // the real send, so latching here stops the hourly re-enqueue loop.
           await supabase
             .from('scheduled_sessions')
             .update({
@@ -203,18 +206,20 @@ async function processReminders(requestId: string, source: string) {
             })
             .in('id', group.sessionIds);
 
-          results.sent += group.sessionIds.length;
+          if (waResult.success) {
+            results.sent += group.sessionIds.length;
 
-          console.log(JSON.stringify({
-            requestId,
-            event: 'reminder_sent',
-            groupKey: group.key,
-            primarySessionId: group.primary.id,
-            siblingSessionIds: group.sessionIds,
-            childCount: group.sessionIds.length,
-            coachName: coach.name,
-            childName,
-          }));
+            console.log(JSON.stringify({
+              requestId,
+              event: 'reminder_sent',
+              groupKey: group.key,
+              primarySessionId: group.primary.id,
+              siblingSessionIds: group.sessionIds,
+              childCount: group.sessionIds.length,
+              coachName: coach.name,
+              childName,
+            }));
+          }
         } else {
           results.failed += group.sessionIds.length;
           results.errors.push(`Group ${group.key}: ${waResult.reason}`);
