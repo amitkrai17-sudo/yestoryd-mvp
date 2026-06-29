@@ -12,7 +12,7 @@ import {
   RefreshCw, Send, ChevronDown, ChevronUp, IndianRupee,
   BookOpen, UserCheck, Pause, ArrowUpDown, ArrowLeftRight, Play,
   Trash2, CheckCircle2, XCircle, MessageCircle, Copy,
-  Home, Monitor,
+  Home, Monitor, Pencil,
 } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { StatusBadge } from '@/components/shared/StatusBadge';
@@ -187,6 +187,10 @@ export default function AdminTuitionPage() {
   const [altOpen, setAltOpen] = useState<string | null>(null);
   const [altPhoneInputs, setAltPhoneInputs] = useState<Record<string, string>>({});
   const [archiving, setArchiving] = useState<string | null>(null);
+  // UI-2C: inline edit of sessions_purchased on a pending card.
+  const [editingSessions, setEditingSessions] = useState<string | null>(null);
+  const [sessionsInput, setSessionsInput] = useState<Record<string, string>>({});
+  const [savingSessions, setSavingSessions] = useState<string | null>(null);
   const [waOpen, setWaOpen] = useState<string | null>(null);
   // Transient per-onboarding WhatsApp send outcome from create/resend responses.
   // Keyed by onboarding id; survives the post-action fetchData() refetch.
@@ -391,6 +395,25 @@ export default function AdminTuitionPage() {
       if (res.ok) fetchData();
     } catch { /* */ }
     setArchiving(null);
+  }
+
+  // UI-2C: edit sessions_purchased on a pending onboarding (PATCH sessions route).
+  // Client guard mirrors the backend bound (integer 1..50); inline-gated via the
+  // disabled Save button + red border. Refresh reuses handleResend's fetchData().
+  async function handleEditSessions(id: string, value: string) {
+    const n = parseInt(value, 10);
+    if (!Number.isInteger(n) || n < 1 || n > 50) return;
+    setSavingSessions(id);
+    try {
+      const res = await fetch(`/api/admin/tuition/${id}/sessions`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionsPurchased: n }),
+      });
+      if (res.ok) setEditingSessions(null);
+      fetchData();
+    } catch { /* */ }
+    setSavingSessions(null);
   }
 
   async function handleCreate(e: React.FormEvent) {
@@ -764,6 +787,8 @@ export default function AdminTuitionPage() {
                   {o.status === 'parent_pending' && (() => {
                     const altRaw = (altPhoneInputs[o.id] ?? '').trim();
                     const altInvalid = altRaw !== '' && !/^[6-9]\d{9}$/.test(altRaw);
+                    const sessRaw = (sessionsInput[o.id] ?? '').trim();
+                    const sessInvalid = sessRaw !== '' && (!/^\d+$/.test(sessRaw) || Number(sessRaw) < 1 || Number(sessRaw) > 50);
                     return (
                       <div className="mt-3 space-y-2">
                         <div className="flex items-center gap-3 flex-wrap">
@@ -782,6 +807,25 @@ export default function AdminTuitionPage() {
                           >
                             {altOpen === o.id ? 'Use parent number' : 'Send to a different number'}
                           </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingSessions(editingSessions === o.id ? null : o.id);
+                              setSessionsInput(p => ({ ...p, [o.id]: String(o.sessions_purchased) }));
+                            }}
+                            className="flex items-center gap-1.5 text-xs text-text-tertiary hover:text-white min-h-[44px] sm:min-h-0"
+                          >
+                            <Pencil className="w-3 h-3" />
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleArchive(o.id, o.child_name)}
+                            disabled={archiving === o.id}
+                            className="flex items-center gap-1.5 text-xs text-text-tertiary hover:text-red-400 disabled:opacity-50 min-h-[44px] sm:min-h-0"
+                          >
+                            {archiving === o.id ? <Spinner size="sm" color="muted" /> : <Trash2 className="w-3 h-3" />}
+                            Cancel
+                          </button>
                         </div>
                         {altOpen === o.id && (
                           <input
@@ -791,6 +835,32 @@ export default function AdminTuitionPage() {
                             inputMode="numeric"
                             className={`w-full bg-surface-2 border rounded-xl px-3 py-1.5 text-xs text-white placeholder:text-text-tertiary ${altInvalid ? 'border-red-500/50' : 'border-border'}`}
                           />
+                        )}
+                        {editingSessions === o.id && (
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <input
+                              value={sessionsInput[o.id] ?? ''}
+                              onChange={e => setSessionsInput(p => ({ ...p, [o.id]: e.target.value.replace(/\D/g, '').slice(0, 2) }))}
+                              placeholder={String(o.sessions_purchased)}
+                              inputMode="numeric"
+                              className={`w-20 bg-surface-2 border rounded-xl px-3 py-1.5 text-xs text-white placeholder:text-text-tertiary ${sessInvalid ? 'border-red-500/50' : 'border-border'}`}
+                            />
+                            <button
+                              onClick={() => handleEditSessions(o.id, sessRaw)}
+                              disabled={savingSessions === o.id || sessInvalid || sessRaw === ''}
+                              className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 disabled:opacity-50 min-h-[44px] sm:min-h-0"
+                            >
+                              {savingSessions === o.id ? <Spinner size="sm" color="muted" /> : <CheckCircle2 className="w-3 h-3" />}
+                              Save
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingSessions(null)}
+                              className="text-[11px] text-text-tertiary hover:text-white min-h-[44px] sm:min-h-0"
+                            >
+                              Cancel edit
+                            </button>
+                          </div>
                         )}
                       </div>
                     );

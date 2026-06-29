@@ -8,6 +8,7 @@ import {
   Calendar, Clock, Users, ChevronRight,
   IndianRupee, Video, MapPin, AlertCircle, BookOpen,
   GraduationCap, UserPlus, ClipboardCheck, Send,
+  Pencil, Trash2, CheckCircle2,
 } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { ProductBadge } from '@/components/shared/RevenueCalculator';
@@ -124,6 +125,11 @@ function PendingOnboardingsCard() {
   const [resending, setResending] = useState<string | null>(null);
   const [altOpen, setAltOpen] = useState<string | null>(null);
   const [altInputs, setAltInputs] = useState<Record<string, string>>({});
+  // UI-2D: inline edit of sessions_purchased + cancel (archive) on a pending card.
+  const [editingSessions, setEditingSessions] = useState<string | null>(null);
+  const [sessionsInput, setSessionsInput] = useState<Record<string, string>>({});
+  const [savingSessions, setSavingSessions] = useState<string | null>(null);
+  const [archiving, setArchiving] = useState<string | null>(null);
 
   const load = () => {
     fetch('/api/coach/tuition-onboardings')
@@ -147,6 +153,40 @@ function PendingOnboardingsCard() {
     setResending(null);
   }
 
+  // UI-2D: edit sessions_purchased on a pending onboarding (coach PATCH sessions route).
+  // Client guard mirrors the backend bound (integer 1..50); inline-gated via the disabled
+  // Save button + red border. Refresh reuses handleResend's load().
+  async function handleEditSessions(id: string, value: string) {
+    const n = parseInt(value, 10);
+    if (!Number.isInteger(n) || n < 1 || n > 50) return;
+    setSavingSessions(id);
+    try {
+      const res = await fetch(`/api/coach/tuition-onboardings/${id}/sessions`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionsPurchased: n }),
+      });
+      if (res.ok) setEditingSessions(null);
+      load();
+    } catch { /* */ }
+    setSavingSessions(null);
+  }
+
+  // UI-2D: cancel (soft-dismiss) a pending onboarding via the coach archive route (2A).
+  async function handleArchive(id: string, childName: string) {
+    if (!window.confirm(`Remove ${childName} from the queue? They'll no longer appear here.`)) return;
+    setArchiving(id);
+    try {
+      const res = await fetch(`/api/coach/tuition-onboardings/${id}/archive`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      if (res.ok) load();
+    } catch { /* */ }
+    setArchiving(null);
+  }
+
   if (!rows || rows.length === 0) return null; // hidden when empty
 
   return (
@@ -160,6 +200,8 @@ function PendingOnboardingsCard() {
           const meta = NUDGE_STATUS_META[o.nudge_status];
           const altRaw = (altInputs[o.id] ?? '').trim();
           const altInvalid = altRaw !== '' && !/^[6-9]\d{9}$/.test(altRaw);
+          const sessRaw = (sessionsInput[o.id] ?? '').trim();
+          const sessInvalid = sessRaw !== '' && (!/^\d+$/.test(sessRaw) || Number(sessRaw) < 1 || Number(sessRaw) > 50);
           return (
             <div key={o.id} className="bg-surface-1/50 rounded-xl border border-border p-3">
               <div className="flex items-center justify-between gap-2">
@@ -198,6 +240,25 @@ function PendingOnboardingsCard() {
                   >
                     {altOpen === o.id ? 'Use parent number' : 'Send to a different number'}
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingSessions(editingSessions === o.id ? null : o.id);
+                      setSessionsInput(p => ({ ...p, [o.id]: String(o.sessions_purchased) }));
+                    }}
+                    className="flex items-center gap-1.5 text-xs text-text-tertiary hover:text-white min-h-[44px] sm:min-h-0"
+                  >
+                    <Pencil className="w-3 h-3" />
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleArchive(o.id, o.child_name)}
+                    disabled={archiving === o.id}
+                    className="flex items-center gap-1.5 text-xs text-text-tertiary hover:text-red-400 disabled:opacity-50 min-h-[44px] sm:min-h-0"
+                  >
+                    {archiving === o.id ? <Spinner size="sm" className="text-text-tertiary" /> : <Trash2 className="w-3 h-3" />}
+                    Cancel
+                  </button>
                 </div>
                 {altOpen === o.id && (
                   <input
@@ -207,6 +268,32 @@ function PendingOnboardingsCard() {
                     inputMode="numeric"
                     className={`w-full bg-surface-2 border rounded-xl px-3 py-1.5 text-xs text-white placeholder:text-text-tertiary ${altInvalid ? 'border-red-500/50' : 'border-border'}`}
                   />
+                )}
+                {editingSessions === o.id && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <input
+                      value={sessionsInput[o.id] ?? ''}
+                      onChange={e => setSessionsInput(p => ({ ...p, [o.id]: e.target.value.replace(/\D/g, '').slice(0, 2) }))}
+                      placeholder={String(o.sessions_purchased)}
+                      inputMode="numeric"
+                      className={`w-20 bg-surface-2 border rounded-xl px-3 py-1.5 text-xs text-white placeholder:text-text-tertiary ${sessInvalid ? 'border-red-500/50' : 'border-border'}`}
+                    />
+                    <button
+                      onClick={() => handleEditSessions(o.id, sessRaw)}
+                      disabled={savingSessions === o.id || sessInvalid || sessRaw === ''}
+                      className="flex items-center gap-1.5 text-xs text-[#00ABFF] hover:opacity-80 disabled:opacity-50 min-h-[44px] sm:min-h-0"
+                    >
+                      {savingSessions === o.id ? <Spinner size="sm" className="text-[#00ABFF]" /> : <CheckCircle2 className="w-3 h-3" />}
+                      Save
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditingSessions(null)}
+                      className="text-[11px] text-text-tertiary hover:text-white min-h-[44px] sm:min-h-0"
+                    >
+                      Cancel edit
+                    </button>
+                  </div>
                 )}
               </div>
             </div>

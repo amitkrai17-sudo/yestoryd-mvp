@@ -9,11 +9,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withParamsHandler } from '@/lib/api/with-api-handler';
+import { archiveOnboarding } from '@/lib/tuition/archive-onboarding';
 
 export const dynamic = 'force-dynamic';
-
-// Only non-completed, non-enrolled lifecycle states may be dismissed.
-const ARCHIVABLE_STATUSES = ['draft', 'parent_pending', 'expired'];
 
 const ArchiveSchema = z.object({
   reason: z.string().max(500).optional(),
@@ -44,46 +42,15 @@ export const POST = withParamsHandler<{ id: string }>(async (req: NextRequest, {
     return NextResponse.json({ error: 'Onboarding record not found' }, { status: 404 });
   }
 
-  // 2a. Idempotent: already archived → no-op success (re-clicking dismiss).
-  if (onboarding.status === 'archived') {
-    return NextResponse.json({ success: true, id, status: 'archived', alreadyArchived: true });
-  }
-
-  // 2b. Guard: never archive a completed/enrolled record (preserve the live student).
-  if (onboarding.enrollment_id || !ARCHIVABLE_STATUSES.includes(onboarding.status)) {
-    return NextResponse.json(
-      { error: `Cannot archive — status is '${onboarding.status}'${onboarding.enrollment_id ? ' (enrolled)' : ''}. Only draft/parent_pending/expired are dismissible.` },
-      { status: 400 },
-    );
-  }
-
-  // 3. Soft-dismiss: status flip only. NEVER delete (audit trail). Single-row by-id
-  //    update on a non-protected table; no counter/balance write.
-  const { error: updateErr } = await supabase
-    .from('tuition_onboarding')
-    .update({ status: 'archived', updated_at: new Date().toISOString() })
-    .eq('id', id);
-
-  if (updateErr) {
-    console.error(JSON.stringify({ requestId, event: 'tuition_archive_error', onboardingId: id, error: updateErr.message }));
-    return NextResponse.json({ error: 'Failed to archive record' }, { status: 500 });
-  }
-
-  // 4. Activity log (reversible-in-principle; records who + why)
-  await supabase.from('activity_log').insert({
-    action: 'tuition_onboarding_archived',
-    user_email: auth.email ?? 'admin',
-    user_type: 'admin',
-    metadata: {
-      onboarding_id: id,
-      child_name: onboarding.child_name,
-      parent_phone: onboarding.parent_phone,
-      previous_status: onboarding.status,
-      reason: reason ?? null,
-    },
+  // 2-4. Idempotency + ARCHIVABLE guard + status flip + activity_log via shared SSOT helper.
+  const result = await archiveOnboarding({
+    supabase,
+    onboarding,
+    actorEmail: auth.email ?? 'admin',
+    actorType: 'admin',
+    reason,
+    requestId,
   });
 
-  console.log(JSON.stringify({ requestId, event: 'tuition_onboarding_archived', onboardingId: id, previousStatus: onboarding.status }));
-
-  return NextResponse.json({ success: true, id, status: 'archived' });
+  return NextResponse.json(result.body, { status: result.status });
 }, { auth: 'admin' });
