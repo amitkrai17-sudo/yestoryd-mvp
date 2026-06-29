@@ -165,7 +165,12 @@ export async function deductTuitionBalance(
     // 5. Balance alerts
     if (newBalance <= 0) {
       // Zero or negative — send renewal link
-      if (parentPhone) {
+      // Guard: ONLY on the transition INTO zero (balance was positive before this
+      // deduct). On a re-deduct (previousBalance already <=0) checkAndPause may pause
+      // and send parent_tuition_paused_v4 — which carries the same renewal CTA — so
+      // renewal_v4 here would be a same-second duplicate. This also stops renewal_v4
+      // from re-spamming on every subsequent <=0 deduct (it has no idempotency).
+      if (parentPhone && previousBalance > 0) {
         try {
           const result = await sendNotification('parent_tuition_renewal_v4', parentPhone, {
             parent_name: parentName,
