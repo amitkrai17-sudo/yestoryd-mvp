@@ -122,6 +122,10 @@ export default function CoachStudentsPage() {
   const [scheduling, setScheduling] = useState(false);
   const [scheduleSuccess, setScheduleSuccess] = useState(false);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
+  // 2C-5 lapsed-member removal (in-flight enrollment id; doubles as a re-entry guard)
+  const [removingLapsed, setRemovingLapsed] = useState<string | null>(null);
+  // 2C-6: transient success/error banner for the Remove (lapsed) action.
+  const [actionFeedback, setActionFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // ============================================================
   // DATA LOADING
@@ -145,6 +149,35 @@ export default function CoachStudentsPage() {
   }, [router]);
 
   useEffect(() => { loadStudents(); }, [loadStudents]);
+
+  // 2C-5: ownership-scoped soft-remove of a lapsed member (flagged by 2C-1). Posts the
+  // coach route (ownership enforced server-side), then refreshes via loadStudents().
+  const handleRemoveLapsed = useCallback(async (student: StudentData) => {
+    if (removingLapsed) return; // re-entry guard
+    if (!window.confirm(`Remove ${student.child_name}? This ends the enrollment and cancels their remaining sessions. The batch room stays for the other students.`)) return;
+    setRemovingLapsed(student.enrollment_id);
+    try {
+      const res = await fetch(`/api/coach/students/${student.enrollment_id}/remove-lapsed`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      if (res.ok) {
+        setActionFeedback({ type: 'success', text: `Removed ${student.child_name} from the batch.` });
+        setTimeout(() => setActionFeedback(null), 4000);
+        loadStudents();
+      } else {
+        const data = await res.json().catch(() => ({} as { error?: string }));
+        setActionFeedback({ type: 'error', text: `Couldn't remove ${student.child_name}: ${data?.error || 'Unknown error'}` });
+        setTimeout(() => setActionFeedback(null), 4000);
+      }
+    } catch {
+      setActionFeedback({ type: 'error', text: `Couldn't remove ${student.child_name}. Please retry.` });
+      setTimeout(() => setActionFeedback(null), 4000);
+    } finally {
+      setRemovingLapsed(null);
+    }
+  }, [removingLapsed, loadStudents]);
 
   // ============================================================
   // COMPUTED VALUES
@@ -444,6 +477,13 @@ export default function CoachStudentsPage() {
         </div>
       )}
 
+      {/* 2C-6: transient Remove-lapsed feedback */}
+      {actionFeedback && (
+        <div className={`mx-4 lg:mx-0 mt-4 p-3 rounded-xl text-sm border ${actionFeedback.type === 'success' ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
+          {actionFeedback.text}
+        </div>
+      )}
+
       {/* Student Cards */}
       <div className="space-y-2 mt-4 px-4 lg:px-0">
         {filteredStudents.length === 0 ? (
@@ -466,6 +506,7 @@ export default function CoachStudentsPage() {
                 onRecordPayment={setPaymentTarget}
                 onVoidPayLink={handleVoidPayLink}
                 onReissuePayLink={openReissuePay}
+                onRemoveLapsed={handleRemoveLapsed}
               />
             ))}
           </div>

@@ -95,6 +95,7 @@ interface CronResults {
   coachUnavailability: { processed: number; errors: string[] };
   coachReminders24h: { sent: number; failed: number; errors: string[] };
   completionAlerts: { sent: number; errors: string[] };
+  tuitionLapses: { flagged: number; errors: string[] };
 }
 
 export async function GET(request: NextRequest) {
@@ -119,6 +120,7 @@ export async function GET(request: NextRequest) {
     coachUnavailability: { processed: 0, errors: [] },
     coachReminders24h: { sent: 0, failed: 0, errors: [] },
     completionAlerts: { sent: 0, errors: [] },
+    tuitionLapses: { flagged: 0, errors: [] },
   };
 
   try {
@@ -545,6 +547,113 @@ export async function GET(request: NextRequest) {
     */
 
     // ========================================
+    // TASK 6: Detect tuition lapses (FLAG ONLY — 2C-1)
+    // Flags prepaid_sessions enrollments with 0 balance whose most recent COMPLETED
+    // session was > LAPSE_GRACE_DAYS ago AND that have no future live session. Anchored
+    // on last completed session (NOT pay-link). One-shot via at_risk. NO notify, NO
+    // termination, NO session writes here (those are 2C-2 / 2C-3+).
+    // ========================================
+    const LAPSE_GRACE_DAYS = 7;
+    console.log(JSON.stringify({ requestId, event: 'task_started', task: 'tuition_lapses' }));
+
+    // Grace cutoff = today (IST) − LAPSE_GRACE_DAYS. A lapse requires MAX(completed date)
+    // strictly before this cutoff.
+    const lapseCutoff = new Date(nowIST);
+    lapseCutoff.setDate(lapseCutoff.getDate() - LAPSE_GRACE_DAYS);
+    const lapseCutoffStr = lapseCutoff.toISOString().split('T')[0];
+
+    // Candidates: prepaid tuition, depleted, non-terminal status, NOT yet flagged.
+    // at_risk IS NOT TRUE (NULL-or-false) is the one-shot guard — the column is dormant
+    // (NULL) until this step writes it, so a plain `= false` would match nothing.
+    const { data: lapseCandidates, error: lapseError } = await supabase
+      .from('enrollments')
+      .select('id, child_id, status, at_risk')
+      .eq('billing_model', 'prepaid_sessions')
+      .eq('sessions_remaining', 0)
+      .in('status', ['payment_pending', 'paused'])
+      .not('at_risk', 'is', true);
+
+    if (lapseError) {
+      results.tuitionLapses.errors.push(lapseError.message);
+    } else if (lapseCandidates && lapseCandidates.length > 0) {
+      const candidateIds = lapseCandidates.map((e) => e.id);
+      // One batch query for all candidate sessions (status + date).
+      const { data: candSessions, error: candSessErr } = await supabase
+        .from('scheduled_sessions')
+        .select('enrollment_id, status, scheduled_date')
+        .in('enrollment_id', candidateIds);
+
+      if (candSessErr) {
+        results.tuitionLapses.errors.push(candSessErr.message);
+      } else {
+        const byEnrollment = new Map<string, Array<{ status: string | null; scheduled_date: string | null }>>();
+        for (const s of (candSessions ?? []) as Array<{ enrollment_id: string; status: string | null; scheduled_date: string | null }>) {
+          const arr = byEnrollment.get(s.enrollment_id) ?? [];
+          arr.push({ status: s.status, scheduled_date: s.scheduled_date });
+          byEnrollment.set(s.enrollment_id, arr);
+        }
+
+        for (const e of lapseCandidates) {
+          try {
+            const sessions = byEnrollment.get(e.id) ?? [];
+            const completed = sessions.filter((s) => s.status === 'completed' && s.scheduled_date);
+            // Guard 1 — never-attended: must have at least one COMPLETED session.
+            if (completed.length === 0) continue;
+            // Guard 2 — lapsed: most recent completed session strictly before the cutoff.
+            const lastCompleted = completed
+              .map((s) => s.scheduled_date as string)
+              .reduce((a, b) => (a > b ? a : b));
+            if (!(lastCompleted < lapseCutoffStr)) continue;
+            // Guard 3 — no future live session (anything non-terminal dated today or later).
+            const hasFutureLive = sessions.some(
+              (s) => s.scheduled_date != null && s.scheduled_date >= todayStr
+                && !['cancelled', 'completed', 'missed'].includes(s.status ?? ''),
+            );
+            if (hasFutureLive) continue;
+
+            const daysLapsed = Math.floor(
+              (new Date(`${todayStr}T00:00:00+05:30`).getTime() - new Date(`${lastCompleted}T00:00:00+05:30`).getTime())
+              / (24 * 60 * 60 * 1000),
+            );
+
+            // One-shot flag — re-guard at_risk IS NOT TRUE in the WHERE so a concurrent run
+            // cannot double-flag. Writes ONLY at_risk / at_risk_reason / updated_at.
+            const { data: flaggedRows, error: flagErr } = await supabase
+              .from('enrollments')
+              .update({ at_risk: true, at_risk_reason: 'tuition_lapse_7d', updated_at: new Date().toISOString() })
+              .eq('id', e.id)
+              .not('at_risk', 'is', true)
+              .select('id');
+
+            if (flagErr) {
+              results.tuitionLapses.errors.push(`${e.id}: ${flagErr.message}`);
+              continue;
+            }
+            if (!flaggedRows || flaggedRows.length === 0) continue; // lost the one-shot race
+
+            await supabase.from('activity_log').insert({
+              user_email: COMPANY_CONFIG.supportEmail,
+              user_type: 'system',
+              action: 'tuition_lapse_flagged',
+              metadata: {
+                request_id: requestId,
+                enrollment_id: e.id,
+                child_id: e.child_id,
+                last_completed_date: lastCompleted,
+                days_lapsed: daysLapsed,
+              },
+              created_at: new Date().toISOString(),
+            });
+
+            results.tuitionLapses.flagged++;
+          } catch (err: any) {
+            results.tuitionLapses.errors.push(`${e.id}: ${err.message}`);
+          }
+        }
+      }
+    }
+
+    // ========================================
     // AUDIT LOG & RESPONSE
     // ========================================
     const duration = Date.now() - startTime;
@@ -563,11 +672,13 @@ export async function GET(request: NextRequest) {
           reminders_sent: results.coachReminders24h.sent,
           reminders_failed: results.coachReminders24h.failed,
           completion_alerts: results.completionAlerts.sent,
+          tuition_lapses_flagged: results.tuitionLapses.flagged,
         },
         errors: {
           delayed_starts: results.delayedStarts.errors.length,
           pause_endings: results.pauseEndings.errors.length,
           reminders: results.coachReminders24h.errors.length,
+          tuition_lapses: results.tuitionLapses.errors.length,
         },
         duration_ms: duration,
         timestamp: new Date().toISOString(),
@@ -585,6 +696,7 @@ export async function GET(request: NextRequest) {
         coachUnavailability: results.coachUnavailability.processed,
         coachReminders24h: `${results.coachReminders24h.sent} sent, ${results.coachReminders24h.failed} failed`,
         completionAlerts: results.completionAlerts.sent,
+        tuitionLapses: results.tuitionLapses.flagged,
       },
     }));
 

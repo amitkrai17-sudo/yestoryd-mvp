@@ -12,7 +12,8 @@
 //        NULL, location=offline_location. Re-evaluated every reconcile.
 //     4. Writes back google_event_id + google_meet_link via attachCalendarLink
 //        (the SOLE calendar-column DB writer) — no parallel link-writer.
-//     5. One UNIQUE event per session — never a shared event across children.
+//     5. One unique event per session for individuals; ONLINE batch members share
+//        one event per (batch_id, date, time) group.
 //
 //   Organizer = the session's coach email (domain-wide-delegation impersonation),
 //   so events.get/patch/delete resolve against the series owner, not an attendee
@@ -38,6 +39,7 @@ export type ReconcileAction =
   | 'patched'     // exclusive, time-only drift — events.patch
   | 'recreated'   // exclusive, mode/meet drift — delete + create
   | 'detached'    // shared/recurring — NEW unique event, original untouched
+  | 'batch_attached' // online batch member converged onto the group's shared event (reuse, no insert)
   | 'skipped';    // not actionable (no coach/time, cancelled/completed)
 
 export interface ReconcileResult {
@@ -81,7 +83,7 @@ export async function reconcileSessionCalendarEvent(
   const { data: s, error } = await supabase
     .from('scheduled_sessions')
     .select(
-      'id, scheduled_date, scheduled_time, duration_minutes, session_mode, offline_location, session_type, session_number, google_event_id, google_meet_link, coach_id, child_id, status, children(child_name, name, parent_email, parent_name), coaches(email, name)',
+      'id, batch_id, scheduled_date, scheduled_time, duration_minutes, session_mode, offline_location, session_type, session_number, google_event_id, google_meet_link, coach_id, child_id, status, children(child_name, name, parent_email, parent_name), coaches(email, name)',
     )
     .eq('id', sessionId)
     .single();
@@ -181,6 +183,48 @@ export async function reconcileSessionCalendarEvent(
     await attachCalendarLink(supabase, s.id, newId, newMeet);
     return { action, eventId: newId, meetLink: newMeet };
   };
+
+  // Online batch rooms are shared per (batch_id, scheduled_date, scheduled_time) group.
+  // Runs ONLY for online batch rows (short-circuit below); converges THIS row onto the
+  // group's single event, anchoring the group if no event exists yet. Writes only this row
+  // (attach or create) — each sibling converges on its own reconcile.
+  // RARE RACE: two siblings anchoring before either's event is visible → a duplicate group
+  // event. Reconcile callers are sequential in practice, so this is rare; it self-heals via
+  // the 2E convergence/cleanup + later reconciles. NOT solved here (2A).
+  const resolveBatchRoom = async (): Promise<ReconcileResult> => {
+    // 1. Find a live group sibling that already anchors a calendar event.
+    const { data: groupSib } = await supabase
+      .from('scheduled_sessions')
+      .select('google_event_id, google_meet_link')
+      .eq('batch_id', s.batch_id as string)
+      .eq('scheduled_date', s.scheduled_date)
+      .eq('scheduled_time', s.scheduled_time)
+      .neq('id', s.id)
+      .not('google_event_id', 'is', null)
+      .neq('status', 'cancelled')
+      .limit(1)
+      .maybeSingle();
+
+    // 2. Group event exists → converge this row onto it.
+    if (groupSib?.google_event_id) {
+      const groupEventId = groupSib.google_event_id as string;
+      const groupMeet = (groupSib.google_meet_link as string | null) ?? null;
+      // Idempotent: already on the group event with matching meet → no write, no API call.
+      if (priorEventId === groupEventId && priorMeet === groupMeet) {
+        return { action: 'noop', eventId: groupEventId, meetLink: groupMeet };
+      }
+      // Reuse the group event — attach this row's link only. NO events.insert.
+      await attachCalendarLink(supabase, s.id, groupEventId, groupMeet);
+      return { action: 'batch_attached', eventId: groupEventId, meetLink: groupMeet };
+    }
+
+    // 3. No group event yet → this row anchors the group via the EXISTING create path.
+    return createNew('created');
+  };
+
+  // Online batch members share ONE event per (batch_id, date, time) group — resolve before
+  // the individual create-on-null + detach gate below (which online batch rows never reach).
+  if (s.batch_id && !isOffline) return await resolveBatchRoom();
 
   // 2. No prior event → create.
   if (!priorEventId) return createNew('created');

@@ -43,6 +43,8 @@ export async function GET(request: NextRequest) {
         session_duration_minutes,
         pay_link_expires_at,
         pay_link_voided_at,
+        at_risk,
+        at_risk_reason,
         child_id,
         children (
           id,
@@ -234,6 +236,7 @@ export async function GET(request: NextRequest) {
           age_band: ageBand,
           billing_model: enrollment.billing_model,
           is_coach_lead: enrollment.lead_source === 'coach',
+          at_risk_reason: (enrollment as { at_risk_reason?: string | null }).at_risk_reason ?? null,
 
           // Session progress
           sessions_completed: sessionsCompleted,

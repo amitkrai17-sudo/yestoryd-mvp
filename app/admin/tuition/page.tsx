@@ -48,6 +48,7 @@ interface Onboarding {
   enrollment_id: string | null;
   enrollment_status: string | null;
   enrollment_sessions_remaining: number | null;
+  enrollment_at_risk_reason: string | null;
   batch_id: string | null;
   default_session_mode: string | null;
   // UI-1.1 read-only enrichments (consumed by UI-1.3):
@@ -241,6 +242,9 @@ export default function AdminTuitionPage() {
   // Paused enrollments
   const [pausedEnrollments, setPausedEnrollments] = useState<PausedEnrollment[]>([]);
   const [resuming, setResuming] = useState<string | null>(null);
+  const [removingLapsed, setRemovingLapsed] = useState<string | null>(null);
+  // 2C-6: transient success/error banner for the Remove (lapsed) action.
+  const [actionFeedback, setActionFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // UI-2E pay-link void / reissue
   const [voiding, setVoiding] = useState<string | null>(null);
@@ -520,6 +524,38 @@ export default function AdminTuitionPage() {
     setResuming(null);
   }
 
+  // 2C-4: soft-remove a lapsed member (flagged at_risk='tuition_lapse_7d' by 2C-1).
+  // Terminates the ENROLLMENT + cancels future sessions (batch room preserved for
+  // siblings) via the SSOT helper. Refresh + error-surface mirror handleArchive.
+  async function handleRemoveLapsed(enrollmentId: string, childName: string) {
+    if (!window.confirm(`Remove ${childName}? This ends the enrollment and cancels their remaining sessions. The batch room stays for the other students.`)) return;
+    setRemovingLapsed(enrollmentId);
+    try {
+      const res = await fetch(`/api/admin/tuition/${enrollmentId}/remove-lapsed`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      if (res.ok) {
+        flashFeedback('success', `Removed ${childName} from the batch.`);
+        fetchData();
+      } else {
+        const data = await res.json().catch(() => ({} as { error?: string }));
+        flashFeedback('error', `Couldn't remove ${childName}: ${data?.error || 'Unknown error'}`);
+      }
+    } catch {
+      flashFeedback('error', `Couldn't remove ${childName}. Please retry.`);
+    } finally {
+      setRemovingLapsed(null);
+    }
+  }
+
+  // 2C-6: set a transient banner that auto-clears after 4s.
+  function flashFeedback(type: 'success' | 'error', text: string) {
+    setActionFeedback({ type, text });
+    setTimeout(() => setActionFeedback(null), 4000);
+  }
+
   async function loadLedger(enrollmentId: string) {
     if (ledgerOpen === enrollmentId) {
       setLedgerOpen(null);
@@ -615,6 +651,12 @@ export default function AdminTuitionPage() {
       </div>
 
       <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        {/* 2C-6: transient Remove-lapsed feedback */}
+        {actionFeedback && (
+          <div className={`p-3 rounded-xl text-sm border ${actionFeedback.type === 'success' ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
+            {actionFeedback.text}
+          </div>
+        )}
         {/* Stats */}
         {stats && (
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
@@ -1254,6 +1296,16 @@ export default function AdminTuitionPage() {
                       >
                         {resuming === o.enrollment_id ? <Spinner size="sm" color="muted" /> : <Play className="w-3 h-3" />}
                         Resume
+                      </button>
+                    )}
+                    {o.enrollment_id && o.enrollment_at_risk_reason === 'tuition_lapse_7d' && (
+                      <button
+                        onClick={() => handleRemoveLapsed(o.enrollment_id!, o.child_name)}
+                        disabled={removingLapsed === o.enrollment_id}
+                        className="mt-3 ml-3 flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 disabled:opacity-50 min-h-[44px] sm:min-h-0"
+                      >
+                        {removingLapsed === o.enrollment_id ? <Spinner size="sm" color="muted" /> : <Trash2 className="w-3 h-3" />}
+                        Remove (lapsed)
                       </button>
                     )}
                   </div>

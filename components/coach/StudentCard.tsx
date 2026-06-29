@@ -63,6 +63,8 @@ export interface StudentData {
   // UI-2E pay-link lifecycle (payment_pending tuition only)
   pay_link_expires_at?: string | null;
   pay_link_voided_at?: string | null;
+  // 2C: tuition lapse flag (set by enrollment-lifecycle cron)
+  at_risk_reason?: string | null;
 }
 
 interface StudentCardProps {
@@ -73,6 +75,7 @@ interface StudentCardProps {
   onRecordPayment?: (student: StudentData) => void;
   onVoidPayLink?: (student: StudentData) => void;
   onReissuePayLink?: (student: StudentData) => void;
+  onRemoveLapsed?: (student: StudentData) => void;
 }
 
 // Smart name shortening for tight spaces
@@ -112,7 +115,7 @@ function getAlert(student: StudentData): { text: string; className: string } | n
   return null;
 }
 
-export default function StudentCard({ student, isExpanded, onToggleExpand, onSchedule, onRecordPayment, onVoidPayLink, onReissuePayLink }: StudentCardProps) {
+export default function StudentCard({ student, isExpanded, onToggleExpand, onSchedule, onRecordPayment, onVoidPayLink, onReissuePayLink, onRemoveLapsed }: StudentCardProps) {
   const isTuition = student.enrollment_type === 'tuition';
   const completed = student.sessions_completed;
   const total = isTuition ? (student.sessions_purchased ?? student.total_sessions) : student.total_sessions;
@@ -205,6 +208,15 @@ export default function StudentCard({ student, isExpanded, onToggleExpand, onSch
       label: 'Record Payment',
       icon: <CreditCard className="w-4 h-4" />,
       onClick: () => onRecordPayment(student),
+    });
+  }
+
+  // 2C-5: soft-remove a lapsed member — ONLY when flagged at_risk='tuition_lapse_7d'.
+  if (onRemoveLapsed && student.at_risk_reason === 'tuition_lapse_7d') {
+    dropdownActions.push({
+      label: 'Remove (lapsed)',
+      icon: <XCircle className="w-4 h-4" />,
+      onClick: () => onRemoveLapsed(student),
     });
   }
 
