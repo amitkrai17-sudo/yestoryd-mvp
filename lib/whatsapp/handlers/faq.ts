@@ -16,8 +16,8 @@ import {
   getPerWeekPrice,
 } from '@/lib/config/pricing-config';
 
-// Gemini 2.0 Flash Lite — cheapest model for knowledge-grounded answers
-const FLASH_LITE_MODEL = 'gemini-2.0-flash-lite';
+// Gemini 2.5 Flash Lite — cheapest model for knowledge-grounded answers
+const FLASH_LITE_MODEL = 'gemini-2.5-flash-lite';
 
 // Dynamic pricing fallback — loads from DB via shared config loader
 async function buildPricingFallback(): Promise<string> {
