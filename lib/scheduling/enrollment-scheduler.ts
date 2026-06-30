@@ -29,7 +29,7 @@ import {
   type CreateSessionParams,
 } from './session-engine';
 import { resolveOnlineLink } from './session-mode-service';
-import { resolveSessionTime, dayNumToKey, type SchedulePreference } from './schedule-time';
+import { resolveSessionTime, dayNumToKey, type SchedulePreference, type DayKey } from './schedule-time';
 import { planSessions } from './plan-sessions';
 import { formatDateISO } from '@/lib/utils/date-format';
 
@@ -897,8 +897,9 @@ export async function scheduleTuitionSessions(
       return { success: true, sessionsCreated: 0, errors: ['All remaining sessions are already scheduled'] };
     }
 
-    // 2. Fetch tuition_onboarding config (including batch fields)
-    // Note: batch_id, meet_link added via migration — not in generated types yet, use select('*')
+    // 2. Fetch tuition_onboarding for the PER-MEMBER reads that stay member-scoped:
+    //    sessions_per_week (cadence) + batch_id (which batch this member belongs to).
+    //    Note: batch_id added via migration — not in generated types yet, use select('*').
     const { data: onboarding } = await supabase
       .from('tuition_onboarding')
       .select('*')
@@ -906,57 +907,69 @@ export async function scheduleTuitionSessions(
       .single();
 
     const sessionsPerWeek = onboarding?.sessions_per_week || 2;
-    const durationMinutes = onboarding?.session_duration_minutes || 60;
-    const defaultMode = onboarding?.default_session_mode || 'offline';
     const batchId = (onboarding as any)?.batch_id as string | null;
-    // Persistent classroom link from tuition_onboarding (may be null for new/offline batches)
-    const batchMeetLink = (onboarding as any)?.meet_link as string | null;
 
-    // 3. Parse schedule_preference
-    let preferredDays: number[] = [];
-    // SSOT: resolveSessionTime() (./schedule-time) is the sole time reader. Build a
-    // SchedulePreference here; never parse prose at read. Legacy rows that carry only
-    // preferredTime (no times/defaultTime) fall to the timeSlot bucket inside
-    // resolveSessionTime until 2D-e migrates them to structured per-day times.
-    let schedulePref: SchedulePreference = { days: [], times: {} };
+    // 2b. SCHEDULE SSOT (2B): days / times / default_time / duration / mode / meet_link now
+    //     come from tuition_batches, NOT tuition_onboarding.schedule_preference. batch_id is
+    //     NOT NULL post-2A (FK guarantees the row exists). tuition_batches is not in the
+    //     generated types yet → typed local read + 'as any' on the client (coach_confirm
+    //     precedent) to keep the tsc delta at 0.
+    interface BatchScheduleRow {
+      days: string[] | null;
+      times: Partial<Record<DayKey, string>> | null;
+      default_time: string | null;
+      duration_minutes: number | null;
+      session_mode: string | null;
+      meet_link: string | null;
+      schedule_confirmed: boolean;
+    }
+    const { data: batchData } = await (supabase as any)
+      .from('tuition_batches')
+      .select('days, times, default_time, duration_minutes, session_mode, meet_link, schedule_confirmed')
+      .eq('id', batchId)
+      .single();
+    const batch = batchData as BatchScheduleRow | null;
 
-    if (onboarding?.schedule_preference) {
-      try {
-        const pref = typeof onboarding.schedule_preference === 'string'
-          ? JSON.parse(onboarding.schedule_preference)
-          : onboarding.schedule_preference;
-
-        // Extract days
-        if (Array.isArray(pref.days) && pref.days.length > 0) {
-          for (const day of pref.days) {
-            const num = typeof day === 'number' ? day : dayNameToNumber(String(day));
-            if (num !== null) preferredDays.push(num);
-          }
-        }
-
-        // Build the SchedulePreference for resolveSessionTime (no prose parsing).
-        schedulePref = {
-          days: preferredDays.map(dayNumToKey),
-          times: (pref.times && typeof pref.times === 'object') ? pref.times : {},
-          defaultTime: typeof pref.defaultTime === 'string' ? pref.defaultTime : undefined,
-          timeSlot: typeof pref.timeSlot === 'string' ? pref.timeSlot : undefined,
-        };
-      } catch {
-        console.warn(`[TuitionScheduler] Failed to parse schedule_preference for enrollment ${enrollmentId}`);
-      }
+    if (!batch) {
+      return { success: false, sessionsCreated: 0, errors: [`Batch not found for enrollment ${enrollmentId} (batch_id=${batchId})`] };
     }
 
-    // Fallback days if none set
+    // GATE: never generate dated rows from a half-seeded batch. All active batches are
+    // confirmed; this is the safety net. schedule_confirmed=false → zero sessions.
+    if (!batch.schedule_confirmed) {
+      console.log(JSON.stringify({ event: 'batch_schedule_unconfirmed', enrollmentId, batchId }));
+      return { success: true, sessionsCreated: 0, errors: ['batch_schedule_unconfirmed'] };
+    }
+
+    const durationMinutes = batch.duration_minutes || 60;
+    const defaultMode = batch.session_mode || 'offline';
+    // Persistent classroom link from the batch (may be null for new/offline batches).
+    const batchMeetLink = batch.meet_link;
+
+    // 3. Build poolDays + the resolveSessionTime input from the batch schedule.
+    let preferredDays: number[] = [];
+    // batch.days are DayKey strings ('Tue', …); dayNameToNumber maps them to getDay() ints.
+    for (const day of batch.days || []) {
+      const num = dayNameToNumber(String(day));
+      if (num !== null) preferredDays.push(num);
+    }
+    // SSOT: resolveSessionTime() (./schedule-time) is the sole time reader — adapt the INPUT
+    // shape here, never the reader. batch.times is per-weekday "HH:MM"; batch.default_time is
+    // a PG `time` ("HH:MM:SS") and resolveSessionTime appends ":00", so trim it to "HH:MM".
+    const schedulePref: SchedulePreference = {
+      days: preferredDays.map(dayNumToKey),
+      times: (batch.times && typeof batch.times === 'object') ? batch.times : {},
+      defaultTime: batch.default_time ? String(batch.default_time).slice(0, 5) : undefined,
+    };
+
+    // Fallback days if the batch carries none (defensive — a confirmed batch should have days).
     if (preferredDays.length === 0) {
       if (sessionsPerWeek >= 6) {
-        // DEFENSE-IN-DEPTH (spw 6/7): the door-level guard (assertSpwDays) requires an
-        // explicit >= spw-day pool for spw>=6. Reaching here means it was bypassed.
-        // DEFAULT_DAY_SETS has no 6/7 entry, so the old fallback used DEFAULT_DAY_SETS[2]
-        // (Tue/Thu) and SILENTLY under-placed. Refuse that: leave the pool empty so
-        // planSessions emits its own "no pool days" warning (0 placements, surfaced)
-        // rather than placing a 6/7x enrollment on a wrong 2-day pool.
+        // DEFENSE-IN-DEPTH (spw 6/7): DEFAULT_DAY_SETS has no 6/7 entry; refuse the 2-day
+        // default (would under-place). Leave the pool empty so planSessions surfaces its own
+        // "no pool days" warning (0 placements) rather than placing on a wrong 2-day pool.
         errors.push(
-          `sessions_per_week=${sessionsPerWeek} reached the scheduler with no schedule_preference days; ` +
+          `sessions_per_week=${sessionsPerWeek} reached the scheduler with no batch days; ` +
           `refusing the 2-day default (would under-place). Needs an explicit ${sessionsPerWeek}-day pool.`,
         );
         console.error(JSON.stringify({
@@ -966,7 +979,7 @@ export async function scheduleTuitionSessions(
         }));
       } else {
         preferredDays = DEFAULT_DAY_SETS[sessionsPerWeek] || DEFAULT_DAY_SETS[2]!;
-        errors.push('No schedule_preference days found — using defaults');
+        errors.push('No batch schedule days found — using defaults');
       }
     }
 

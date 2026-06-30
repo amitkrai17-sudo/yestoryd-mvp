@@ -224,7 +224,7 @@ export async function reconcileSessionCalendarEvent(
 
   // Online batch members share ONE event per (batch_id, date, time) group — resolve before
   // the individual create-on-null + detach gate below (which online batch rows never reach).
-  if (s.batch_id && !isOffline) return await resolveBatchRoom();
+  if (s.batch_id) return await resolveBatchRoom();
 
   // 2. No prior event → create.
   if (!priorEventId) return createNew('created');
