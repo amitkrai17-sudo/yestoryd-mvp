@@ -174,6 +174,16 @@ function NudgeChip({ status }: { status: NudgeStatus | null | undefined }) {
   );
 }
 
+// 2G-3: a confirmed batch a member could be MOVED to (from /api/tuition/batches/candidates).
+type BatchCandidate = { batchId: string; days: string[]; time: string | null; mode: string; memberNames: string[] };
+
+// Roster label for a candidate batch, e.g. "Anirudh & Raysha — Sat 16:00". Empty batch → "Empty batch — …".
+function formatBatchCandidateLabel(c: BatchCandidate): string {
+  const who = c.memberNames.length > 0 ? c.memberNames.join(' & ') : 'Empty batch';
+  const when = [c.days.join('/'), c.time].filter(Boolean).join(' ');
+  return when ? `${who} — ${when}` : who;
+}
+
 // ============================================================
 // COMPONENT
 // ============================================================
@@ -195,7 +205,7 @@ export default function AdminTuitionPage() {
   const [waOpen, setWaOpen] = useState<string | null>(null);
   // Transient per-onboarding WhatsApp send outcome from create/resend responses.
   // Keyed by onboarding id; survives the post-action fetchData() refetch.
-  const [waResults, setWaResults] = useState<Record<string, { waStatus: string; magicLink: string }>>({});
+  const [waResults, setWaResults] = useState<Record<string, { waStatus: string; magicLink: string; outcome?: string }>>({});
 
   // New student form
   const [showNewForm, setShowNewForm] = useState(false);
@@ -210,8 +220,71 @@ export default function AdminTuitionPage() {
     batchId: '', // empty = new batch, UUID = join existing batch
   });
 
-  // Existing batches for dropdown
-  const [batches, setBatches] = useState<{ batch_id: string; label: string }[]>([]);
+  // Existing batches for dropdown (reassign control consumes this)
+  const [batches, setBatches] = useState<{ batch_id: string; label: string; schedule_confirmed?: boolean }[]>([]);
+
+  // 2G-1b: server-suggested batch matches (same coach + set-equal days + equal time).
+  type BatchMatch = { batchId: string; days: string[]; time: string; mode: string; memberNames: string[] };
+  const [batchMatches, setBatchMatches] = useState<BatchMatch[]>([]);
+  const [matchLoading, setMatchLoading] = useState(false);
+
+  // Fetch suggestions when coach + days + a concrete time are present (debounced).
+  useEffect(() => {
+    const days = newForm.schedulePref.days || [];
+    const time = newForm.schedulePref.defaultTime || (Object.values(newForm.schedulePref.times || {})[0] as string | undefined);
+    if (!newForm.coachId || days.length === 0 || !time) {
+      setBatchMatches([]);
+      setMatchLoading(false);
+      return;
+    }
+    const ctrl = new AbortController();
+    setMatchLoading(true);
+    const tmr = setTimeout(async () => {
+      try {
+        const qs = new URLSearchParams({ coachId: newForm.coachId, time });
+        days.forEach((d) => qs.append('days', d));
+        const res = await fetch(`/api/tuition/batches/match?${qs.toString()}`, { signal: ctrl.signal });
+        if (res.ok) { const d = await res.json(); setBatchMatches(d.matches || []); }
+      } catch { /* abort/ignore */ } finally { setMatchLoading(false); }
+    }, 400);
+    return () => { clearTimeout(tmr); ctrl.abort(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [newForm.coachId, newForm.schedulePref.days.join(','), newForm.schedulePref.defaultTime, JSON.stringify(newForm.schedulePref.times)]);
+
+  // Default the choice when the candidate set changes: exactly 1 → join it; else → new (solo).
+  useEffect(() => {
+    setNewForm((p) => ({ ...p, batchId: batchMatches.length === 1 ? batchMatches[0].batchId : '' }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [batchMatches.map((m) => m.batchId).join(',')]);
+
+  // 2G-2.5-fix3: live batch-time conflict surfacing — CREATE-NEW only, HARD block. A JOIN
+  // (batchId != '') adds no new coach occupancy → guard fully suppressed (state cleared → no
+  // banner, no disable). For create-new a buffered conflict → RED + Create disabled; the operator
+  // must join / delete / pick another time. STALE-CLEAR: conflict resets to clear immediately
+  // whenever coach/days/time/duration change (before the debounced re-check), so an old block
+  // never lingers on a now-clear slot. Reuses the read-only conflict-check endpoint.
+  type ConflictState = { level: 'block' | 'warn' | 'clear'; conflicts: { label: string; start: string }[] };
+  const [conflict, setConflict] = useState<ConflictState>({ level: 'clear', conflicts: [] });
+  useEffect(() => {
+    const days = newForm.schedulePref.days || [];
+    const time = newForm.schedulePref.defaultTime || (Object.values(newForm.schedulePref.times || {})[0] as string | undefined);
+    // Reset stale conflict on every input change; JOIN / incomplete inputs stop here (stays clear).
+    setConflict({ level: 'clear', conflicts: [] });
+    if (newForm.batchId !== '' || !newForm.coachId || days.length === 0 || !time || !newForm.sessionDurationMinutes) {
+      return;
+    }
+    const ctrl = new AbortController();
+    const tmr = setTimeout(async () => {
+      try {
+        const qs = new URLSearchParams({ coachId: newForm.coachId, time, durationMinutes: String(newForm.sessionDurationMinutes) });
+        days.forEach((d) => qs.append('days', d));
+        const res = await fetch(`/api/tuition/batches/conflict-check?${qs.toString()}`, { signal: ctrl.signal });
+        if (res.ok) { const d = await res.json(); setConflict({ level: d.level, conflicts: d.conflicts || [] }); }
+      } catch { /* abort/ignore */ }
+    }, 400);
+    return () => { clearTimeout(tmr); ctrl.abort(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [newForm.coachId, newForm.batchId, newForm.schedulePref.days.join(','), newForm.schedulePref.defaultTime, JSON.stringify(newForm.schedulePref.times), newForm.sessionDurationMinutes]);
 
   // Record Payment sheet (reuses coach RecordPaymentSheet)
   const [paymentTarget, setPaymentTarget] = useState<Onboarding | null>(null);
@@ -221,6 +294,24 @@ export default function AdminTuitionPage() {
   const [adjustAmount, setAdjustAmount] = useState(0);
   const [adjustReason, setAdjustReason] = useState('');
   const [adjustSubmitting, setAdjustSubmitting] = useState(false);
+
+  // 2G-2: batch schedule-edit modal (session-mutating — full confirm/success/partial standard)
+  const [batchEditId, setBatchEditId] = useState<string | null>(null);
+  const [batchEditLoading, setBatchEditLoading] = useState(false);
+  const [batchEditSaving, setBatchEditSaving] = useState(false);
+  const [batchDeleting, setBatchDeleting] = useState(false);
+  const [batchEditPref, setBatchEditPref] = useState<SchedulePreference>({ days: [], times: {} });
+  const [batchEditMode, setBatchEditMode] = useState<'online' | 'offline'>('offline');
+  const [batchEditDuration, setBatchEditDuration] = useState(60);
+  const [batchEditRoster, setBatchEditRoster] = useState<{ enrollmentId: string; childName: string; status: string }[]>([]);
+  const [batchEditConfirmed, setBatchEditConfirmed] = useState(false);
+
+  // 2G-3: reassign ("Move to batch") modal (session-mutating — full confirm/success/partial standard)
+  const [reassignFor, setReassignFor] = useState<Onboarding | null>(null);
+  const [reassignCandidates, setReassignCandidates] = useState<BatchCandidate[]>([]);
+  const [reassignLoading, setReassignLoading] = useState(false);
+  const [reassignPick, setReassignPick] = useState<string>('');
+  const [reassignSaving, setReassignSaving] = useState(false);
 
   // Ledger
   const [ledgerOpen, setLedgerOpen] = useState<string | null>(null);
@@ -244,7 +335,7 @@ export default function AdminTuitionPage() {
   const [resuming, setResuming] = useState<string | null>(null);
   const [removingLapsed, setRemovingLapsed] = useState<string | null>(null);
   // 2C-6: transient success/error banner for the Remove (lapsed) action.
-  const [actionFeedback, setActionFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [actionFeedback, setActionFeedback] = useState<{ type: 'success' | 'error' | 'warn'; text: string } | null>(null);
 
   // UI-2E pay-link void / reissue
   const [voiding, setVoiding] = useState<string | null>(null);
@@ -364,6 +455,7 @@ export default function AdminTuitionPage() {
         <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium ${tone}`}>
           <Icon className="w-3 h-3" />{label}
         </div>
+        {r.outcome && <p className="text-xs text-text-tertiary">{r.outcome}</p>}
         <div className="flex items-center gap-3">
           {r.magicLink && (
             <button
@@ -441,11 +533,28 @@ export default function AdminTuitionPage() {
           batchId: newForm.batchId || undefined,
         }),
       });
+      const data = await res.json().catch(() => ({}));
+      // 2G-2.5-fix3: buffered coach batch-time conflict (create-new) → 409, NOTHING created. RED,
+      // constructive — join the existing batch, delete it, or pick another time.
+      if (res.status === 409) {
+        const c = (data.conflicts || [])[0];
+        const coachName = coaches.find(x => x.id === newForm.coachId)?.name || 'The coach';
+        flashFeedback('error', c
+          ? `${coachName} already has ${c.label} at ${c.start} that day. Join it above, delete it, or pick another time.`
+          : 'Time clash with an existing batch. Join it above, delete it, or pick another time.');
+        return;
+      }
       if (res.ok) {
-        const data = await res.json();
         if (data.onboardingId) {
-          setWaResults(prev => ({ ...prev, [data.onboardingId]: { waStatus: data.waStatus ?? 'failed', magicLink: data.magicLink } }));
+          const outcome = newForm.batchId
+            ? `Will join ${(batchMatches.find(m => m.batchId === newForm.batchId)?.memberNames || []).join(', ') || 'an existing'} batch.`
+            : 'Will start a new batch.';
+          setWaResults(prev => ({ ...prev, [data.onboardingId]: { waStatus: data.waStatus ?? 'failed', magicLink: data.magicLink, outcome } }));
         }
+        // STALE-CLEAR on success: drop any inline conflict + the top-of-page action banner so a
+        // prior clash notice can't linger over the next create.
+        setConflict({ level: 'clear', conflicts: [] });
+        setActionFeedback(null);
         setShowNewForm(false);
         setNewForm({
           sessionRate: 250,
@@ -456,8 +565,107 @@ export default function AdminTuitionPage() {
         });
         fetchData();
       }
-    } catch { /* */ }
-    setCreating(false);
+    } catch { /* */ } finally {
+      setCreating(false);
+    }
+  }
+
+  async function openBatchEdit(batchId: string) {
+    setBatchEditId(batchId);
+    setBatchEditLoading(true);
+    try {
+      const res = await fetch(`/api/admin/tuition/batches/${batchId}`);
+      if (res.ok) {
+        const d = await res.json();
+        setBatchEditPref({
+          days: d.days || [],
+          times: d.times || {},
+          defaultTime: d.default_time ? String(d.default_time).slice(0, 5) : undefined,
+        });
+        setBatchEditMode(d.session_mode === 'online' ? 'online' : 'offline');
+        setBatchEditDuration(d.duration_minutes || 60);
+        setBatchEditRoster(d.roster || []);
+        setBatchEditConfirmed(!!d.schedule_confirmed);
+      }
+    } catch { /* ignore */ } finally { setBatchEditLoading(false); }
+  }
+
+  async function handleBatchSave() {
+    if (!batchEditId) return;
+    const days = batchEditPref.days || [];
+    const time = batchEditPref.defaultTime || (Object.values(batchEditPref.times || {})[0] as string | undefined);
+    if (days.length === 0 || !time) {
+      flashFeedback('error', 'Pick at least one day and a time before saving.');
+      return;
+    }
+    const names = batchEditRoster.map(r => r.childName).join(', ');
+    if (!window.confirm(`This will reschedule future sessions for ${batchEditRoster.length} student(s): ${names || '—'}. Balances unchanged, past sessions untouched. Continue?`)) return;
+    setBatchEditSaving(true);
+    try {
+      const res = await fetch(`/api/admin/tuition/batches/${batchEditId}/schedule`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          days,
+          times: batchEditPref.times || {},
+          default_time: batchEditPref.defaultTime || null,
+          session_mode: batchEditMode,
+          duration_minutes: batchEditDuration,
+        }),
+      });
+      const d = await res.json();
+      if (res.ok) {
+        const warn = Array.isArray(d.warnings) && d.warnings.length > 0;
+        if (warn) flashFeedback('warn', `Updated — ${d.created} rescheduled across ${d.memberCount}. Heads up — ${d.warnings[0]}`);
+        else flashFeedback('success', `Updated — ${d.created} sessions rescheduled across ${d.memberCount} students.`);
+        setBatchEditId(null);
+        fetchData();
+      } else if (res.status === 409) {
+        const c = (d.conflicts || [])[0];
+        flashFeedback('error', c ? `Time clash — ${c.label} at ${c.start} that day. Pick another time.` : 'Time clash with an existing batch. Pick another time.');
+      } else if (res.status === 207) {
+        const failedNames = (d.failures || []).map((f: { childName: string }) => f.childName).join(', ');
+        flashFeedback('error', `Partial: ${d.memberCount - d.failures.length} of ${d.memberCount} updated — ${d.failures.length} failed (${failedNames}). Retry to complete.`);
+        fetchData();
+      } else {
+        flashFeedback('error', d.error || 'Failed to update batch schedule.');
+      }
+    } catch {
+      flashFeedback('error', 'Network error. Please retry.');
+    } finally {
+      setBatchEditSaving(false);
+    }
+  }
+
+  // 2G-2.5-fix3: soft-retire a batch — cancels members' future sessions + frees the slot. The
+  // pre-action confirm states the blast radius (N students, slot freed, irreversible).
+  async function handleBatchDelete() {
+    if (!batchEditId) return;
+    const n = batchEditRoster.length;
+    const names = batchEditRoster.map(r => r.childName).join(', ');
+    if (!window.confirm(
+      `Delete this batch? Cancels future sessions for ${n} student${n === 1 ? '' : 's'}${names ? ` (${names})` : ''} and frees the slot. Students can return but will get a new batch. This can't be undone.`
+    )) return;
+    setBatchDeleting(true);
+    try {
+      const res = await fetch(`/api/admin/tuition/batches/${batchEditId}`, { method: 'DELETE' });
+      const d = await res.json().catch(() => ({}));
+      if (res.ok) {
+        const sc = d.sessionsCancelled ?? 0;
+        const ma = d.membersAffected ?? 0;
+        flashFeedback('success', `Batch deleted — ${sc} future session${sc === 1 ? '' : 's'} cancelled across ${ma} student${ma === 1 ? '' : 's'}. The slot is now free.`);
+        setBatchEditId(null);
+        fetchData();
+      } else if (res.status === 403) {
+        flashFeedback('error', 'You can only delete your own batches.');
+      } else {
+        flashFeedback('error', d.error || 'Failed to delete batch.');
+      }
+    } catch {
+      flashFeedback('error', 'Network error. Please retry.');
+    } finally {
+      setBatchDeleting(false);
+    }
   }
 
   async function handleAdjust(enrollmentId: string) {
@@ -550,10 +758,71 @@ export default function AdminTuitionPage() {
     }
   }
 
-  // 2C-6: set a transient banner that auto-clears after 4s.
-  function flashFeedback(type: 'success' | 'error', text: string) {
+  // Banner setter. 2G-2.5-fix: ONLY 'success' auto-dismisses (4s); 'error' (block/clash/failure)
+  // and 'warn' PERSIST until the next action replaces them or the operator dismisses (× button).
+  function flashFeedback(type: 'success' | 'error' | 'warn', text: string) {
     setActionFeedback({ type, text });
-    setTimeout(() => setActionFeedback(null), 4000);
+    if (type === 'success') setTimeout(() => setActionFeedback(null), 4000);
+  }
+
+  // 2G-3: open the "Move to batch" picker for one student. Candidates = same coach, confirmed,
+  // excluding the current batch — resolved server-side from the onboardingId (ownership-scoped).
+  async function openReassign(o: Onboarding) {
+    setReassignFor(o);
+    setReassignPick('');
+    setReassignCandidates([]);
+    setReassignLoading(true);
+    try {
+      const res = await fetch(`/api/tuition/batches/candidates?onboardingId=${o.id}`);
+      if (res.ok) {
+        const d = await res.json();
+        setReassignCandidates(d.candidates || []);
+      } else {
+        flashFeedback('error', 'Couldn’t load target batches. Please retry.');
+        setReassignFor(null);
+      }
+    } catch {
+      flashFeedback('error', 'Network error loading batches. Please retry.');
+      setReassignFor(null);
+    } finally {
+      setReassignLoading(false);
+    }
+  }
+
+  // Session-mutating: PRE-ACTION confirm states the blast radius before the POST.
+  async function confirmReassign() {
+    if (!reassignFor || !reassignPick) return;
+    const child = reassignFor.child_name;
+    const target = reassignCandidates.find(c => c.batchId === reassignPick);
+    const label = target ? formatBatchCandidateLabel(target) : 'the selected batch';
+    if (!window.confirm(
+      `Move ${child} to ${label}? This reschedules their future sessions onto that batch’s schedule (cancels the old future sessions, regenerates on the new one). Balance is unchanged; past sessions are untouched.`
+    )) return;
+
+    setReassignSaving(true);
+    try {
+      const res = await fetch('/api/admin/tuition/reassign-batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ onboardingId: reassignFor.id, newBatchId: reassignPick }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (res.ok) {
+        flashFeedback('success', `${child} moved — ${d.created ?? 0} sessions rescheduled.`);
+        setReassignFor(null);
+        fetchData();
+      } else if (res.status === 409) {
+        flashFeedback('error', `Couldn’t move ${child} — target batch schedule isn’t confirmed yet. Confirm it, then retry.`);
+      } else if (res.status === 403) {
+        flashFeedback('error', 'You can only reassign between your own batches.');
+      } else {
+        flashFeedback('error', `Couldn’t move ${child} — ${d.error || 'rescheduling failed'}. Please retry.`);
+      }
+    } catch {
+      flashFeedback('error', 'Network error. Please retry.');
+    } finally {
+      setReassignSaving(false);
+    }
   }
 
   async function loadLedger(enrollmentId: string) {
@@ -641,9 +910,9 @@ export default function AdminTuitionPage() {
             </button>
             <button
               onClick={() => setShowNewForm(!showNewForm)}
-              className="flex items-center gap-1.5 bg-white text-[#0a0a0f] font-semibold px-4 py-2 rounded-xl hover:bg-gray-100 transition-colors h-9 text-sm"
+              className="flex items-center gap-1.5 flex-shrink-0 whitespace-nowrap bg-white text-[#0a0a0f] font-semibold px-4 py-2 rounded-xl hover:bg-gray-100 transition-colors h-9 text-sm"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-4 h-4 flex-shrink-0" />
               New Student
             </button>
           </div>
@@ -653,8 +922,12 @@ export default function AdminTuitionPage() {
       <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         {/* 2C-6: transient Remove-lapsed feedback */}
         {actionFeedback && (
-          <div className={`p-3 rounded-xl text-sm border ${actionFeedback.type === 'success' ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
-            {actionFeedback.text}
+          <div className={`p-3 rounded-xl text-sm border flex items-start gap-2 ${actionFeedback.type === 'success' ? 'bg-green-500/10 border-green-500/20 text-green-400' : actionFeedback.type === 'warn' ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
+            <span className="flex-1">{actionFeedback.text}</span>
+            <button type="button" onClick={() => setActionFeedback(null)} aria-label="Dismiss"
+              className="flex-shrink-0 -mr-1 -mt-0.5 opacity-70 hover:opacity-100 transition-opacity">
+              <XCircle className="w-4 h-4" />
+            </button>
           </div>
         )}
         {/* Stats */}
@@ -679,7 +952,8 @@ export default function AdminTuitionPage() {
           </div>
         )}
 
-        {/* New Student Form */}
+        {/* New Student Form — inline expand/collapse gated by showNewForm (2G-6-revert: dropped the
+            slide-over drawer; container only). Form state / effects / handleCreate preserved. */}
         {showNewForm && (
           <div className="bg-surface-1 rounded-2xl p-5 border border-border">
             <h2 className="text-sm font-semibold text-white mb-4">New English Classes Student</h2>
@@ -731,23 +1005,6 @@ export default function AdminTuitionPage() {
                   placeholder="Select subject..."
                 />
               </div>
-              {/* Batch Assignment */}
-              <div>
-                <label className="text-xs text-text-tertiary block mb-1.5">Batch</label>
-                <select
-                  value={newForm.batchId}
-                  onChange={e => setNewForm(p => ({ ...p, batchId: e.target.value }))}
-                  className="bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm text-white w-full"
-                >
-                  <option value="">New batch (solo)</option>
-                  {batches
-                    .filter(b => !newForm.coachId || b.label.toLowerCase().includes(coaches.find(c => c.id === newForm.coachId)?.name?.toLowerCase() || ''))
-                    .map(b => (
-                      <option key={b.batch_id} value={b.batch_id}>{b.label}</option>
-                    ))
-                  }
-                </select>
-              </div>
               {/* Class mode — INIT default for all future classes (parent can change at onboarding) */}
               <div>
                 <label className="text-xs text-text-tertiary block mb-1">Class mode</label>
@@ -774,18 +1031,67 @@ export default function AdminTuitionPage() {
                   onChange={(sp) => setNewForm(p => ({ ...p, schedulePref: sp }))}
                   tone="dark"
                 />
+                {/* 2G-2.5-fix3: inline batch-time clash (CREATE-NEW only; JOIN clears it). HARD RED —
+                    a buffered conflict (overlap or <15min gap) blocks Create; the fix is constructive
+                    (join the existing batch above, delete it, or pick another time). */}
+                {conflict.level === 'block' && (
+                  <div className="mt-2 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2 text-sm text-red-400 flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                    <span>{conflict.conflicts[0]?.label} already has a batch at {conflict.conflicts[0]?.start} that day. Join it above, delete it, or pick another time.</span>
+                  </div>
+                )}
+              </div>
+              {/* Batch — suggested by coach + schedule match (2G-1b). Renders AFTER the schedule
+                  fields since it matches on coach + days + time. 0 → solo only; 1 → default-join
+                  with a new toggle; multi → list + new (default new). */}
+              <div className="sm:col-span-2 lg:col-span-3">
+                <label className="text-xs text-text-tertiary block mb-1.5">Batch</label>
+                {matchLoading ? (
+                  <div className="bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm text-text-tertiary min-h-[44px] flex items-center gap-2">
+                    <Spinner size="sm" color="muted" /> Checking for matching batches…
+                  </div>
+                ) : batchMatches.length === 0 ? (
+                  <div className="bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm text-white min-h-[44px] flex items-center">
+                    New batch (solo)
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {/* 2G-6: selectable action CARDS (purple pastel) — clearly tappable, distinct
+                        from the grey inputs. Idle purple-500/10, hover purple-400/50, selected
+                        purple-400. */}
+                    {batchMatches.map(m => (
+                      <button key={m.batchId} type="button"
+                        aria-pressed={newForm.batchId === m.batchId}
+                        onClick={() => setNewForm(p => ({ ...p, batchId: m.batchId }))}
+                        className={`text-left min-h-[44px] rounded-2xl border px-3 py-2 text-sm transition-colors ${newForm.batchId === m.batchId ? 'bg-purple-500/20 border-purple-400 text-white' : 'bg-purple-500/10 border-purple-500/30 text-white hover:bg-purple-500/20 hover:border-purple-400/50'}`}>
+                        Join {m.memberNames.length ? `${m.memberNames.join(', ')}'s` : 'an existing'} {m.days.join('/')} {m.time} batch
+                      </button>
+                    ))}
+                    {/* 2G-6: hide "Create new batch" during a conflict — offer only JOIN + the
+                        "pick another time" guidance (red banner above). Shown only when clear. */}
+                    {conflict.level === 'clear' && (
+                      <button type="button"
+                        aria-pressed={newForm.batchId === ''}
+                        onClick={() => setNewForm(p => ({ ...p, batchId: '' }))}
+                        className={`text-left min-h-[44px] rounded-2xl border px-3 py-2 text-sm transition-colors ${newForm.batchId === '' ? 'bg-purple-500/20 border-purple-400 text-white' : 'bg-purple-500/10 border-purple-500/30 text-white hover:bg-purple-500/20 hover:border-purple-400/50'}`}>
+                        Create new batch
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
               <input value={newForm.adminNotes} onChange={e => setNewForm(p => ({ ...p, adminNotes: e.target.value }))}
                 placeholder="Admin notes"
                 className="bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm text-white placeholder:text-text-tertiary" />
+              {/* 2G-6: three-level hierarchy — grey inputs, purple option cards, MAGENTA commit CTA. */}
               <div className="sm:col-span-2 lg:col-span-3 flex justify-end gap-2">
                 <button type="button" onClick={() => setShowNewForm(false)}
-                  className="px-4 py-2 text-sm text-text-tertiary hover:text-white rounded-xl">
+                  className="px-4 min-h-[44px] text-sm text-text-tertiary hover:text-white rounded-xl">
                   Cancel
                 </button>
-                <button type="submit" disabled={creating || !newForm.parentPhone || !newForm.coachId || spwDaysViolation}
-                  className="flex items-center gap-1.5 bg-white text-[#0a0a0f] font-semibold px-4 py-2 rounded-xl hover:bg-gray-100 disabled:opacity-50 text-sm h-9">
-                  {creating ? <Spinner size="sm" color="muted" /> : <Plus className="w-4 h-4" />}
+                <button type="submit" disabled={creating || !newForm.parentPhone || !newForm.coachId || spwDaysViolation || conflict.level === 'block'}
+                  className="flex items-center gap-1.5 bg-[#FF0099] text-white font-semibold px-4 min-h-[44px] rounded-xl hover:bg-[#FF0099]/90 disabled:opacity-50 text-sm">
+                  {creating ? <Spinner size="sm" color="white" /> : <Plus className="w-4 h-4" />}
                   Create & Send Link
                 </button>
               </div>
@@ -1228,39 +1534,38 @@ export default function AdminTuitionPage() {
             <div className="bg-surface-1 rounded-2xl border border-border overflow-hidden divide-y divide-border">
               {activeStudents.map(o => {
                 const currentBatch = batches.find(b => b.batch_id === o.batch_id);
-                // Filter batches for same coach
-                const coachBatches = batches.filter(b =>
-                  b.label.toLowerCase().includes((o.coach_name || '').toLowerCase())
-                );
 
                 return (
                   <div key={o.id} className="flex items-center justify-between gap-3 px-4 py-3">
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-white truncate">{o.child_name}</p>
-                      <p className="text-[11px] text-text-tertiary">{o.coach_name}</p>
+                      <p className="text-[11px] text-text-tertiary truncate">
+                        {currentBatch ? currentBatch.label : o.coach_name}
+                      </p>
+                      {/* 2G-5: unconfirmed-schedule badge → opens the batch-edit modal to fix it. */}
+                      {o.batch_id && currentBatch?.schedule_confirmed === false && (
+                        <button type="button" onClick={() => openBatchEdit(o.batch_id!)}
+                          title="Set a day & time to confirm this batch's schedule."
+                          className="mt-1 inline-flex items-center gap-1 bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded-lg text-[11px] font-medium hover:bg-amber-500/20 transition-colors">
+                          <AlertTriangle className="w-3 h-3" />
+                          Schedule not confirmed
+                        </button>
+                      )}
                     </div>
-                    <select
-                      value={o.batch_id || ''}
-                      onChange={async (e) => {
-                        const newBatchId = e.target.value;
-                        if (!newBatchId || newBatchId === o.batch_id) return;
-                        try {
-                          const res = await fetch('/api/admin/tuition/reassign-batch', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ onboardingId: o.id, newBatchId }),
-                          });
-                          if (res.ok) fetchData();
-                        } catch { /* ignore */ }
-                      }}
-                      className="bg-surface-2 border border-border rounded-xl px-2 py-1.5 text-xs text-white max-w-[220px] truncate"
-                    >
-                      {coachBatches.map(b => (
-                        <option key={b.batch_id} value={b.batch_id}>
-                          {b.batch_id === o.batch_id ? `Current: ${b.label}` : b.label}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <button type="button" onClick={() => openReassign(o)}
+                        className="min-h-[44px] px-3 rounded-xl text-xs font-medium bg-surface-2 border border-border text-white hover:opacity-80 transition-opacity inline-flex items-center gap-1.5">
+                        <ArrowLeftRight className="w-3.5 h-3.5" />
+                        Move
+                      </button>
+                      {o.batch_id && (
+                        <button type="button" onClick={() => openBatchEdit(o.batch_id!)}
+                          title="Edit batch schedule"
+                          className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-surface-2 border border-border text-white hover:opacity-80 transition-opacity">
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -1429,6 +1734,137 @@ export default function AdminTuitionPage() {
                 Confirm Switch
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reassign / Move-to-batch Modal (2G-3) — session-mutating: pick → confirm → success/partial */}
+      {reassignFor && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-2xl max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div>
+              <h2 className="text-lg font-bold text-white">Move {reassignFor.child_name} to a batch</h2>
+              <p className="text-xs text-text-tertiary mt-1">
+                Reschedules future sessions onto the chosen batch. Balance unchanged; past sessions untouched.
+              </p>
+            </div>
+
+            {reassignLoading ? (
+              <div className="py-8 flex justify-center"><Spinner size="lg" color="muted" /></div>
+            ) : reassignCandidates.length === 0 ? (
+              <div className="bg-surface-2 border border-border rounded-xl p-4 text-sm text-text-tertiary">
+                No other confirmed batches for this coach. Create or confirm a batch first.
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {reassignCandidates.map(c => (
+                  <button key={c.batchId} type="button"
+                    aria-pressed={reassignPick === c.batchId}
+                    onClick={() => setReassignPick(c.batchId)}
+                    className={`text-left min-h-[44px] rounded-xl px-3 py-2 text-sm transition-colors ${reassignPick === c.batchId ? 'bg-white text-[#0a0a0f]' : 'bg-surface-2 text-white border border-border'}`}>
+                    {formatBatchCandidateLabel(c)}
+                    <span className={`ml-2 text-xs ${reassignPick === c.batchId ? 'text-gray-500' : 'text-text-tertiary'}`}>
+                      {c.mode === 'online' ? 'Online' : 'In-Person'}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2">
+              <button type="button" onClick={() => setReassignFor(null)}
+                className="min-h-[44px] px-4 rounded-xl text-sm text-white border border-border hover:bg-surface-2 transition-colors">
+                Cancel
+              </button>
+              <button type="button" onClick={confirmReassign}
+                disabled={!reassignPick || reassignSaving}
+                className="min-h-[44px] px-4 rounded-xl text-sm font-medium bg-white text-[#0a0a0f] hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-1.5 transition-opacity">
+                {reassignSaving ? <Spinner size="sm" /> : <ArrowLeftRight className="w-4 h-4" />}
+                Move &amp; reschedule
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Batch Schedule-Edit Modal (2G-2) — session-mutating: confirm → success/partial */}
+      {batchEditId && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-2xl max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg font-bold text-white">Edit batch schedule</h2>
+            {batchEditLoading ? (
+              <div className="py-8 flex justify-center"><Spinner size="lg" color="muted" /></div>
+            ) : (
+              <>
+                {/* Roster + state */}
+                <div className="bg-gray-700/50 rounded-xl p-3 text-sm">
+                  <div className="flex items-center gap-2 text-text-tertiary text-xs mb-1">
+                    <Users className="w-4 h-4" />{batchEditRoster.length} student{batchEditRoster.length === 1 ? '' : 's'}
+                    {!batchEditConfirmed && <span className="ml-auto bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded-lg">unconfirmed</span>}
+                  </div>
+                  <p className="text-text-secondary text-xs">{batchEditRoster.map(r => r.childName).join(', ') || '—'}</p>
+                </div>
+
+                {/* 2G-5: explain the generation gate when unconfirmed — set a day+time & save to confirm. */}
+                {!batchEditConfirmed && (
+                  <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 text-xs text-amber-400 flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                    <span>Set a day &amp; time and save to confirm this batch. Sessions won&apos;t generate until the schedule is confirmed.</span>
+                  </div>
+                )}
+
+                {/* Class mode */}
+                <div>
+                  <label className="text-xs text-text-tertiary block mb-1">Class mode</label>
+                  <div className="flex gap-2">
+                    <button type="button" aria-pressed={batchEditMode === 'offline'} onClick={() => setBatchEditMode('offline')}
+                      className={`flex-1 min-h-[44px] rounded-xl px-3 py-2 text-sm flex items-center justify-center gap-2 transition-colors ${batchEditMode === 'offline' ? 'bg-white text-[#0a0a0f]' : 'bg-surface-2 text-white border border-border'}`}>
+                      <Home className="w-4 h-4" />In person
+                    </button>
+                    <button type="button" aria-pressed={batchEditMode === 'online'} onClick={() => setBatchEditMode('online')}
+                      className={`flex-1 min-h-[44px] rounded-xl px-3 py-2 text-sm flex items-center justify-center gap-2 transition-colors ${batchEditMode === 'online' ? 'bg-white text-[#0a0a0f]' : 'bg-surface-2 text-white border border-border'}`}>
+                      <Monitor className="w-4 h-4" />Online
+                    </button>
+                  </div>
+                </div>
+
+                {/* Duration */}
+                <div>
+                  <label className="text-xs text-text-tertiary block mb-1">Duration</label>
+                  <select value={batchEditDuration} onChange={e => setBatchEditDuration(+e.target.value)}
+                    className="bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm text-white w-full min-h-[44px]">
+                    {[30, 45, 60, 90, 120].map(d => <option key={d} value={d}>{d} min</option>)}
+                  </select>
+                </div>
+
+                {/* Schedule */}
+                <ScheduleCapture value={batchEditPref} onChange={setBatchEditPref} tone="dark" />
+
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 text-xs text-amber-400">
+                  Saving reschedules every member&apos;s future sessions onto this schedule. Balances are unchanged; past sessions are untouched.
+                </div>
+
+                <div className="flex items-center justify-between gap-2">
+                  {/* 2G-2.5-fix3: soft-retire this batch (destructive → red). */}
+                  <button type="button" onClick={handleBatchDelete} disabled={batchDeleting || batchEditSaving}
+                    className="flex items-center gap-1.5 text-sm text-red-400 hover:text-red-300 disabled:opacity-50 px-3 py-2 rounded-xl min-h-[44px]">
+                    {batchDeleting ? <Spinner size="sm" color="muted" /> : <Trash2 className="w-4 h-4" />}
+                    Delete batch
+                  </button>
+                  <div className="flex justify-end gap-2">
+                    <button type="button" onClick={() => setBatchEditId(null)}
+                      className="px-4 py-2 text-sm text-text-tertiary hover:text-white rounded-xl min-h-[44px]">
+                      Cancel
+                    </button>
+                    <button type="button" onClick={handleBatchSave} disabled={batchEditSaving || batchDeleting}
+                      className="flex items-center gap-1.5 bg-white text-[#0a0a0f] font-semibold px-4 py-2 rounded-xl hover:bg-gray-100 disabled:opacity-50 text-sm min-h-[44px]">
+                      {batchEditSaving ? <Spinner size="sm" color="muted" /> : <Pencil className="w-4 h-4" />}
+                      Save &amp; reschedule
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

@@ -13,6 +13,7 @@ import {
   validateSessionRate,
 } from '@/lib/config/payout-config';
 import { createTuitionOnboarding } from '@/lib/tuition/create-onboarding';
+import { BatchConflictError } from '@/lib/scheduling/batch-conflict';
 import { schedulePreferenceSchema, assertSpwDays } from '@/lib/tuition/schedule-preference';
 
 export const dynamic = 'force-dynamic';
@@ -145,29 +146,39 @@ export const POST = withApiHandler(async (req: NextRequest, { auth, supabase, re
   };
 
   // 6. Create onboarding record (shared logic)
-  const result = await createTuitionOnboarding(supabase, {
-    sessionRate: input.sessionRate,
-    sessionsPurchased: input.sessionsPurchased,
-    sessionDurationMinutes: input.sessionDurationMinutes,
-    sessionsPerWeek: input.sessionsPerWeek,
-    schedulePreference: input.schedulePreference ? JSON.stringify(input.schedulePreference) : null,
-    defaultSessionMode: input.defaultSessionMode,
-    parentPhone: input.parentPhone,
-    coachId: coach.id,
-    coachName: coach.name,
-    adminNotes: input.adminNotes ?? null,
-    batchId: input.batchId ?? null,
-    childName: input.childName ?? null,
-    onboardedBy: 'coach',
-    createdByEmail: coach.email,
-    sessionType: input.sessionType,
-    hourlyRateCalculated: hourlyRate,
-    rateFlag: rateCheck.flag,
-    coachSplitSnapshot: splitSnapshot,
-  }, requestId);
+  let result;
+  try {
+    result = await createTuitionOnboarding(supabase, {
+      sessionRate: input.sessionRate,
+      sessionsPurchased: input.sessionsPurchased,
+      sessionDurationMinutes: input.sessionDurationMinutes,
+      sessionsPerWeek: input.sessionsPerWeek,
+      schedulePreference: input.schedulePreference ? JSON.stringify(input.schedulePreference) : null,
+      defaultSessionMode: input.defaultSessionMode,
+      parentPhone: input.parentPhone,
+      coachId: coach.id,
+      coachName: coach.name,
+      adminNotes: input.adminNotes ?? null,
+      batchId: input.batchId ?? null,
+      childName: input.childName ?? null,
+      onboardedBy: 'coach',
+      createdByEmail: coach.email,
+      sessionType: input.sessionType,
+      hourlyRateCalculated: hourlyRate,
+      rateFlag: rateCheck.flag,
+      coachSplitSnapshot: splitSnapshot,
+    }, requestId);
+  } catch (e) {
+    // 2G-2.5-fix3: buffered coach batch-time conflict (create-new) → 409, nothing created.
+    // JOIN adds no new occupancy → never throws.
+    if (e instanceof BatchConflictError) {
+      return NextResponse.json({ error: 'batch_time_conflict', conflicts: e.conflicts }, { status: 409 });
+    }
+    throw e;
+  }
 
   return NextResponse.json({
-    ...result,
+    ...result, // includes `warnings` (non-blocking same-day notices)
     splitPreview: splitSnapshot,
     rateValidation: rateCheck,
   });

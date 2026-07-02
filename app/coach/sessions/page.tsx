@@ -6,7 +6,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { PreSessionBrief, SessionCard } from '@/components/coach';
 import StructuredCaptureForm from '@/components/coach/structured-capture';
-import { RescheduleModal } from '@/components/shared';
+import { RescheduleModal, BatchRescheduleModal } from '@/components/shared';
 import type { RescheduleSession } from '@/components/shared';
 import { RequestOfflineModal } from '@/components/coach/RequestOfflineModal';
 import { MicroNotePanel } from '@/components/coach/MicroNotePanel';
@@ -22,6 +22,8 @@ import {
   CalendarDays,
   X,
   Search,
+  ArrowLeftRight,
+  User,
 } from 'lucide-react';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Spinner } from '@/components/ui/spinner';
@@ -242,6 +244,12 @@ export default function CoachSessionsPage() {
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
   const [showMissedConfirm, setShowMissedConfirm] = useState(false);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
+
+  // 2G-4: reschedule scope — single (existing modal) vs whole-batch-occurrence (new modal).
+  const [showScopeChooser, setShowScopeChooser] = useState(false);
+  const [scopeLoading, setScopeLoading] = useState(false);
+  const [scopePreview, setScopePreview] = useState<{ count: number; childNames: string[] } | null>(null);
+  const [showBatchReschedule, setShowBatchReschedule] = useState(false);
 
   // Action state
   const [markingMissed, setMarkingMissed] = useState<string | null>(null);
@@ -473,9 +481,39 @@ export default function CoachSessionsPage() {
     setShowPrepModal(true);
   }, []);
 
-  const openRescheduleModal = useCallback((session: Session) => {
+  // 2G-4: on reschedule, first learn whether this session shares a slot with batch-mates that day.
+  // count > 1 → offer the single-vs-whole choice; otherwise go straight to the single-session modal
+  // (existing path, unchanged).
+  const openRescheduleModal = useCallback(async (session: Session) => {
     setSelectedSession(session);
+    setScopePreview(null);
+    setScopeLoading(true);
+    setShowScopeChooser(true);
+    try {
+      const res = await fetch(`/api/sessions/reschedule-occurrence?sessionId=${session.id}`);
+      if (res.ok) {
+        const d = await res.json();
+        if ((d.count ?? 1) > 1) {
+          setScopePreview({ count: d.count, childNames: d.childNames || [] });
+          return; // keep the chooser open
+        }
+      }
+    } catch { /* fall through to single */ }
+    // Not batched (or preview failed) → single-session path directly.
+    setShowScopeChooser(false);
     setShowRescheduleModal(true);
+  }, []);
+
+  // Chooser → single: the existing per-row RescheduleModal (unchanged).
+  const chooseSingle = useCallback(() => {
+    setShowScopeChooser(false);
+    setShowRescheduleModal(true);
+  }, []);
+
+  // Chooser → whole occurrence: the new BatchRescheduleModal.
+  const chooseWhole = useCallback(() => {
+    setShowScopeChooser(false);
+    setShowBatchReschedule(true);
   }, []);
 
   const openMissedConfirm = useCallback((session: Session) => {
@@ -1038,6 +1076,58 @@ export default function CoachSessionsPage() {
           session={sessionToRescheduleSession(selectedSession)}
           coachId={coach?.id}
           onClose={() => { setShowRescheduleModal(false); setSelectedSession(null); }}
+          onSuccess={handleRescheduleComplete}
+        />
+      )}
+
+      {/* 2G-4: reschedule scope chooser — single vs whole-batch-occurrence */}
+      {showScopeChooser && selectedSession && (
+        <div className="fixed inset-0 bg-black/70 flex items-end lg:items-center justify-center z-50 p-0 lg:p-4"
+          onClick={() => { setShowScopeChooser(false); setSelectedSession(null); }}>
+          <div className="bg-[#1a1a1a] rounded-t-2xl lg:rounded-2xl max-w-md w-full p-5 border border-gray-800"
+            onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-white mb-1">Reschedule what?</h3>
+            {scopeLoading ? (
+              <div className="py-8 flex justify-center"><Spinner size="lg" className="text-[#00ABFF]" /></div>
+            ) : (
+              <>
+                <p className="text-text-tertiary text-sm mb-4">
+                  {selectedSession.child_name} is in a {scopePreview?.count ?? 2}-student class that day
+                  {scopePreview?.childNames?.length ? ` (${scopePreview.childNames.join(', ')})` : ''}.
+                </p>
+                <div className="flex flex-col gap-2">
+                  <button type="button" onClick={chooseSingle}
+                    className="min-h-[44px] px-4 rounded-xl text-sm font-medium bg-gray-800 text-white hover:bg-gray-700 transition-colors flex items-center gap-2 text-left">
+                    <User className="w-4 h-4 flex-shrink-0 text-[#00ABFF]" />
+                    <span>Just this student — only {selectedSession.child_name}, this date</span>
+                  </button>
+                  <button type="button" onClick={chooseWhole}
+                    className="min-h-[44px] px-4 rounded-xl text-sm font-medium bg-[#00ABFF] text-white hover:bg-[#00ABFF]/90 transition-colors flex items-center gap-2 text-left">
+                    <ArrowLeftRight className="w-4 h-4 flex-shrink-0" />
+                    <span>Whole batch this day — all {scopePreview?.count ?? 'the'} students</span>
+                  </button>
+                  <button type="button" onClick={() => { setShowScopeChooser(false); setSelectedSession(null); }}
+                    className="min-h-[44px] px-4 rounded-xl text-sm text-gray-400 hover:text-white transition-colors">
+                    Cancel
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 2G-4: whole-batch-occurrence reschedule (DateInput + TimePicker → new op) */}
+      {showBatchReschedule && selectedSession && (
+        <BatchRescheduleModal
+          isOpen={showBatchReschedule}
+          session={{
+            id: selectedSession.id,
+            child_name: selectedSession.child_name,
+            scheduled_date: selectedSession.scheduled_date,
+            scheduled_time: selectedSession.scheduled_time,
+          }}
+          onClose={() => { setShowBatchReschedule(false); setSelectedSession(null); }}
           onSuccess={handleRescheduleComplete}
         />
       )}

@@ -45,11 +45,24 @@ export default function CoachOnboardStudentPage() {
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<{ magicLink: string; childName: string; waStatus: string } | null>(null);
+  const [success, setSuccess] = useState<{ magicLink: string; childName: string; waStatus: string; joined: boolean; joinLabel: string | null; warnings?: string[] } | null>(null);
   const [copied, setCopied] = useState(false);
 
   const [batches, setBatches] = useState<Batch[]>([]);
   const [loadingBatches, setLoadingBatches] = useState(true);
+
+  // 2G-1b: step-2 suggestion (new-class path) — same coach + set-equal days + equal time.
+  type BatchMatch = { batchId: string; days: string[]; time: string; mode: string; memberNames: string[] };
+  const [batchMatch, setBatchMatch] = useState<BatchMatch | null>(null);
+  const [matchDismissed, setMatchDismissed] = useState(false);
+
+  // 2G-2.5-fix3: live batch-time conflict for the NEW-class path only, HARD block. A JOIN adds no
+  // new coach occupancy → guard suppressed (cleared). A buffered conflict (overlap or <15min gap) →
+  // RED + Next disabled; the fix is constructive (join / delete / pick another time). Debounced,
+  // coach-scoped server-side. STALE-CLEAR: conflict resets before each re-check so an old block
+  // never lingers on a now-clear slot.
+  type ConflictState = { level: 'block' | 'warn' | 'clear'; conflicts: { label: string; start: string }[] };
+  const [conflict, setConflict] = useState<ConflictState>({ level: 'clear', conflicts: [] });
 
   // Step 1
   const [childName, setChildName] = useState('');
@@ -85,6 +98,12 @@ export default function CoachOnboardStudentPage() {
       const { data: rows } = await supabase.from('tuition_onboarding').select('batch_id, child_name, session_rate, session_duration_minutes').eq('coach_id', coach.id).eq('status', 'parent_completed');
       const bm = new Map<string, Batch>();
       for (const r of rows || []) { const bid = (r as any).batch_id; if (!bid) continue; const e = bm.get(bid); if (e) e.children.push(r.child_name); else bm.set(bid, { batch_id: bid, label: '', rate: r.session_rate, duration: r.session_duration_minutes ?? 60, children: [r.child_name] }); }
+      // 2G-2.5-fix3: drop deleted (retired) batches \u2014 they must not appear as a join target.
+      const bids = Array.from(bm.keys());
+      if (bids.length > 0) {
+        const { data: batchRows } = await (supabase as any).from('tuition_batches').select('id, status').in('id', bids);
+        for (const b of (batchRows ?? []) as Array<{ id: string; status: string | null }>) { if (b.status === 'deleted') bm.delete(b.id); }
+      }
       setBatches(Array.from(bm.values()).map(b => ({ ...b, label: `${b.children.join(', ')} (${b.duration}m, \u20B9${b.rate / 100}/s)` })));
     } catch { /* ignore */ } finally { setLoadingBatches(false); }
   };
@@ -117,10 +136,52 @@ export default function CoachOnboardStudentPage() {
     return () => clearTimeout(t);
   }, [rateRupees, duration, sessionType, joinBatch]);
 
+  // ---- Batch suggestion (step 2, NEW-class path only) — coach scoped server-side via auth ----
+  useEffect(() => {
+    if (step !== 2 || joinBatch || matchDismissed) return;
+    const days = schedulePref.days || [];
+    const time = schedulePref.defaultTime || (Object.values(schedulePref.times || {})[0] as string | undefined);
+    if (days.length === 0 || !time) { setBatchMatch(null); return; }
+    const ctrl = new AbortController();
+    const tmr = setTimeout(async () => {
+      try {
+        const qs = new URLSearchParams({ time });
+        days.forEach((d) => qs.append('days', d));
+        const res = await fetch(`/api/tuition/batches/match?${qs.toString()}`, { signal: ctrl.signal });
+        if (res.ok) { const d = await res.json(); setBatchMatch((d.matches || [])[0] || null); }
+      } catch { /* abort/ignore */ }
+    }, 400);
+    return () => { clearTimeout(tmr); ctrl.abort(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, joinBatch, matchDismissed, schedulePref.days.join(','), schedulePref.defaultTime, JSON.stringify(schedulePref.times)]);
+
+  // ---- Live batch-time conflict (step 2, NEW-class path) — coach-scoped server-side via auth ----
+  useEffect(() => {
+    // JOIN or off the schedule step → suppress (clear). Guard only recomputes on step 2.
+    if (step !== 2 || joinBatch) { setConflict({ level: 'clear', conflicts: [] }); return; }
+    const days = schedulePref.days || [];
+    const time = schedulePref.defaultTime || (Object.values(schedulePref.times || {})[0] as string | undefined);
+    // STALE-CLEAR: reset before the debounced re-check so an old block never lingers on a now-clear slot.
+    setConflict({ level: 'clear', conflicts: [] });
+    if (days.length === 0 || !time || !duration) return;
+    const ctrl = new AbortController();
+    const tmr = setTimeout(async () => {
+      try {
+        const qs = new URLSearchParams({ time, durationMinutes: String(duration) });
+        days.forEach((d) => qs.append('days', d));
+        const res = await fetch(`/api/tuition/batches/conflict-check?${qs.toString()}`, { signal: ctrl.signal });
+        if (res.ok) { const d = await res.json(); setConflict({ level: d.level, conflicts: d.conflicts || [] }); }
+      } catch { /* abort/ignore */ }
+    }, 400);
+    return () => { clearTimeout(tmr); ctrl.abort(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, joinBatch, schedulePref.days.join(','), schedulePref.defaultTime, JSON.stringify(schedulePref.times), duration]);
+
   // ---- Nav ----
   const canStep1 = childName.length >= 2 && /^[6-9]\d{9}$/.test(parentPhone) && (!joinBatch || selectedBatchId);
   const isBlocked = rateValidation?.flag === 'red_low' || rateValidation?.flag === 'red_high';
-  const canStep2 = joinBatch || (rateRupees && !isBlocked);
+  // 2G-2.5-fix3: a buffered conflict HARD-blocks Next again (create-new path only; JOIN clears it).
+  const canStep2 = (joinBatch || (rateRupees && !isBlocked)) && conflict.level !== 'block';
   const handleNext = () => setStep(step === 1 && joinBatch && selectedBatchId ? 3 : step + 1);
   const handleBack = () => setStep(step === 3 && joinBatch ? 1 : step - 1);
 
@@ -131,8 +192,18 @@ export default function CoachOnboardStudentPage() {
       const rp = joinBatch ? batches.find(b => b.batch_id === selectedBatchId)?.rate || 0 : Number(rateRupees) * 100;
       const res = await fetch('/api/coach/onboard-student', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ childName: childName || undefined, childApproximateAge: childAge || undefined, parentPhone, sessionRate: rp, sessionDurationMinutes: joinBatch ? batches.find(b => b.batch_id === selectedBatchId)?.duration || 60 : duration, sessionsPurchased: Number(sessionsPurchased) || 1, sessionsPerWeek, defaultSessionMode: sessionMode, sessionType: joinBatch ? 'batch' : sessionType, batchId: joinBatch ? selectedBatchId : undefined, schedulePreference: { ...schedulePref, raw: undefined } }) });
       const data = await res.json();
+      // 2G-2.5-fix3: buffered coach batch-time conflict (create-new) → 409, nothing created. RED,
+      // constructive (join the existing batch, delete it, or pick another time).
+      if (res.status === 409) {
+        const c = (data.conflicts || [])[0];
+        setError(c ? `You already have ${c.label} at ${c.start} that day. Join it, delete it, or pick another time.` : 'Time clash with an existing batch. Join it, delete it, or pick another time.');
+        return;
+      }
       if (!res.ok) { setError(data.error || 'Failed to create onboarding'); return; }
-      setSuccess({ magicLink: data.magicLink, childName: childName || parentPhone, waStatus: data.waStatus || 'sent' });
+      const joinLabel = joinBatch
+        ? (batchMatch?.memberNames?.join(', ') || batches.find(b => b.batch_id === selectedBatchId)?.children?.join(', ') || null)
+        : null;
+      setSuccess({ magicLink: data.magicLink, childName: childName || parentPhone, waStatus: data.waStatus || 'sent', joined: joinBatch, joinLabel, warnings: Array.isArray(data.warnings) ? data.warnings : [] });
     } catch { setError('Network error. Please try again.'); } finally { setSubmitting(false); }
   };
 
@@ -230,6 +301,19 @@ export default function CoachOnboardStudentPage() {
             <CheckCircle className="w-7 h-7 text-emerald-400" />
           </div>
           <h1 className="text-xl font-semibold text-white">Student onboarded</h1>
+          {/* 2G-1b: join-vs-new outcome line */}
+          <p className="text-sm text-gray-400">
+            {success.joined
+              ? `${success.childName} will join ${success.joinLabel ? `${success.joinLabel}'s` : 'an existing'} batch.`
+              : `${success.childName} will start a new batch.`}
+          </p>
+          {/* 2G-2.5: non-blocking same-day batch-time notice (AMBER) */}
+          {success.warnings && success.warnings.length > 0 && (
+            <div className="inline-flex items-start gap-2 px-3 py-2 rounded-xl border text-sm bg-amber-500/10 text-amber-300 border-amber-400/30 text-left">
+              <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <span>Heads up — {success.warnings[0]}</span>
+            </div>
+          )}
           {/* WhatsApp send-outcome badge (Lucide icons only — no emoji) */}
           {(() => {
             const s = success.waStatus;
@@ -420,7 +504,40 @@ export default function CoachOnboardStudentPage() {
         <div>
           <label className="text-sm font-medium text-gray-400 mb-1.5 block">Schedule</label>
           <ScheduleCapture value={schedulePref} onChange={setSchedulePref} tone="dark" />
+          {/* 2G-2.5-fix3: inline batch-time clash (NEW-class only; JOIN clears it). HARD RED — a
+              buffered conflict (overlap or <15min gap) blocks Next; the fix is constructive (join
+              the existing batch, delete it, or pick another time). */}
+          {conflict.level === 'block' && (
+            <div className="mt-2 bg-red-500/10 border-l-4 border-red-400 rounded-r-xl px-3 py-2 text-sm text-red-300 flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <span>You already have {conflict.conflicts[0]?.label} at {conflict.conflicts[0]?.start} that day. Join it, delete it, or pick another time.</span>
+            </div>
+          )}
         </div>
+
+        {/* 2G-1b: dismissible suggestion — only when a same coach+days+time batch exists. */}
+        {batchMatch && !joinBatch && !matchDismissed && (
+          <div className="bg-cyan-500/10 rounded-2xl border border-cyan-500/30 p-4 space-y-3">
+            <div className="flex items-start gap-2 text-sm text-cyan-200">
+              <Users className="w-4 h-4 mt-0.5 flex-shrink-0" />
+              <span>
+                This matches {batchMatch.memberNames.length ? `${batchMatch.memberNames.join(', ')}'s` : 'an existing'} {batchMatch.days.join('/')} {batchMatch.time} batch — join instead?
+              </span>
+            </div>
+            <div className="flex gap-2">
+              <button type="button"
+                onClick={() => { setJoinBatch(true); setSelectedBatchId(batchMatch.batchId); setStep(3); }}
+                className="flex-1 min-h-[44px] rounded-xl bg-cyan-500 text-white text-sm font-medium hover:bg-cyan-600 transition-all duration-200">
+                Join batch
+              </button>
+              <button type="button"
+                onClick={() => setMatchDismissed(true)}
+                className="min-h-[44px] px-4 rounded-xl bg-white/5 border border-white/10 text-gray-300 text-sm hover:bg-white/[0.08] transition-all duration-200">
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Total sessions */}
         <div>

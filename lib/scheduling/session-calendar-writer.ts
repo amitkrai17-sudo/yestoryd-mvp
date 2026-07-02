@@ -184,10 +184,10 @@ export async function reconcileSessionCalendarEvent(
     return { action, eventId: newId, meetLink: newMeet };
   };
 
-  // Online batch rooms are shared per (batch_id, scheduled_date, scheduled_time) group.
-  // Runs ONLY for online batch rows (short-circuit below); converges THIS row onto the
-  // group's single event, anchoring the group if no event exists yet. Writes only this row
-  // (attach or create) — each sibling converges on its own reconcile.
+  // Batch rooms are shared per (batch_id, scheduled_date, scheduled_time) group — for BOTH
+  // offline and online batches (post-2C). Runs for any batch row (short-circuit below);
+  // converges THIS row onto the group's single event, anchoring the group if no event exists
+  // yet. Writes only this row (attach or create) — each sibling converges on its own reconcile.
   // RARE RACE: two siblings anchoring before either's event is visible → a duplicate group
   // event. Reconcile callers are sequential in practice, so this is rare; it self-heals via
   // the 2E convergence/cleanup + later reconciles. NOT solved here (2A).
@@ -222,8 +222,9 @@ export async function reconcileSessionCalendarEvent(
     return createNew('created');
   };
 
-  // Online batch members share ONE event per (batch_id, date, time) group — resolve before
-  // the individual create-on-null + detach gate below (which online batch rows never reach).
+  // Batch members (offline + online, post-2C) share ONE event per (batch_id, date, time)
+  // group — resolve before the individual create-on-null + detach gate below (which batch
+  // rows never reach).
   if (s.batch_id) return await resolveBatchRoom();
 
   // 2. No prior event → create.

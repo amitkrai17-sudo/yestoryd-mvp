@@ -29,6 +29,7 @@ import {
   type CreateSessionParams,
 } from './session-engine';
 import { resolveOnlineLink } from './session-mode-service';
+import { reconcileSessionCalendarEvent } from './session-calendar-writer';
 import { resolveSessionTime, dayNumToKey, type SchedulePreference, type DayKey } from './schedule-time';
 import { planSessions } from './plan-sessions';
 import { formatDateISO } from '@/lib/utils/date-format';
@@ -1207,11 +1208,11 @@ export async function scheduleTuitionSessions(
       lastDate: sessionsToCreate[sessionsToCreate.length - 1].scheduled_date,
     });
 
-    // 7. Engine-backed insert. skipCalendar: per-session calendar events are NOT
-    // created at row-insert time for tuition — a batch-level Calendar event is
-    // created separately by admin tooling when the batch is formed. Per-row
-    // batch_id + persistent google_meet_link (for online batches) are carried
-    // through via toCreateParams().
+    // 7. Engine-backed insert. skipCalendar: calendar events are NOT created at row-insert
+    // time for tuition — the post-generation seam (step 9, 2E) reconciles each created row
+    // onto its shared (batch,date,time) occurrence event (offline + online, post-2C). Per-row
+    // batch_id + persistent google_meet_link (for online batches) are carried through via
+    // toCreateParams().
     const paramsArray: CreateSessionParams[] = sessionsToCreate.map(toCreateParams);
 
     const results = await createScheduledSessionsBatch(paramsArray, {
@@ -1236,6 +1237,29 @@ export async function scheduleTuitionSessions(
       const msg = results[0]?.error ?? 'insert failed';
       console.error(`[TuitionScheduler] Insert error:`, msg);
       return { success: false, sessionsCreated: 0, errors: [`Insert failed: ${msg}`] };
+    }
+
+    // 9. POST-GENERATION CALENDAR SEAM (2E). The raw insert stays skipCalendar:true (birth
+    //    contract unchanged) — THIS pass reconciles ONLY the rows this call just created
+    //    (their ids come back on `results`, never a whole-enrollment re-scan) so each joins
+    //    or anchors its shared (batch,date,time) occurrence event (offline + online, post-2C).
+    //    Single seam: every tuition generation caller (first-pay / top-up / renewal via
+    //    resolveSessionCreation, and applyBatchScheduleToMember) inherits it here. Per-row
+    //    try/catch — a calendar failure must NOT fail generation; reconcile is lazy/retryable.
+    const createdIds = results
+      .filter((r) => r.success && r.sessionId)
+      .map((r) => r.sessionId as string);
+    for (const sessionId of createdIds) {
+      try {
+        await reconcileSessionCalendarEvent(sessionId, { supabase });
+      } catch (e) {
+        console.error(JSON.stringify({
+          event: 'tuition_post_gen_reconcile_error',
+          enrollmentId,
+          sessionId,
+          error: e instanceof Error ? e.message : String(e),
+        }));
+      }
     }
 
     return {

@@ -5,6 +5,7 @@
 
 import crypto from 'crypto';
 import { sendNotification } from '@/lib/communication/notify';
+import { checkBatchConflict, BatchConflictError } from '@/lib/scheduling/batch-conflict';
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://www.yestoryd.com';
 
@@ -37,6 +38,8 @@ export interface CreateTuitionResult {
   status: string;
   /** Actual WhatsApp send outcome: 'sent' | a NotifyReason | 'failed'. */
   waStatus: string;
+  /** 2G-2.5: non-blocking same-day (non-overlap) batch-time warnings to surface in the form. */
+  warnings?: string[];
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -61,22 +64,95 @@ export async function createTuitionOnboarding(
   const token = crypto.randomBytes(32).toString('hex');
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
-  // 3. Resolve batch — join existing or create new
+  const warnings: string[] = [];
+
+  // 3. Resolve batch — JOIN an existing batch or CREATE a real solo batch. Post-2A every
+  //    onboarding MUST point at a real tuition_batches row (FK + NOT NULL); we NEVER rely on
+  //    the column's gen_random_uuid() default (that produces an id with no matching row → FK
+  //    fail). batchId is always a real tuition_batches.id by the end of this block.
   let batchId: string | null = null;
   let batchMeetLink: string | null = null;
   let batchCalendarEventId: string | null = null;
 
   if (params.batchId) {
+    // JOIN — assert the target batch row exists (post-2A guarantee), inherit its schedule
+    // (do NOT rewrite it). Keep the sibling meet_link/calendar_event_id copy for now.
+    const { data: batchRow } = await supabase
+      .from('tuition_batches')
+      .select('id')
+      .eq('id', params.batchId)
+      .maybeSingle();
+    if (!batchRow) {
+      console.error(JSON.stringify({ requestId, event: 'tuition_join_batch_missing', batchId: params.batchId }));
+      throw new Error('Target batch not found');
+    }
+    batchId = params.batchId;
+
     const { data: sibling } = await supabase
       .from('tuition_onboarding')
       .select('id, batch_id, meet_link, calendar_event_id' as any)
       .eq('batch_id' as any, params.batchId)
       .limit(1)
       .maybeSingle();
-
-    batchId = params.batchId;
     batchMeetLink = (sibling as any)?.meet_link ?? null;
     batchCalendarEventId = (sibling as any)?.calendar_event_id ?? null;
+  } else {
+    // SOLO — create a real tuition_batches row from the form schedule. schedule_confirmed iff
+    // the form supplied days + a concrete time (mirrors the 2A backfill members=1 rule). NOTE:
+    // tuition_batches.id has NO column default, so we supply it explicitly.
+    let days: string[] = [];
+    let times: Record<string, string> = {};
+    let defaultTime: string | null = null;
+    if (params.schedulePreference) {
+      try {
+        const sp = typeof params.schedulePreference === 'string'
+          ? JSON.parse(params.schedulePreference)
+          : params.schedulePreference;
+        if (Array.isArray(sp?.days)) days = sp.days.map(String);
+        if (sp?.times && typeof sp.times === 'object') times = sp.times;
+        if (typeof sp?.defaultTime === 'string' && sp.defaultTime) defaultTime = sp.defaultTime;
+      } catch {
+        console.warn(JSON.stringify({ requestId, event: 'tuition_solo_schedule_parse_failed' }));
+      }
+    }
+    const hasTime = !!defaultTime || Object.keys(times).length > 0;
+    const scheduleConfirmed = days.length >= 1 && hasTime;
+
+    // 2G-2.5-fix3: coach batch-time guard is a HARD block again (constructive UX lives client-side:
+    // join / delete / pick another time). A buffered conflict (overlap or <15min gap) on ANY
+    // scheduled day → throw BatchConflictError → the route maps it to a 409 (NOTHING created, the
+    // throw precedes every insert). JOIN branch above does NO check (it adds no new occupancy).
+    for (const day of days) {
+      const dayStart = times[day] || defaultTime;
+      if (!dayStart) continue;
+      const conf = await checkBatchConflict({
+        supabase,
+        coachId: params.coachId,
+        day,
+        startTime: dayStart,
+        durationMinutes: params.sessionDurationMinutes,
+      });
+      if (conf.level === 'block') throw new BatchConflictError(conf.conflicts);
+    }
+
+    const newBatchId = crypto.randomUUID();
+    const { error: batchErr } = await supabase
+      .from('tuition_batches')
+      .insert({
+        id: newBatchId,
+        coach_id: params.coachId,
+        days,
+        times,
+        default_time: defaultTime,
+        duration_minutes: params.sessionDurationMinutes,
+        session_mode: params.defaultSessionMode,
+        schedule_confirmed: scheduleConfirmed,
+      } as any);
+    if (batchErr) {
+      console.error(JSON.stringify({ requestId, event: 'tuition_solo_batch_insert_error', error: batchErr.message }));
+      throw new Error('Failed to create batch');
+    }
+    batchId = newBatchId;
   }
 
   // 4. Insert tuition_onboarding
@@ -105,11 +181,11 @@ export async function createTuitionOnboarding(
     coach_split_snapshot: params.coachSplitSnapshot ?? null,
   };
 
-  if (batchId) {
-    insertData.batch_id = batchId;
-    if (batchMeetLink) insertData.meet_link = batchMeetLink;
-    if (batchCalendarEventId) insertData.calendar_event_id = batchCalendarEventId;
-  }
+  // batch_id is ALWAYS a real tuition_batches.id now (solo created, or join asserted above) —
+  // never the column default.
+  insertData.batch_id = batchId;
+  if (batchMeetLink) insertData.meet_link = batchMeetLink;
+  if (batchCalendarEventId) insertData.calendar_event_id = batchCalendarEventId;
 
   const { data: onboarding, error: insertErr } = await supabase
     .from('tuition_onboarding')
@@ -175,5 +251,6 @@ export async function createTuitionOnboarding(
     magicLink,
     status: 'parent_pending',
     waStatus,
+    warnings,
   };
 }

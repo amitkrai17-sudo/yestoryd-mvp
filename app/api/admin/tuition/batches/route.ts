@@ -71,6 +71,22 @@ export const GET = withApiHandler(async (_req, { supabase }) => {
     }
   }
 
+  // 2G-5: expose schedule_confirmed per batch so the list can badge unconfirmed ones. tuition_batches
+  // not in generated types yet → 'as any' on the client (2B precedent). Thin read, no writes.
+  // 2G-2.5-fix3: also read status → drop deleted (retired) batches from the list entirely.
+  const batchIds = Array.from(batchMap.keys());
+  const confirmedById = new Map<string, boolean>();
+  if (batchIds.length > 0) {
+    const { data: batchRows } = await (supabase as any)
+      .from('tuition_batches')
+      .select('id, schedule_confirmed, status')
+      .in('id', batchIds);
+    for (const b of (batchRows ?? []) as Array<{ id: string; schedule_confirmed: boolean | null; status: string | null }>) {
+      if (b.status === 'deleted') { batchMap.delete(b.id); continue; }
+      confirmedById.set(b.id, !!b.schedule_confirmed);
+    }
+  }
+
   // Build labels: "Rucha — Mon/Fri 7-8pm — Grammar (Yekshit, Vihaan)"
   const batches = Array.from(batchMap.values()).map(b => ({
     batch_id: b.batch_id,
@@ -80,6 +96,7 @@ export const GET = withApiHandler(async (_req, { supabase }) => {
       b.subject,
       `(${b.children.join(', ')})`,
     ].filter(Boolean).join(' — '),
+    schedule_confirmed: confirmedById.get(b.batch_id) ?? true,
   }));
 
   return NextResponse.json({ batches });

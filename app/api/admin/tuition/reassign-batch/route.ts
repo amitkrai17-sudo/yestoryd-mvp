@@ -1,12 +1,18 @@
 // POST /api/admin/tuition/reassign-batch
 // Move a tuition student to a different batch.
-// Updates tuition_onboarding + all future scheduled_sessions + Calendar attendees.
+//
+// 2F: the full relocation — re-stamp membership + cancel/regenerate future sessions on the
+// TARGET batch's schedule + per-occurrence calendar reconcile — is delegated to the canonical
+// reconciler applyBatchScheduleToMember. This route owns ONLY auth, request parsing, the
+// no-op / pre-enrollment early-exits, and the response shape the admin UI consumes (it checks
+// res.ok then refetches). The pre-2F bespoke logic — bulk scheduled_sessions.batch_id update,
+// meet_link copy, and the STALE single per-batch calendar_event_id attendee add/remove (audit
+// S2) — is removed; the reconciler owns calendar per (batch,date,time) occurrence.
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { google } from 'googleapis';
 import { withApiHandler } from '@/lib/api/with-api-handler';
-import { attachCalendarLinkToSet } from '@/lib/scheduling/calendar-link';
+import { applyBatchScheduleToMember } from '@/lib/scheduling/apply-batch-schedule';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,7 +21,7 @@ const ReassignSchema = z.object({
   newBatchId: z.string().uuid(),
 });
 
-export const POST = withApiHandler(async (req: NextRequest, { supabase, requestId }) => {
+export const POST = withApiHandler(async (req: NextRequest, { auth, supabase, requestId }) => {
   const body = await req.json();
   const parsed = ReassignSchema.safeParse(body);
   if (!parsed.success) {
@@ -24,7 +30,8 @@ export const POST = withApiHandler(async (req: NextRequest, { supabase, requestI
 
   const { onboardingId, newBatchId } = parsed.data;
 
-  // 1. Get current onboarding record (BEFORE update — need old calendar_event_id)
+  // 1. Resolve onboarding → current batch + enrollment. select('*') because batch_id is a
+  //    migration-added column not in the generated types (same precedent as create/route.ts).
   const { data: onboarding, error: fetchErr } = await supabase
     .from('tuition_onboarding')
     .select('*')
@@ -35,256 +42,66 @@ export const POST = withApiHandler(async (req: NextRequest, { supabase, requestI
     return NextResponse.json({ error: 'Onboarding record not found' }, { status: 404 });
   }
 
-  const oldBatchId = onboarding.batch_id;
-  const oldCalendarEventId = onboarding.calendar_event_id;
-
+  const oldBatchId = (onboarding as any).batch_id as string | null;
   if (oldBatchId === newBatchId) {
     return NextResponse.json({ message: 'Already in this batch', changed: false });
   }
 
-  // 2. Resolve parent email for Calendar attendee management
-  let parentEmail: string | null = null;
-  let parentName: string | null = null;
-  if (onboarding.parent_id) {
-    const { data: parent } = await supabase
-      .from('parents')
-      .select('email, name')
-      .eq('id', onboarding.parent_id)
-      .single();
-    parentEmail = parent?.email ?? null;
-    parentName = parent?.name ?? null;
-  }
-  // Fallback: look up from children table via enrollment
-  if (!parentEmail && onboarding.enrollment_id) {
-    const { data: enr } = await supabase
-      .from('enrollments')
-      .select('parent_id')
-      .eq('id', onboarding.enrollment_id)
-      .single();
-    if (enr?.parent_id) {
-      const { data: parent } = await supabase
-        .from('parents')
-        .select('email, name')
-        .eq('id', enr.parent_id)
-        .single();
-      parentEmail = parent?.email ?? null;
-      parentName = parent?.name ?? null;
+  // Ownership (2G-3): the reconciler does NOT check ownership — this route does. A coach may
+  // reassign only BETWEEN batches they own: both the source child (onboarding.coach_id) AND
+  // the target batch (tuition_batches.coach_id) must be theirs. Admin may reassign any.
+  if (auth.role === 'coach') {
+    if (onboarding.coach_id !== auth.coachId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    // tuition_batches not in generated types yet → 'as any' on the client (2B precedent).
+    const { data: targetBatch } = await (supabase as any)
+      .from('tuition_batches')
+      .select('coach_id')
+      .eq('id', newBatchId)
+      .maybeSingle();
+    if (!targetBatch || targetBatch.coach_id !== auth.coachId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
   }
 
-  // 3. Get the target batch's meet_link + calendar_event_id (from any sibling)
-  const { data: targetSibling } = await supabase
-    .from('tuition_onboarding')
-    .select('meet_link, calendar_event_id')
-    .eq('batch_id', newBatchId)
-    .not('meet_link', 'is', null)
-    .limit(1)
-    .maybeSingle();
+  const reason = `Batch reassignment from ${oldBatchId ?? 'none'} to ${newBatchId}`;
 
-  const newMeetLink = targetSibling?.meet_link ?? null;
-  const newCalendarEventId = targetSibling?.calendar_event_id ?? null;
-
-  // 4. Update tuition_onboarding with new batch
-  await supabase
-    .from('tuition_onboarding')
-    .update({
-      batch_id: newBatchId,
-      meet_link: newMeetLink,
-      calendar_event_id: newCalendarEventId,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', onboardingId);
-
-  // 5. Update all FUTURE scheduled_sessions for this enrollment
-  const today = new Date().toISOString().split('T')[0];
-  if (onboarding.enrollment_id) {
-    // 2A: batch_id is a non-calendar column and stays a direct write. The classroom
-    // meet_link goes through the sole set-writer (attachCalendarLinkToSet). As today,
-    // google_event_id is NOT changed here — each row's existing event_id is preserved
-    // (group by it), so we never null an event_id that was previously set.
-    const statuses = ['scheduled', 'pending_scheduling', 'pending', 'confirmed'];
-
-    // SELECT the exact row set under the IDENTICAL WHERE + existing event_id to preserve.
-    const { data: futureRows } = await supabase
-      .from('scheduled_sessions')
-      .select('id, google_event_id')
-      .eq('enrollment_id', onboarding.enrollment_id)
-      .gte('scheduled_date', today)
-      .in('status', statuses);
-
-    // batch_id (non-calendar column) — same WHERE as before.
+  // 2. Pre-enrollment onboarding (no enrollment yet → no sessions to relocate): the move is a
+  //    pure membership pointer. Re-stamp batch_id directly; nothing else to do.
+  if (!onboarding.enrollment_id) {
     await supabase
-      .from('scheduled_sessions')
-      .update({ batch_id: newBatchId, updated_at: new Date().toISOString() })
-      .eq('enrollment_id', onboarding.enrollment_id)
-      .gte('scheduled_date', today)
-      .in('status', statuses);
-
-    // Copy persistent classroom link → google_meet_link via the set-writer, only when
-    // present (mirrors old `if (newMeetLink)`), preserving each row's existing event_id.
-    if (newMeetLink && (futureRows ?? []).length > 0) {
-      const byEvent = new Map<string | null, string[]>();
-      for (const r of futureRows ?? []) {
-        const k = r.google_event_id ?? null;
-        const arr = byEvent.get(k) ?? [];
-        arr.push(r.id);
-        byEvent.set(k, arr);
-      }
-      for (const [evId, ids] of Array.from(byEvent.entries())) {
-        await attachCalendarLinkToSet(supabase, ids, evId, newMeetLink);
-      }
-    }
+      .from('tuition_onboarding')
+      .update({ batch_id: newBatchId, updated_at: new Date().toISOString() } as any)
+      .eq('id', onboardingId);
+    return NextResponse.json({ success: true, changed: true, newBatchId });
   }
 
-  // 6. Calendar attendee management (non-blocking — DB changes already committed)
-  if (parentEmail) {
-    // Get coach email for Calendar API (coach is the calendar organizer)
-    const { data: coach } = await supabase
-      .from('coaches')
-      .select('email')
-      .eq('id', onboarding.coach_id)
-      .single();
-
-    const coachEmail = coach?.email;
-
-    if (coachEmail) {
-      try {
-        const auth = new google.auth.JWT(
-          process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-          undefined,
-          process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-          ['https://www.googleapis.com/auth/calendar'],
-          coachEmail,
-        );
-        const calendar = google.calendar({ version: 'v3', auth });
-
-        // 6a. Remove parent from OLD Calendar event
-        if (oldCalendarEventId && oldCalendarEventId !== newCalendarEventId) {
-          try {
-            const oldEvent = await calendar.events.get({
-              calendarId: coachEmail,
-              eventId: oldCalendarEventId,
-            });
-            const oldAttendees = (oldEvent.data.attendees || []).filter(
-              (a: any) => a.email !== parentEmail
-            );
-            await calendar.events.patch({
-              calendarId: coachEmail,
-              eventId: oldCalendarEventId,
-              sendUpdates: 'all',
-              requestBody: { attendees: oldAttendees },
-            });
-            console.log(JSON.stringify({
-              requestId,
-              event: 'batch_attendee_removed_from_old',
-              parentEmail,
-              oldCalendarEventId,
-            }));
-          } catch (removeErr: any) {
-            console.error(JSON.stringify({
-              requestId,
-              event: 'batch_attendee_remove_error',
-              error: removeErr.message,
-              oldCalendarEventId,
-            }));
-          }
-        }
-
-        // 6b. Add parent to NEW Calendar event
-        if (newCalendarEventId) {
-          try {
-            const newEvent = await calendar.events.get({
-              calendarId: coachEmail,
-              eventId: newCalendarEventId,
-            });
-            const currentAttendees = newEvent.data.attendees || [];
-            const alreadyAdded = currentAttendees.some(
-              (a: any) => a.email === parentEmail
-            );
-            if (!alreadyAdded) {
-              await calendar.events.patch({
-                calendarId: coachEmail,
-                eventId: newCalendarEventId,
-                sendUpdates: 'all',
-                requestBody: {
-                  attendees: [
-                    ...currentAttendees,
-                    { email: parentEmail, displayName: parentName || 'Parent' },
-                  ],
-                },
-              });
-              console.log(JSON.stringify({
-                requestId,
-                event: 'batch_attendee_added_to_new',
-                parentEmail,
-                newCalendarEventId,
-              }));
-            }
-          } catch (addErr: any) {
-            console.error(JSON.stringify({
-              requestId,
-              event: 'batch_attendee_add_error',
-              error: addErr.message,
-              newCalendarEventId,
-            }));
-          }
-        }
-      } catch (calErr: any) {
-        // Calendar failure does NOT roll back DB changes
-        console.error(JSON.stringify({
-          requestId,
-          event: 'batch_calendar_auth_error',
-          error: calErr.message,
-        }));
-        try {
-          await supabase.from('activity_log').insert({
-            action: 'batch_calendar_update_failed',
-            user_email: 'admin',
-            user_type: 'system',
-            metadata: {
-              onboarding_id: onboardingId,
-              error: calErr.message,
-              old_calendar_event_id: oldCalendarEventId,
-              new_calendar_event_id: newCalendarEventId,
-            },
-          });
-        } catch { /* swallow logging failure */ }
-      }
-    }
-  }
-
-  // 7. Activity log
-  await supabase.from('activity_log').insert({
-    action: 'tuition_batch_reassigned',
-    user_email: 'admin',
-    user_type: 'admin',
-    metadata: {
-      onboarding_id: onboardingId,
-      child_name: onboarding.child_name,
-      old_batch_id: oldBatchId,
-      new_batch_id: newBatchId,
-      old_calendar_event_id: oldCalendarEventId,
-      new_calendar_event_id: newCalendarEventId,
-      parent_email: parentEmail,
-      sessions_updated: true,
-    },
+  // 3. Enrolled member: delegate the full relocation to the canonical reconciler. It re-stamps
+  //    membership, cancels future sessions (POLICY D batch-safe teardown), regenerates them on
+  //    the target batch's schedule (balance-bounded), and reconciles each onto its shared
+  //    (batch,date,time) occurrence event. fromDate defaults to today IST inside the helper.
+  //    NO balance / ledger / payment writes.
+  const result = await applyBatchScheduleToMember({
+    supabase,
+    enrollmentId: onboarding.enrollment_id,
+    batchId: newBatchId,
+    actor: auth.role === 'coach' ? 'coach' : 'admin',
+    reason,
+    requestId,
   });
 
-  console.log(JSON.stringify({
-    requestId,
-    event: 'batch_reassigned',
-    onboardingId,
-    childName: onboarding.child_name,
-    oldBatchId,
-    newBatchId,
-    meetLinkCopied: !!newMeetLink,
-    calendarUpdated: !!(oldCalendarEventId || newCalendarEventId),
-  }));
+  // Propagate a non-200 (409 unconfirmed batch, 404 not found, 500 regen failure) so the
+  // operator sees the partial-state failure rather than a false success.
+  if (result.status !== 200) {
+    return NextResponse.json(result.body, { status: result.status });
+  }
 
   return NextResponse.json({
     success: true,
     changed: true,
     newBatchId,
-    meetLink: newMeetLink,
+    cancelled: result.cancelled,
+    created: result.created,
   });
-}, { auth: 'admin' });
+}, { auth: 'adminOrCoach' });

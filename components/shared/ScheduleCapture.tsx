@@ -4,14 +4,14 @@
 // FILE: components/shared/ScheduleCapture.tsx
 // PURPOSE: Selection-based structured schedule capture. Emits the canonical
 //          SchedulePreference (lib/scheduling/schedule-time.ts). NO free-text
-//          time; uses the shared TimeInput picker only (CLAUDE.md).
+//          time; uses the shared TimePicker (preset chips + H/M/AM-PM) only (CLAUDE.md).
 // SSOT: times are written as canonical "HH:MM" via normalizeTime(); never store
 //       a non-canonical value. Controlled (value/onChange) — no DB, no
 //       JSON.stringify here (the host form serializes at submit in 2D-d-3/4).
 // ============================================================
 
 import { useState } from 'react';
-import { TimeInput } from '@/components/ui/time-input';
+import TimePicker from '@/components/shared/TimePicker';
 import {
   normalizeTime,
   DAY_KEYS,
@@ -159,10 +159,10 @@ export default function ScheduleCapture({
       {!perDay ? (
         <div>
           <label className={`text-xs ${t.label} block mb-1.5`}>Time</label>
-          <TimeInput
+          <TimePicker
+            tone={tone}
             value={value.defaultTime || ''}
             onChange={setDefaultTime}
-            className="max-w-[12rem]"
           />
         </div>
       ) : (
@@ -172,13 +172,12 @@ export default function ScheduleCapture({
             <p className={`text-xs ${t.label}`}>Select a day above to set its time.</p>
           ) : (
             selectedInOrder.map((day) => (
-              <div key={day} className="flex items-center gap-3">
-                <span className={`text-xs w-10 ${t.label}`}>{day}</span>
-                <TimeInput
+              <div key={day} className="flex items-start gap-3">
+                <span className={`text-xs w-10 pt-3 ${t.label}`}>{day}</span>
+                <TimePicker
+                  tone={tone}
                   value={value.times[day] || ''}
                   onChange={(raw) => setDayTime(day, raw)}
-                  className="max-w-[12rem]"
-                  placeholder={value.defaultTime ? value.defaultTime : 'Select time'}
                 />
               </div>
             ))

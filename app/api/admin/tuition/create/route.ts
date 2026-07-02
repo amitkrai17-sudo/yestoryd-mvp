@@ -1,28 +1,31 @@
 // ============================================================
 // FILE: app/api/admin/tuition/create/route.ts
-// PURPOSE: Admin creates a tuition onboarding record, sends
-//          magic-link WhatsApp to parent for Step 2 completion.
+// PURPOSE: Admin creates a tuition onboarding record, sends a magic-link WhatsApp
+//          to the parent for Step 2 completion.
+//
+// 2G-1a: the insert/WA/activity_log/batch-resolution body is delegated to the SHARED
+//        createTuitionOnboarding helper (single write path with the coach route), which
+//        now always creates/links a REAL tuition_batches row (closes the post-2A FK gap on
+//        solo creates). This route keeps ONLY admin-specific concerns: auth, request
+//        validation (bounds + spw/days guard), coach existence, and the response shape.
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import crypto from 'crypto';
 import { withApiHandler } from '@/lib/api/with-api-handler';
-import { sendNotification } from '@/lib/communication/notify';
+import { createTuitionOnboarding } from '@/lib/tuition/create-onboarding';
+import { BatchConflictError } from '@/lib/scheduling/batch-conflict';
 import { schedulePreferenceSchema, assertSpwDays } from '@/lib/tuition/schedule-preference';
 
 export const dynamic = 'force-dynamic';
-
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://www.yestoryd.com';
 
 const CreateTuitionSchema = z.object({
   sessionRate: z.number().int().min(5000).max(100000), // paise — Rs 50 to Rs 1,000
   sessionsPurchased: z.number().int().min(1).max(50),
   sessionDurationMinutes: z.number().int().min(15).max(120).default(60),
   sessionsPerWeek: z.number().int().min(1).max(7).default(2),
-  // Structured schedule (client sends the OBJECT; route validates then serializes
-  // to the string column on insert — the column shape is unchanged). Shared zod
-  // from lib/tuition/schedule-preference (single source of truth).
+  // Structured schedule (client sends the OBJECT; validated here then serialized to the
+  // string column inside the helper). Shared zod from lib/tuition/schedule-preference.
   schedulePreference: schedulePreferenceSchema.optional(),
   defaultSessionMode: z.enum(['offline', 'online']).default('offline'),
   parentPhone: z.string().regex(/^[6-9]\d{9}$/, 'Valid 10-digit Indian mobile number required'),
@@ -52,7 +55,7 @@ export const POST = withApiHandler(async (req: NextRequest, { auth, supabase, re
     return NextResponse.json({ error: spwDaysErr }, { status: 400 });
   }
 
-  // 2. Verify coach exists
+  // 2. Verify coach exists (admin picks the coach explicitly).
   const { data: coach, error: coachErr } = await supabase
     .from('coaches')
     .select('id, name')
@@ -63,136 +66,43 @@ export const POST = withApiHandler(async (req: NextRequest, { auth, supabase, re
     return NextResponse.json({ error: 'Coach not found' }, { status: 404 });
   }
 
-  // 3. Resolve category_id from slug (if provided)
-  let categoryId: string | null = null;
-  if (input.categorySlug) {
-    const { data: cat } = await supabase
-      .from('skill_categories')
-      .select('id')
-      .eq('slug', input.categorySlug)
-      .eq('is_active', true)
-      .single();
-    categoryId = cat?.id ?? null;
-  }
-
-  // 4. Generate magic-link token
-  const token = crypto.randomBytes(32).toString('hex');
-  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
-
-  // 4b. Resolve batch — join existing or create new
-  let batchId: string | null = null;
-  let batchMeetLink: string | null = null;
-  let batchCalendarEventId: string | null = null;
-
-  if (input.batchId) {
-    // Join existing batch — copy persistent classroom link from sibling
-    // Note: batch_id, meet_link, calendar_event_id added via migration — not in generated types
-    const { data: sibling } = await supabase
-      .from('tuition_onboarding')
-      .select('*')
-      .eq('batch_id' as any, input.batchId)
-      .limit(1)
-      .maybeSingle();
-
-    batchId = input.batchId;
-    // Copy persistent classroom link to new batch member
-    batchMeetLink = (sibling as any)?.meet_link ?? null;
-    batchCalendarEventId = (sibling as any)?.calendar_event_id ?? null;
-  }
-  // If no batchId provided, DEFAULT gen_random_uuid() on the column creates a new solo batch
-
-  // 5. Insert tuition_onboarding
-  const placeholderChildName = `Pending - ${input.parentPhone}`;
-  const insertData: Record<string, unknown> = {
-    child_name: placeholderChildName,
-    session_rate: input.sessionRate,
-    sessions_purchased: input.sessionsPurchased,
-    session_duration_minutes: input.sessionDurationMinutes,
-    sessions_per_week: input.sessionsPerWeek,
-    schedule_preference: input.schedulePreference ? JSON.stringify(input.schedulePreference) : null,
-    default_session_mode: input.defaultSessionMode,
-    parent_phone: input.parentPhone,
-    coach_id: input.coachId,
-    admin_notes: input.adminNotes ?? null,
-    admin_filled_by: auth.email ?? null,
-    admin_filled_at: new Date().toISOString(),
-    parent_form_token: token,
-    parent_form_token_expires_at: expiresAt.toISOString(),
-    status: 'parent_pending',
-    category_id: categoryId,
-  };
-
-  // Set batch fields if joining existing batch
-  if (batchId) {
-    insertData.batch_id = batchId;
-    if (batchMeetLink) insertData.meet_link = batchMeetLink;
-    if (batchCalendarEventId) insertData.calendar_event_id = batchCalendarEventId;
-  }
-
-  const { data: onboarding, error: insertErr } = await supabase
-    .from('tuition_onboarding')
-    .insert(insertData as any)
-    .select('id')
-    .single();
-
-  if (insertErr || !onboarding) {
-    console.error(JSON.stringify({ requestId, event: 'tuition_create_insert_error', error: insertErr?.message }));
-    return NextResponse.json({ error: 'Failed to create onboarding record' }, { status: 500 });
-  }
-
-  const magicLink = `${APP_URL}/tuition/onboard/${token}`;
-
-  // 6. Send WhatsApp to parent
-  // v5 has a generic, no-variable body ("Hi Parent, ...") — no name resolution needed.
-  let waStatus = 'failed';
+  // 3. Delegate to the shared write path (insert + batch resolution + WA + activity_log).
+  //    The helper creates/links a real tuition_batches row (solo) or asserts it exists (join).
+  let result;
   try {
-    const waResult = await sendNotification('parent_tuition_onboarding_v5', `91${input.parentPhone}`, {}, {
-      templateButtons: { category: 'utility_cta', url: token },
-      // context_id is uuid-typed — store the onboarding row id (valid uuid, queryable).
-      // v5 empty body degrades STEP-6 firstParam to ''; the per-onboarding token moves to
-      // idempotencySalt so the idempotency key stays unique per onboarding for the same phone+day.
-      contextId: onboarding.id,
-      idempotencySalt: token,
-      // Interactive admin send — bypass quiet-hours deferral.
-      forceImmediate: true,
-    });
-    waStatus = waResult.success ? 'sent' : (waResult.reason ?? 'failed');
-
-    console.log(JSON.stringify({
-      requestId,
-      event: waResult.success ? 'tuition_wa_sent' : 'tuition_wa_not_sent',
-      onboardingId: onboarding.id,
+    result = await createTuitionOnboarding(supabase, {
+      sessionRate: input.sessionRate,
+      sessionsPurchased: input.sessionsPurchased,
+      sessionDurationMinutes: input.sessionDurationMinutes,
+      sessionsPerWeek: input.sessionsPerWeek,
+      schedulePreference: input.schedulePreference ? JSON.stringify(input.schedulePreference) : null,
+      defaultSessionMode: input.defaultSessionMode,
       parentPhone: input.parentPhone,
-      reason: waResult.reason ?? null,
-    }));
-  } catch (waErr) {
-    // Non-fatal — admin can resend later
-    console.error(JSON.stringify({
-      requestId,
-      event: 'tuition_wa_send_error',
-      error: waErr instanceof Error ? waErr.message : String(waErr),
-    }));
+      coachId: input.coachId,
+      coachName: coach.name,
+      adminNotes: input.adminNotes ?? null,
+      categorySlug: input.categorySlug ?? null,
+      batchId: input.batchId ?? null,
+      onboardedBy: 'admin',
+      createdByEmail: auth.email ?? 'admin',
+      sessionType: input.batchId ? 'batch' : 'individual',
+    }, requestId);
+  } catch (e) {
+    // 2G-2.5-fix3: buffered coach batch-time conflict (create-new) → 409, NOTHING created (the
+    // throw precedes the inserts). JOIN adds no new occupancy → never throws.
+    if (e instanceof BatchConflictError) {
+      return NextResponse.json({ error: 'batch_time_conflict', conflicts: e.conflicts }, { status: 409 });
+    }
+    throw e;
   }
 
-  // 7. Activity log
-  await supabase.from('activity_log').insert({
-    action: 'tuition_onboarding_created',
-    user_email: auth.email ?? 'admin',
-    user_type: 'admin',
-    metadata: {
-      onboarding_id: onboarding.id,
-      coach_id: input.coachId,
-      sessions_purchased: input.sessionsPurchased,
-      session_rate: input.sessionRate,
-      parent_phone: input.parentPhone,
-    },
-  });
-
+  // 4. Response shape preserved (admin UI reads onboardingId + waStatus + magicLink) + warnings.
   return NextResponse.json({
-    onboardingId: onboarding.id,
-    token,
-    magicLink,
-    status: 'parent_pending',
-    waStatus,
+    onboardingId: result.onboardingId,
+    token: result.token,
+    magicLink: result.magicLink,
+    status: result.status,
+    waStatus: result.waStatus,
+    warnings: result.warnings ?? [],
   });
 }, { auth: 'admin' });
