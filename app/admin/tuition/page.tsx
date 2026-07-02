@@ -1423,6 +1423,21 @@ export default function AdminTuitionPage() {
                             >
                               <ArrowLeftRight className="w-3.5 h-3.5" />
                             </button>
+                            {/* 2C-4: soft-remove any lapsed member (flagged at_risk='tuition_lapse_7d').
+                                Gated on at_risk_reason ONLY — mirrors the backend guard, which allows
+                                any status except terminated/active (so payment_pending lapsed rows,
+                                e.g. link-cancelled, surface it too — not just paused ones). */}
+                            {o.enrollment_at_risk_reason === 'tuition_lapse_7d' && (
+                              <button
+                                onClick={() => handleRemoveLapsed(o.enrollment_id!, o.child_name)}
+                                disabled={removingLapsed === o.enrollment_id}
+                                className="text-xs text-red-400 hover:text-red-300 disabled:opacity-50 px-2 py-1 rounded-lg hover:bg-surface-2 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center"
+                                title="Remove (lapsed)"
+                                aria-label="Remove (lapsed)"
+                              >
+                                {removingLapsed === o.enrollment_id ? <Spinner size="sm" color="muted" /> : <Trash2 className="w-3.5 h-3.5" />}
+                              </button>
+                            )}
                           </>
                         )}
                       </div>
@@ -1603,16 +1618,9 @@ export default function AdminTuitionPage() {
                         Resume
                       </button>
                     )}
-                    {o.enrollment_id && o.enrollment_at_risk_reason === 'tuition_lapse_7d' && (
-                      <button
-                        onClick={() => handleRemoveLapsed(o.enrollment_id!, o.child_name)}
-                        disabled={removingLapsed === o.enrollment_id}
-                        className="mt-3 ml-3 flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 disabled:opacity-50 min-h-[44px] sm:min-h-0"
-                      >
-                        {removingLapsed === o.enrollment_id ? <Spinner size="sm" color="muted" /> : <Trash2 className="w-3 h-3" />}
-                        Remove (lapsed)
-                      </button>
-                    )}
+                    {/* 2C-4 Remove (lapsed) moved to the main English Classes Students row cluster
+                        (single source, covers ALL lapsed rows incl. payment_pending). Paused rows also
+                        render there via the enrollment_id partition, so no action is lost here. */}
                   </div>
                 );
               })}
